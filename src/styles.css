@@ -81,9 +81,22 @@ button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding-top: env(safe-area-inset-top, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/*
+  Horní bezpečná zóna jako rozpěrka, ne jako padding.
+  iOS u napevno přibitého rámu započítá svislé odsazení dvakrát: obsah posune
+  dolů a zároveň rámu o stejnou hodnotu zkrátí výšku. Pod spodní lištou pak
+  zbyde díra přesně velikosti té zóny (naměřeno 59 px na iPhonu 14 Pro).
+  Flexový prvek s pevnou výškou je jednoznačný.
+*/
+.app::before {
+  content: '';
+  flex-shrink: 0;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--bg);
 }
 
 .scroll {
