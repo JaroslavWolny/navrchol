@@ -99,9 +99,12 @@ button {
 .nav {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  /* Zóna domovského indikátoru se nepřičítá k dalšímu odsazení — jinak pod
-     popisky zbyde pruh, který vypadá jako chyba místo jako bezpečná zóna. */
-  padding: 8px 4px max(8px, env(safe-area-inset-bottom, 8px));
+  /*
+    Z bezpečné zóny se ubere 12px. Celá by pod popisky nechala pruh skoro 35px,
+    což je víc, než má systémová lišta iOS — a čte se to jako chybějící kus
+    obrazovky. Zbytek pořád nechává čáru pro zavření appky volnou.
+  */
+  padding: 6px 4px max(8px, calc(env(safe-area-inset-bottom, 8px) - 12px));
   border-top: 1px solid var(--line);
   background: var(--bg-nav);
   flex-shrink: 0;
@@ -113,7 +116,7 @@ button {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-height: 46px;
+  min-height: 44px;
   color: var(--mute);
   font-size: 9.5px;
   font-weight: 500;

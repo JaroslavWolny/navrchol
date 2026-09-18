@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { execSync } from 'node:child_process'
 
@@ -19,9 +19,29 @@ function buildId(): string {
   }
 }
 
+/**
+ * Malý soubor s číslem verze, který appka umí stáhnout mimo jakoukoliv cache.
+ * Bez něj se na iOS nepozná, že běží stará verze: appka přidaná na plochu má
+ * vlastní úložiště a sama od sebe se neaktualizuje.
+ */
+function emitVersion(id: string): Plugin {
+  return {
+    name: 'navrchol-version',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ version: id }),
+      })
+    },
+  }
+}
+
+const id = buildId()
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), emitVersion(id)],
   define: {
-    __BUILD_ID__: JSON.stringify(buildId()),
+    __BUILD_ID__: JSON.stringify(id),
   },
 })
