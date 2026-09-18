@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; background: oklch(0.16 0.014 255); font-family: Archivo, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: oklch(0.80 0.13 200); text-decoration: none; }
+    a:hover { color: oklch(0.88 0.10 200); }
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-ligatures: none; }
+    .disp { font-family: "Bricolage Grotesque", Archivo, sans-serif; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: oklch(0.16 0.014 255); color: oklch(0.96 0.005 255); overflow: hidden;">
+
+  <!-- header -->
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 22px 16px 14px;">
+    <div style="display: flex; flex-direction: column; gap: 3px;">
+      <div class="disp" style="font-size: 21px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1;">Sněžka z Pece</div>
+      <div class="mono" style="font-size: 11.5px; color: oklch(0.56 0.014 255); letter-spacing: 0.02em;">ne 20. 9. · start 07:00 · 4 h 20 min</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid oklch(0.32 0.02 255); border-radius: 17px; color: oklch(0.72 0.012 255); font-size: 12.5px; font-weight: 500; white-space: nowrap;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Změnit
+    </div>
+  </div>
+
+  <!-- hero verdict -->
+  <div style="position: relative; margin: 0 16px; height: 260px; border-radius: 20px; overflow: hidden; background: {{heroWash}}; border: 1px solid oklch(0.30 0.02 255);">
+    <svg width="358" height="260" viewBox="0 0 358 260" style="position: absolute; inset: 0;" aria-hidden="true">
+      <g fill="none" stroke="{{color}}" stroke-width="1">
+        <ellipse cx="179" cy="126" rx="196" ry="122" opacity="0.07" transform="rotate(-8 179 126)"/>
+        <ellipse cx="179" cy="126" rx="170" ry="106" opacity="0.08" transform="rotate(-7 179 126)"/>
+        <ellipse cx="179" cy="126" rx="146" ry="91" opacity="0.09" transform="rotate(-6 179 126)"/>
+        <ellipse cx="179" cy="126" rx="124" ry="78" opacity="0.10" transform="rotate(-5 179 126)"/>
+        <ellipse cx="179" cy="126" rx="104" ry="66" opacity="0.11" transform="rotate(-4 179 126)"/>
+        <ellipse cx="179" cy="126" rx="86" ry="55" opacity="0.12" transform="rotate(-3 179 126)"/>
+      </g>
+      <path d="M0 214 L58 206 L96 219 L150 210 L200 222 L258 208 L310 218 L358 206" fill="none" stroke="{{color}}" stroke-width="1" opacity="0.10"/>
+      <path d="M0 238 L52 231 L104 243 L162 233 L214 245 L272 232 L322 242 L358 232" fill="none" stroke="{{color}}" stroke-width="1" opacity="0.07"/>
+    </svg>
+
+    <div style="position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0 24px;">
+      <div style="position: relative; width: 128px; height: 128px; display: flex; align-items: center; justify-content: center;">
+        <svg width="128" height="128" viewBox="0 0 128 128" style="position: absolute; inset: 0; transform: rotate(-90deg);">
+          <circle cx="64" cy="64" r="56" fill="none" stroke="oklch(0.30 0.02 255)" stroke-width="6"/>
+          <circle cx="64" cy="64" r="56" fill="none" stroke="{{color}}" stroke-width="6" stroke-linecap="round" stroke-dasharray="{{dash}} 352" />
+        </svg>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 0;">
+          <div class="disp" style="font-size: 52px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: {{color}};">{{score}}</div>
+          <div class="mono" style="font-size: 9.5px; letter-spacing: 0.16em; color: oklch(0.56 0.014 255);">ZE 100</div>
+        </div>
+      </div>
+      <div class="disp" style="margin-top: 12px; font-size: 27px; font-weight: 800; letter-spacing: 0.02em; color: {{color}};">{{word}}</div>
+      <div style="font-size: 13.5px; line-height: 1.4; color: oklch(0.72 0.012 255); text-align: center; text-wrap: pretty; max-width: 270px;">{{sub}}</div>
+    </div>
+  </div>
+
+  <!-- model agreement -->
+  <div style="margin: 12px 16px 0; padding: 13px 14px; border-radius: 14px; background: oklch(0.215 0.016 255); display: flex; flex-direction: column; gap: 10px;">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 8px;">
+      <div style="font-size: 13px; font-weight: 600; color: oklch(0.90 0.008 255);">Shoda modelů</div>
+      <div class="mono" style="font-size: 15px; font-weight: 700; color: {{agreeColor}};">{{agree}} %</div>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 5px; align-items: center;">
+        <div style="width: 100%; height: 4px; border-radius: 2px; background: {{m1}};"></div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.04em; color: oklch(0.56 0.014 255);">ICON-D2</div>
+      </div>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 5px; align-items: center;">
+        <div style="width: 100%; height: 4px; border-radius: 2px; background: {{m2}};"></div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.04em; color: oklch(0.56 0.014 255);">ICON-EU</div>
+      </div>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 5px; align-items: center;">
+        <div style="width: 100%; height: 4px; border-radius: 2px; background: {{m3}};"></div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.04em; color: oklch(0.56 0.014 255);">ECMWF</div>
+      </div>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 5px; align-items: center;">
+        <div style="width: 100%; height: 4px; border-radius: 2px; background: {{m4}};"></div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.04em; color: oklch(0.56 0.014 255);">GFS</div>
+      </div>
+    </div>
+    <div class="mono" style="font-size: 10.5px; color: oklch(0.56 0.014 255); letter-spacing: 0.01em;">{{spread}}</div>
+  </div>
+
+  <!-- warning -->
+  <div style="margin: 10px 16px 0; padding: 11px 13px; border-radius: 12px; background: {{warnBg}}; display: flex; align-items: flex-start; gap: 10px;">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{warnColor}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+    <div style="font-size: 12.5px; line-height: 1.42; color: oklch(0.90 0.008 255); text-wrap: pretty;">{{warnText}}</div>
+  </div>
+
+  <!-- metrics -->
+  <div style="margin: 10px 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+    <div style="padding: 11px 12px; border-radius: 12px; background: oklch(0.215 0.016 255); display: flex; flex-direction: column; gap: 3px;">
+      <div style="display: flex; align-items: center; gap: 6px; color: oklch(0.56 0.014 255);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.5a4 4 0 1 1-4 0V4a2 2 0 1 1 4 0z"/></svg>
+        <span style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.03em;">POCITOVĚ</span>
+      </div>
+      <div class="mono" style="font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">{{mTemp}}</div>
+      <div style="font-size: 10.5px; color: oklch(0.56 0.014 255);">vrchol 1 603 m</div>
+    </div>
+    <div style="padding: 11px 12px; border-radius: 12px; background: oklch(0.215 0.016 255); display: flex; flex-direction: column; gap: 3px;">
+      <div style="display: flex; align-items: center; gap: 6px; color: oklch(0.56 0.014 255);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 13h15a3 3 0 1 1-3 3"/><path d="M3 18h8"/></svg>
+        <span style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.03em;">NÁRAZY</span>
+      </div>
+      <div class="mono" style="font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: {{gustColor}};">{{mGust}}</div>
+      <div style="font-size: 10.5px; color: oklch(0.56 0.014 255);">hřeben, 10–13 h</div>
+    </div>
+    <div style="padding: 11px 12px; border-radius: 12px; background: oklch(0.215 0.016 255); display: flex; flex-direction: column; gap: 3px;">
+      <div style="display: flex; align-items: center; gap: 6px; color: oklch(0.56 0.014 255);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7S5.5 9.9 5.5 14.2a6.5 6.5 0 0 0 13 0C18.5 9.9 12 2.7 12 2.7z"/></svg>
+        <span style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.03em;">SRÁŽKY</span>
+      </div>
+      <div class="mono" style="font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">{{mPrec}}</div>
+      <div style="font-size: 10.5px; color: oklch(0.56 0.014 255);">{{mPrecP}}</div>
+    </div>
+    <div style="padding: 11px 12px; border-radius: 12px; background: oklch(0.215 0.016 255); display: flex; flex-direction: column; gap: 3px;">
+      <div style="display: flex; align-items: center; gap: 6px; color: oklch(0.56 0.014 255);">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="2.6"/></svg>
+        <span style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.03em;">VIDITELNOST</span>
+      </div>
+      <div class="mono" style="font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">{{mVis}}</div>
+      <div style="font-size: 10.5px; color: oklch(0.56 0.014 255);">{{mVisNote}}</div>
+    </div>
+  </div>
+
+  <div class="mono" style="margin: 9px 16px 0; font-size: 10.5px; color: oklch(0.56 0.014 255); letter-spacing: 0.01em;">{{footline}}</div>
+
+  <!-- bottom nav -->
+  <div style="margin-top: auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 9px 4px 20px; border-top: 1px solid oklch(0.26 0.018 255); background: oklch(0.175 0.014 255);">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; height: 46px; justify-content: center; color: oklch(0.56 0.014 255);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6.5v14L9 18l6 2.5 6-2.5v-14L15 6.5 9 4z"/><path d="M9 4v14"/><path d="M15 6.5v14"/></svg>
+      <span style="font-size: 9.5px; font-weight: 500;">Trasy</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; height: 46px; justify-content: center; color: oklch(0.80 0.13 200);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m2 19 6.4-9.6 3.6 4.6 3.2-4.4L22 19H2z"/><circle cx="17.5" cy="5.5" r="2.5"/></svg>
+      <span style="font-size: 9.5px; font-weight: 600;">Verdikt</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; height: 46px; justify-content: center; color: oklch(0.56 0.014 255);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>
+      <span style="font-size: 9.5px; font-weight: 500;">Kdy jít</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; height: 46px; justify-content: center; color: oklch(0.56 0.014 255);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3.4"/><path d="M5.5 8.5 7.9 10.9"/><path d="M18.5 8.5 16.1 10.9"/><path d="M2.5 17.5h19"/><path d="M6.8 17.5a5.2 5.2 0 0 1 10.4 0"/><path d="M9.2 20.8h5.6"/></svg>
+      <span style="font-size: 9.5px; font-weight: 500;">Slunce</span>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; height: 46px; justify-content: center; color: oklch(0.56 0.014 255);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-7a3 3 0 0 1 3-3z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/><path d="M9 13h6"/></svg>
+      <span style="font-size: 9.5px; font-weight: 500;">Výbava</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"verdict":{"editor":"enum","options":["go","zvaz","nejdi"],"default":"go","section":"Stav"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const GO = 'oklch(0.78 0.16 152)';
+    const WARN = 'oklch(0.80 0.15 78)';
+    const STOP = 'oklch(0.66 0.20 25)';
+    const MUTE = 'oklch(0.34 0.02 255)';
+
+    const sets = {
+      go: {
+        score: 84, dash: 295, color: GO, word: 'JDI',
+        sub: 'Dobré podmínky. Jediné riziko je vítr na hřebeni kolem poledne.',
+        heroWash: 'oklch(0.21 0.035 152)',
+        agree: 91, agreeColor: GO, m1: GO, m2: GO, m3: GO, m4: WARN,
+        spread: 'teplota ±0,8 °C · nárazy ±9 km/h · srážky ±0,3 mm',
+        warnBg: 'oklch(0.24 0.045 78)', warnColor: WARN,
+        warnText: 'Nárazy 58 km/h na hřebeni mezi 10:00 a 13:00. Vezmi větrovku a drž se pod hranou.',
+        mTemp: '−2 °C', mGust: '58 km/h', gustColor: WARN,
+        mPrec: '0,4 mm', mPrecP: 'pravděpodobnost 20 %',
+        mVis: '12 km', mVisNote: 'bez mlhy',
+        footline: 'Bouřka: bez rizika (CAPE 20) · Nulová izoterma 2 450 m · Západ slunce 19:02'
+      },
+      zvaz: {
+        score: 58, dash: 204, color: WARN, word: 'ZVAŽ',
+        sub: 'Modely se rozcházejí ve srážkách. Rozhodni se ráno podle radaru.',
+        heroWash: 'oklch(0.21 0.035 78)',
+        agree: 54, agreeColor: WARN, m1: WARN, m2: GO, m3: STOP, m4: WARN,
+        spread: 'teplota ±2,4 °C · nárazy ±21 km/h · srážky ±4,1 mm',
+        warnBg: 'oklch(0.24 0.045 78)', warnColor: WARN,
+        warnText: 'ECMWF dává 11 mm deště, ICON-D2 jen 0,6 mm. Nízká spolehlivost — ověř ráno.',
+        mTemp: '1 °C', mGust: '44 km/h', gustColor: 'oklch(0.96 0.005 255)',
+        mPrec: '0,6–11 mm', mPrecP: 'pravděpodobnost 55 %',
+        mVis: '3,5 km', mVisNote: 'mlha nad 1 200 m',
+        footline: 'Bouřka: nízké riziko (CAPE 310) · Nulová izoterma 2 100 m · Západ slunce 19:02'
+      },
+      nejdi: {
+        score: 21, dash: 74, color: STOP, word: 'NEJDI',
+        sub: 'Bouřky nad hřebenem a nárazy přes 90 km/h. Na otevřeném hřebeni se nemáš kam schovat.',
+        heroWash: 'oklch(0.21 0.045 25)',
+        agree: 88, agreeColor: GO, m1: STOP, m2: STOP, m3: STOP, m4: MUTE,
+        spread: 'teplota ±1,1 °C · nárazy ±12 km/h · srážky ±2,0 mm',
+        warnBg: 'oklch(0.25 0.06 25)', warnColor: STOP,
+        warnText: 'Bouřky od 11:00, nárazy 94 km/h. Hřeben Sněžky je 3 km bez úkrytu — trasu odlož.',
+        mTemp: '−7 °C', mGust: '94 km/h', gustColor: STOP,
+        mPrec: '18 mm', mPrecP: 'pravděpodobnost 85 %',
+        mVis: '0,4 km', mVisNote: 'mlha od 900 m',
+        footline: 'Bouřka: vysoké riziko (CAPE 1 840) · Nulová izoterma 1 350 m · Západ slunce 19:02'
+      }
+    };
+    return sets[this.props.verdict] || sets.go;
+  }
+}
+</script>
+</body>
+</html>

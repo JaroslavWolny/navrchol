@@ -1,0 +1,19 @@
+{
+  "artboards": [
+    { "file": "Trasy.dc.html",     "x": 0,    "y": 0, "w": 390, "h": 844, "title": "1 · Moje trasy" },
+    { "file": "Editor.dc.html",    "x": 470,  "y": 0, "w": 390, "h": 844, "title": "2 · Editor trasy" },
+    { "file": "Main.dc.html",      "x": 940,  "y": 0, "w": 390, "h": 844, "title": "3 · Verdikt" },
+    { "file": "Timeline.dc.html",  "x": 1410, "y": 0, "w": 390, "h": 844, "title": "4 · Počasí podél trasy" },
+    { "file": "KdyJit.dc.html",    "x": 1880, "y": 0, "w": 390, "h": 844, "title": "5 · Kdy jít" },
+    { "file": "Slunce.dc.html",    "x": 2350, "y": 0, "w": 390, "h": 844, "title": "6 · Východ a západ" },
+    { "file": "Checklist.dc.html", "x": 2820, "y": 0, "w": 390, "h": 844, "title": "7 · Výbava" },
+    { "file": "DirectionB.dc.html","x": 940,  "y": 1060, "w": 390, "h": 844, "title": "Směr B · Papírová mapa" },
+    { "file": "DirectionC.dc.html","x": 1410, "y": 1060, "w": 390, "h": 844, "title": "Směr C · Terminál" }
+  ],
+  "annotations": [
+    { "id": "flow", "x": 0, "y": -200, "w": 860, "text": "NaVrchol — hlavní tok: vyber trasu → rozmísti body trasy a nastav start → verdikt → počasí podél trasy → kdy jít → východ a západ → výbava.\nVšech sedm obrazovek je ve směru A „Alpský přístroj“: tmavá břidlice, vrstevnice na pozadí, mono číslice, ledovcová modrá jako akcent. Semafor (zelená / jantarová / červená) je vyhrazený jen pro verdikt, obloha při východu a západu má vlastní teplou škálu, aby se to nepletlo." },
+    { "id": "tweak", "x": 940, "y": -200, "w": 390, "text": "Verdikt má nad rámem přepínač stavu: go / zvaž / nejdi. Přepni si ho a uvidíš všechny tři stavy i s odpovídajícími daty." },
+    { "id": "alt", "x": 940, "y": 900, "w": 860, "text": "Dvě alternativy ke stejné obrazovce, ať je co porovnávat.\nB — Papírová mapa: světlá, teplá, serifová, jako tištěná turistická mapa. Krásná na denním světle, ale v mlze a v rukavicích se čte hůř a nemá kam dát semafor.\nC — Terminál: všechno mono, hustá data, žádné zaoblení. Nejvíc informací na obrazovku a nejrychlejší čtení čísel, jenže to působí jako přístroj, ne jako appka do kapsy." }
+  ],
+  "launch": { "view": "canvas" }
+}

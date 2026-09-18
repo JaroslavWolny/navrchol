@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; background: oklch(0.16 0.014 255); font-family: Archivo, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: oklch(0.80 0.13 200); text-decoration: none; }
+    a:hover { color: oklch(0.88 0.10 200); }
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-ligatures: none; }
+    .disp { font-family: "Bricolage Grotesque", Archivo, sans-serif; }
+    .col { flex-grow: 1; flex-basis: 0; display: flex; align-items: center; justify-content: center; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; background: oklch(0.16 0.014 255); color: oklch(0.96 0.005 255); overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 10px; padding: 20px 16px 4px;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.012 255)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M15 5l-7 7 7 7"/></svg>
+    <div class="disp" style="font-size: 19px; font-weight: 700; letter-spacing: -0.015em;">Počasí podél trasy</div>
+  </div>
+  <div class="mono" style="padding: 0 16px 14px 48px; font-size: 11px; color: oklch(0.56 0.014 255); letter-spacing: 0.02em;">ne 20. 9. · 07:00 → 11:20 · ICON-D2</div>
+
+  <!-- aligned strip chart -->
+  <div style="margin: 0 16px; padding: 12px 10px 10px; border-radius: 18px; background: oklch(0.205 0.016 255); display: flex; flex-direction: column; gap: 9px;">
+
+    <div style="display: flex;">
+      <div class="col mono" style="font-size: 11.5px; font-weight: 700; color: oklch(0.90 0.008 255);">07:00</div>
+      <div class="col mono" style="font-size: 11.5px; font-weight: 700; color: oklch(0.90 0.008 255);">08:00</div>
+      <div class="col mono" style="font-size: 11.5px; font-weight: 700; color: oklch(0.90 0.008 255);">09:00</div>
+      <div class="col mono" style="font-size: 11.5px; font-weight: 700; color: oklch(0.80 0.15 78);">10:00</div>
+      <div class="col mono" style="font-size: 11.5px; font-weight: 700; color: oklch(0.80 0.15 78);">11:00</div>
+    </div>
+
+    <div style="display: flex;">
+      <div class="col">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="oklch(0.85 0.13 85)" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M21.4 12h-2.2M4.8 12H2.6M18.6 5.4l-1.6 1.6M7 17l-1.6 1.6M18.6 18.6 17 17M7 7 5.4 5.4"/></svg>
+      </div>
+      <div class="col">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.012 255)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.4" r="3.4" stroke="oklch(0.85 0.13 85)"/><path d="M7.5 19h9.6a3.6 3.6 0 0 0 .3-7.2 5 5 0 0 0-9.6-.6 3.4 3.4 0 0 0-.3 7.8z"/></svg>
+      </div>
+      <div class="col">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="oklch(0.72 0.012 255)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.4" r="3.4" stroke="oklch(0.85 0.13 85)"/><path d="M7.5 19h9.6a3.6 3.6 0 0 0 .3-7.2 5 5 0 0 0-9.6-.6 3.4 3.4 0 0 0-.3 7.8z"/></svg>
+      </div>
+      <div class="col">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="oklch(0.66 0.014 255)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 18.4h10.8a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8-.7 3.8 3.8 0 0 0-.4 8.7z"/></svg>
+      </div>
+      <div class="col">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="oklch(0.66 0.014 255)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.6 16.4h10.8a4 4 0 0 0 .4-8 5.6 5.6 0 0 0-10.8-.7 3.8 3.8 0 0 0-.4 8.7z"/><path d="M9 19.4l-.8 2M13 19.4l-.8 2"/></svg>
+      </div>
+    </div>
+
+    <div style="display: flex;">
+      <sc-for list="{{hours}}" as="h" hint-placeholder-count="5">
+        <div class="col mono" style="font-size: 17px; font-weight: 700; letter-spacing: -0.02em;">{{h.t}}</div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex;">
+      <sc-for list="{{hours}}" as="h" hint-placeholder-count="5">
+        <div class="col" style="flex-direction: column; gap: 3px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{h.wColor}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate({{h.dir}}deg);"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></svg>
+          <div class="mono" style="font-size: 11.5px; font-weight: 700; color: {{h.wColor}};">{{h.w}}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; align-items: flex-end; height: 26px; border-bottom: 1px solid oklch(0.30 0.02 255); padding-bottom: 4px;">
+      <sc-for list="{{hours}}" as="h" hint-placeholder-count="5">
+        <div class="col" style="flex-direction: column; gap: 3px; justify-content: flex-end; height: 100%;">
+          <div style="width: 22px; height: {{h.pxH}}; border-radius: 2px; background: oklch(0.70 0.10 230);"></div>
+          <div class="mono" style="font-size: 9.5px; color: oklch(0.56 0.014 255);">{{h.p}}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- elevation profile, same x axis -->
+    <svg width="338" height="132" viewBox="0 0 338 132" style="display: block;">
+      <defs>
+        <linearGradient id="elevfill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="oklch(0.80 0.13 200)" stop-opacity="0.34"/>
+          <stop offset="100%" stop-color="oklch(0.80 0.13 200)" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      <rect x="164" y="0" width="86" height="112" fill="oklch(0.80 0.15 78)" opacity="0.12" rx="4"/>
+      <path d="M0 106 C 46 96 78 64 112 38 C 132 22 146 14 176 12 C 208 32 250 66 286 84 C 304 93 318 100 338 106 L338 112 L0 112 Z" fill="url(#elevfill)"/>
+      <path d="M0 106 C 46 96 78 64 112 38 C 132 22 146 14 176 12 C 208 32 250 66 286 84 C 304 93 318 100 338 106" fill="none" stroke="oklch(0.80 0.13 200)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <g>
+        <circle cx="0" cy="106" r="4" fill="oklch(0.205 0.016 255)" stroke="oklch(0.80 0.13 200)" stroke-width="2"/>
+        <circle cx="123" cy="30" r="4" fill="oklch(0.205 0.016 255)" stroke="oklch(0.80 0.13 200)" stroke-width="2"/>
+        <circle cx="176" cy="12" r="5.5" fill="oklch(0.80 0.13 200)"/>
+        <circle cx="297" cy="88" r="4" fill="oklch(0.205 0.016 255)" stroke="oklch(0.80 0.13 200)" stroke-width="2"/>
+      </g>
+      <text x="4" y="124" font-size="9.5" fill="oklch(0.56 0.014 255)" font-family="JetBrains Mono, monospace">769 m</text>
+      <text x="176" y="128" text-anchor="middle" font-size="9.5" font-weight="700" fill="oklch(0.80 0.13 200)" font-family="JetBrains Mono, monospace">SNĚŽKA 1603</text>
+      <text x="334" y="124" text-anchor="end" font-size="9.5" fill="oklch(0.56 0.014 255)" font-family="JetBrains Mono, monospace">769 m</text>
+    </svg>
+  </div>
+
+  <!-- critical window -->
+  <div style="margin: 12px 16px 0; padding: 13px 14px; border-radius: 14px; background: oklch(0.24 0.045 78); display: flex; flex-direction: column; gap: 6px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="oklch(0.80 0.15 78)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <div style="font-size: 13.5px; font-weight: 700; color: oklch(0.80 0.15 78);">Kritické okno 10:00–13:00</div>
+    </div>
+    <div style="font-size: 12.5px; line-height: 1.45; color: oklch(0.90 0.008 255); text-wrap: pretty;">Na hřebeni budeš v 09:20 a nárazy tam vrcholí na 58 km/h. Když vyrazíš o hodinu dřív, projdeš exponovaný úsek při 41 km/h.</div>
+    <div style="margin-top: 3px; align-self: flex-start; height: 34px; padding: 0 14px; border-radius: 17px; background: oklch(0.80 0.15 78); color: oklch(0.20 0.04 78); display: flex; align-items: center; font-size: 12.5px; font-weight: 700;">Posunout start na 06:00</div>
+  </div>
+
+  <!-- per-waypoint readout -->
+  <div style="flex-grow: 1; margin: 12px 16px 0; display: flex; flex-direction: column; gap: 5px; overflow: hidden;">
+    <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: oklch(0.56 0.014 255); padding-bottom: 2px;">V BODECH TRASY</div>
+    <sc-for list="{{wps}}" as="w" hint-placeholder-count="4">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; background: oklch(0.205 0.016 255);">
+        <div class="mono" style="font-size: 12px; font-weight: 700; color: oklch(0.80 0.13 200); width: 40px; flex-shrink: 0;">{{w.time}}</div>
+        <div style="flex-grow: 1; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{w.name}}</div>
+        <div class="mono" style="font-size: 12px; font-weight: 700; flex-shrink: 0;">{{w.t}}</div>
+        <div class="mono" style="font-size: 12px; font-weight: 700; color: {{w.wColor}}; flex-shrink: 0; width: 54px; text-align: right;">{{w.w}}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div class="mono" style="padding: 10px 16px 22px; font-size: 10.5px; color: oklch(0.56 0.014 255);">4 modely · rozptyl nárazů ±9 km/h</div>
+
+</div>
+</x-dc>
+
+<script data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const OK = 'oklch(0.72 0.012 255)';
+    const WARN = 'oklch(0.80 0.15 78)';
+    return {
+      hours: [
+        { t: '4°', w: '22', p: '0 %', dir: 200, wColor: OK, pxH: '2px' },
+        { t: '1°', w: '34', p: '5 %', dir: 215, wColor: OK, pxH: '3px' },
+        { t: '−2°', w: '48', p: '10 %', dir: 225, wColor: OK, pxH: '5px' },
+        { t: '−2°', w: '58', p: '20 %', dir: 240, wColor: WARN, pxH: '9px' },
+        { t: '0°', w: '51', p: '20 %', dir: 245, wColor: WARN, pxH: '9px' }
+      ],
+      wps: [
+        { time: '07:00', name: 'Pec pod Sněžkou', t: '4 °C', w: '22 km/h', wColor: OK },
+        { time: '08:35', name: 'Růžová hora', t: '0 °C', w: '39 km/h', wColor: OK },
+        { time: '09:20', name: 'Sněžka', t: '−2 °C', w: '58 km/h', wColor: WARN },
+        { time: '10:50', name: 'Obří důl', t: '3 °C', w: '24 km/h', wColor: OK }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
