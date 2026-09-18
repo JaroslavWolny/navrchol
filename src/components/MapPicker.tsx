@@ -19,7 +19,7 @@ export function MapPicker({ waypoints, track, onAdd }: Props) {
   useEffect(() => {
     if (!host.current || map.current) return
 
-    const m = L.map(host.current, { zoomControl: false, attributionControl: true }).setView(
+    const m = L.map(host.current, { zoomControl: false, attributionControl: true, keyboard: false }).setView(
       [50.7361, 15.7397],
       12,
     )

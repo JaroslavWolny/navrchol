@@ -5,7 +5,7 @@ import { formatDuration } from '../lib/pace'
 import { verdictOf } from '../lib/score'
 import { clock, dayShort, km, metres, parseDay } from '../lib/format'
 import type { DayOutlook } from '../lib/plan'
-import type { StoredState } from '../state/store'
+import { DEMO_ROUTE_ID, type StoredState } from '../state/store'
 import type { Route } from '../lib/types'
 
 const TONE = {
@@ -27,9 +27,10 @@ interface Props {
   onPick: (id: string) => void
   onNew: () => void
   onEdit: (route: Route) => void
+  onAbout: () => void
 }
 
-export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit }: Props) {
+export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit, onAbout }: Props) {
   const outlooks = useAllOutlooks(state.routes)
 
   return (
@@ -42,22 +43,42 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit }: Props
           </div>
           <h1 className="page-title">Moje trasy</h1>
         </div>
-        <button
-          onClick={onNew}
-          aria-label="Nová trasa"
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            background: 'var(--acc)',
-            color: 'var(--acc-ink)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="plus" size={22} stroke={2.4} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={onAbout}
+            aria-label="O appce"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              border: '1px solid var(--line)',
+              color: 'var(--dim)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 17,
+              fontWeight: 700,
+            }}
+          >
+            ?
+          </button>
+          <button
+            onClick={onNew}
+            aria-label="Nová trasa"
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              background: 'var(--acc)',
+              color: 'var(--acc-ink)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="plus" size={22} stroke={2.4} />
+          </button>
+        </div>
       </div>
 
       {state.routes.length === 0 ? (
@@ -125,8 +146,36 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit }: Props
                 </div>
 
                 <div className="stack" style={{ gap: 5, flexGrow: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>
-                    {route.name || 'Bez názvu'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                    <span
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        letterSpacing: '-0.01em',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {route.name || 'Bez názvu'}
+                    </span>
+                    {route.id === DEMO_ROUTE_ID && (
+                      <span
+                        className="mono"
+                        style={{
+                          flexShrink: 0,
+                          fontSize: 8.5,
+                          fontWeight: 700,
+                          letterSpacing: '0.1em',
+                          color: 'var(--mute)',
+                          border: '1px solid var(--line)',
+                          borderRadius: 5,
+                          padding: '2px 5px',
+                        }}
+                      >
+                        UKÁZKA
+                      </span>
+                    )}
                   </div>
                   <div className="mono" style={{ fontSize: 11, color: 'var(--dim)' }}>
                     {data

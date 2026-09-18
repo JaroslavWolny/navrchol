@@ -38,7 +38,7 @@ export function RadarMap({ track, center }: Props) {
 
   useEffect(() => {
     if (!host.current || map.current) return
-    const m = L.map(host.current, { zoomControl: false, attributionControl: true }).setView(
+    const m = L.map(host.current, { zoomControl: false, attributionControl: true, keyboard: false }).setView(
       [center.lat, center.lon],
       8,
     )

@@ -7,12 +7,14 @@ import { TimelineScreen } from './screens/Timeline'
 import { TrasyScreen } from './screens/Trasy'
 import { VerdiktScreen } from './screens/Verdikt'
 import { VybavaScreen } from './screens/Vybava'
+import { UvodScreen } from './screens/Uvod'
+import { OAppceScreen } from './screens/OAppce'
 import { assess, weekOutlook } from './lib/plan'
-import { load, newId, save, type StoredState } from './state/store'
+import { DEMO_ROUTE, load, newId, save, type StoredState } from './state/store'
 import { useRouteData } from './state/useRouteData'
 import type { Route } from './lib/types'
 
-type View = 'tabs' | 'editor' | 'timeline'
+type View = 'tabs' | 'editor' | 'timeline' | 'about'
 
 /** Nejbližší výskyt času startu — dnes, pokud ještě nebyl, jinak zítra. */
 function defaultStart(route: Route | null): Date {
@@ -64,6 +66,39 @@ export default function App() {
     setView('editor')
   }
 
+  if (!state.seenIntro) {
+    return (
+      <UvodScreen
+        onDemo={() => {
+          setState((s) => ({
+            ...s,
+            seenIntro: true,
+            // Když si někdo ukázku smazal a úvod si pustil znovu, vrátí se.
+            routes: s.routes.some((r) => r.id === DEMO_ROUTE.id) ? s.routes : [DEMO_ROUTE, ...s.routes],
+            activeRouteId: DEMO_ROUTE.id,
+          }))
+          setTab('verdikt')
+        }}
+        onOwn={() => {
+          setState((s) => ({ ...s, seenIntro: true }))
+          openEditor(null)
+        }}
+      />
+    )
+  }
+
+  if (view === 'about') {
+    return (
+      <OAppceScreen
+        onBack={() => setView('tabs')}
+        onShowIntro={() => {
+          setState((s) => ({ ...s, seenIntro: false }))
+          setView('tabs')
+        }}
+      />
+    )
+  }
+
   if (view === 'editor' && editing) {
     return (
       <EditorScreen
@@ -113,6 +148,7 @@ export default function App() {
           }}
           onNew={() => openEditor(null)}
           onEdit={(r) => openEditor(r)}
+          onAbout={() => setView('about')}
         />
       )}
       {tab === 'verdikt' && (

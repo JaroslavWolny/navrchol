@@ -13,6 +13,8 @@ export interface StoredState {
   baseGear: BaseGearItem[]
   /** ID trasy → názvy položek, které už jsou sbalené. */
   packed: Record<string, string[]>
+  /** Úvod se ukazuje jen jednou, ale jde vyvolat znovu z „O appce". */
+  seenIntro: boolean
 }
 
 export const DEFAULT_BASE_GEAR: BaseGearItem[] = [
@@ -25,9 +27,11 @@ export const DEFAULT_BASE_GEAR: BaseGearItem[] = [
   { id: 'hotovost', name: 'Hotovost na chatu' },
 ]
 
+export const DEMO_ROUTE_ID = 'demo-snezka'
+
 /** Ukázková trasa, aby appka po instalaci hned něco ukázala. Jde smazat. */
-const DEMO_ROUTE: Route = {
-  id: 'demo-snezka',
+export const DEMO_ROUTE: Route = {
+  id: DEMO_ROUTE_ID,
   name: 'Sněžka z Pece',
   startTime: '07:00',
   pace: 'stredni',
@@ -43,6 +47,7 @@ const EMPTY: StoredState = {
   activeRouteId: DEMO_ROUTE.id,
   baseGear: DEFAULT_BASE_GEAR,
   packed: {},
+  seenIntro: false,
 }
 
 /** localStorage umí selhat v anonymním okně i při zaplněné kvótě — nikdy kvůli tomu nespadnout. */
@@ -56,6 +61,7 @@ export function load(): StoredState {
       activeRouteId: parsed.activeRouteId ?? parsed.routes?.[0]?.id ?? null,
       baseGear: parsed.baseGear ?? DEFAULT_BASE_GEAR,
       packed: parsed.packed ?? {},
+      seenIntro: parsed.seenIntro ?? false,
     }
   } catch {
     return EMPTY
