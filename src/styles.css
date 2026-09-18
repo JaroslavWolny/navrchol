@@ -1,6 +1,6 @@
 :root {
   --bg: oklch(0.16 0.014 255);
-  --bg-nav: oklch(0.175 0.014 255);
+  --bg-nav: oklch(0.205 0.016 255);
   --card: oklch(0.215 0.016 255);
   --card-2: oklch(0.198 0.015 255);
   --card-3: oklch(0.26 0.018 255);
@@ -99,8 +99,10 @@ button {
 .nav {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  padding: 9px 4px calc(12px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--card-3);
+  /* Zóna domovského indikátoru se nepřičítá k dalšímu odsazení — jinak pod
+     popisky zbyde pruh, který vypadá jako chyba místo jako bezpečná zóna. */
+  padding: 8px 4px max(8px, env(safe-area-inset-bottom, 8px));
+  border-top: 1px solid var(--line);
   background: var(--bg-nav);
   flex-shrink: 0;
 }
@@ -123,7 +125,17 @@ button {
 .page-title { font-family: var(--font-disp); font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.025em; }
 .sub { font-family: var(--font-mono); font-size: 11px; color: var(--mute); letter-spacing: 0.02em; }
 .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--mute); }
-.wordmark { font-size: 11px; font-weight: 700; letter-spacing: 0.16em; color: var(--acc); }
+/*
+  Značka byla v 11px s rozestupy 0,16 em a v syté azurové nečitelná — tenké tahy
+  roztažené od sebe a sytá barva drobné písmo na OLEDu rozmazává.
+  Větší, sevřenější a světlejší s nižší sytostí je ostrá.
+*/
+.wordmark {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: oklch(0.87 0.09 200);
+}
 
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .pad { padding-inline: var(--gutter); }
