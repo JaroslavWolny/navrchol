@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Seedovaný design canvas — build artefakt, dá se znovu složit z design/*.dc.html
+design/*.html
