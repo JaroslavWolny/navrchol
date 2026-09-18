@@ -73,6 +73,30 @@ npm run build
 - [OpenTopoMap](https://opentopomap.org) / OpenStreetMap — mapové dlaždice (CC-BY-SA)
 - Esri Dark Gray Canvas — tmavý podklad pod radar
 
+## Testování iOS geometrie bez telefonu
+
+iOS dává PWA přidané na plochu různé okno podle toho, jaký status bar si appka
+vyžádala **v okamžiku instalace** — pozdější aktualizace s tím nehnou.
+`tools/ios-harness.html` obě varianty vykreslí vedle sebe:
+
+```bash
+npm run dev -- --port 5185
+cp tools/ios-harness.html public/__ios.html
+open http://127.0.0.1:5185/__ios.html
+rm public/__ios.html   # ať se to nevystavuje v produkci
+```
+
+Naměřeno na iPhonu 15 Pro (obrazovka 393×852):
+
+| | rozpěrka | nadpis | lišta končí | pás dole |
+|---|---|---|---|---|
+| `black-translucent` | 59px | y=79 ✓ | 793 | **59 px** — mimo webové okno |
+| `black` | 0px | y=79 ✓ | 852 | 0 px |
+
+U `black-translucent` iOS okno o horní zónu zkrátí (393×793), ale zónu dál hlásí
+jako 59px. Spodních 59 px obrazovky pak appce vůbec nepatří a **zevnitř se to
+opravit nedá** — jediná cesta je smazat ikonu z plochy a přidat ji znovu.
+
 ## Když se nasazená změna neprojeví
 
 Skoro vždycky je to zaseklý service worker. Otevři appku s `?clear-sw=1` — odregistruje

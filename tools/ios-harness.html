@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>iOS geometrie — stolice</title>
+<style>
+  body { margin:0; background:#2a2a2e; color:#eee; font:13px/1.4 -apple-system, sans-serif; padding:20px; }
+  .wrap { display:flex; gap:40px; }
+  .case { display:flex; flex-direction:column; gap:8px; }
+  h2 { font-size:13px; margin:0; font-weight:600; }
+  .note { font-size:11px; color:#aaa; max-width:393px; }
+  /* „obrazovka" telefonu v CSS px */
+  .screen { position:relative; width:393px; height:852px; background:#000; overflow:hidden; }
+  /* pás, kam webové okno nedosáhne — jak ho maluje systém */
+  .screen::after { content:'mimo webové okno'; position:absolute; left:0; right:0; bottom:0;
+    height:var(--outside,0px); background:repeating-linear-gradient(45deg,#3a1111,#3a1111 6px,#511 6px,#511 12px);
+    color:#f88; font-size:9px; display:flex; align-items:center; justify-content:center; z-index:5; }
+  iframe { position:absolute; left:0; width:393px; border:0; }
+  /* napodobenina stavové lišty */
+  .statusbar { position:absolute; left:0; right:0; top:0; height:59px; z-index:10;
+    display:flex; align-items:center; justify-content:space-between; padding:0 28px; box-sizing:border-box;
+    font-weight:700; font-size:15px; color:#fff; pointer-events:none; }
+  .statusbar.opaque { background:#000; }
+  .statusbar.translucent { background:transparent; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="case">
+    <h2>A — black-translucent (současná instalace)</h2>
+    <div class="note">okno 393×793 na y=0 · env-top 59 · lišta překrývá obsah · spodních 59 px mimo okno</div>
+    <div class="screen" id="screenA" style="--outside:59px">
+      <iframe id="a" style="top:0; height:793px"></iframe>
+      <div class="statusbar translucent"><span>13:17</span><span>▮▮▮</span></div>
+    </div>
+  </div>
+  <div class="case">
+    <h2>B — black (po přeinstalaci)</h2>
+    <div class="note">okno 393×793 na y=59 · env-top 0 · lišta neprůhledná nad oknem · žádný pás dole</div>
+    <div class="screen" id="screenB" style="--outside:0px">
+      <iframe id="b" style="top:59px; height:793px"></iframe>
+      <div class="statusbar opaque"><span>13:17</span><span>▮▮▮</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const APP = new URLSearchParams(location.search).get('app') || 'http://127.0.0.1:5185/'
+  // env(safe-area-inset-top) nejde přepsat, tak se rozpěrce vnutí výška přímo
+  const cases = [ { id:'a', envTop:59 }, { id:'b', envTop:0 } ]
+  for (const c of cases) {
+    const f = document.getElementById(c.id)
+    f.src = APP
+    f.addEventListener('load', () => {
+      const d = f.contentDocument
+      const st = d.createElement('style')
+      st.textContent = `.app::before { height: ${c.envTop}px !important; }`
+      d.head.appendChild(st)
+      try { d.defaultView.localStorage.setItem('navrchol.v1', JSON.stringify({ seenIntro: true, activeRouteId: 'demo-snezka' })) } catch {}
+    })
+  }
+</script>
+</body>
+</html>
