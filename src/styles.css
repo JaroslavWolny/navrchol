@@ -131,10 +131,12 @@ button {
   Větší, sevřenější a světlejší s nižší sytostí je ostrá.
 */
 .wordmark {
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.09em;
-  color: oklch(0.87 0.09 200);
+  letter-spacing: 0.08em;
+  /* Bílá, ne azurová. Drobné syté písmo na OLEDu rozpíjí barevné okraje
+     a čte se jako rozmazané; barvu nese vedle stojící ikona. */
+  color: oklch(0.93 0.015 255);
 }
 
 .row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
