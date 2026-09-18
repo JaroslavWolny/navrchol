@@ -75,6 +75,16 @@ export function VerdiktScreen({
   }
   if (data.error) return <div className="scroll"><ErrorState message={data.error} onRetry={data.reload} /></div>
   if (!assessment) return <div className="scroll"><Loading what="Počítám podmínky na trase…" /></div>
+  if (assessment.passes.length === 0) {
+    return (
+      <div className="scroll">
+        <ErrorState
+          message="Pro body téhle trasy nedorazila žádná předpověď. Zkus to znovu, nebo zkontroluj, že body leží na souši."
+          onRetry={data.reload}
+        />
+      </div>
+    )
+  }
 
   const tone = TONE[assessment.score.verdict]
   const score = assessment.score.score

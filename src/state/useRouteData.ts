@@ -14,10 +14,13 @@ export interface RouteData {
 }
 
 export function useRouteData(route: Route | null): RouteData {
-  const [bundle, setBundle] = useState<{ track: Track | null; forecast: Forecast | null }>({
-    track: null,
-    forecast: null,
-  })
+  // Podpis se drží u dat, ne vedle nich. Bez toho se při přepnutí trasy na jeden
+  // render spáruje nová trasa se starou předpovědí a ID bodů nesedí.
+  const [bundle, setBundle] = useState<{
+    signature: string | null
+    track: Track | null
+    forecast: Forecast | null
+  }>({ signature: null, track: null, forecast: null })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [nonce, setNonce] = useState(0)
@@ -31,7 +34,7 @@ export function useRouteData(route: Route | null): RouteData {
 
   useEffect(() => {
     if (!route || !signature) {
-      setBundle({ track: null, forecast: null })
+      setBundle({ signature: null, track: null, forecast: null })
       setLoading(false)
       return
     }
@@ -42,7 +45,7 @@ export function useRouteData(route: Route | null): RouteData {
 
     loadRouteData(route)
       .then((b) => {
-        if (alive) setBundle(b)
+        if (alive) setBundle({ signature, ...b })
       })
       .catch((e: unknown) => {
         if (alive) setError(e instanceof Error ? e.message : 'Data se nepodařilo stáhnout.')
@@ -56,7 +59,15 @@ export function useRouteData(route: Route | null): RouteData {
     }
   }, [signature, nonce])
 
-  return { ...bundle, loading, error, reload }
+  // Dokud nedorazí data pro *tuhle* trasu, ven jde null — nikdy cizí předpověď.
+  const matches = bundle.signature !== null && bundle.signature === signature
+  return {
+    track: matches ? bundle.track : null,
+    forecast: matches ? bundle.forecast : null,
+    loading: loading || (signature !== null && !matches && error === null),
+    error,
+    reload,
+  }
 }
 
 /**

@@ -61,3 +61,26 @@ describe('celý plán na živých datech', () => {
     )
   })
 })
+
+describe('nesouhlasná data', () => {
+  it('předpověď z jiné trasy nesmí vyrobit nesmyslné body průchodu', async () => {
+    const [track, forecast] = await Promise.all([fetchTrack(WPS), fetchForecast(WPS, 2)])
+
+    // Stejné souřadnice, jiná ID — přesně to, co vzniklo při přepnutí na novou trasu.
+    const jinaTrasa: Route = {
+      ...route,
+      id: 'jina',
+      waypoints: WPS.map((w) => ({ ...w, id: `${w.id}-nove` })),
+    }
+
+    const start = new Date(forecast.points[0].hours[0].time)
+    start.setHours(start.getHours() + 3)
+
+    const a = assess(jinaTrasa, track, forecast, start)
+    // Smí vyjít prázdno, ale nesmí to spadnout ani vyrobit body bez hodiny.
+    expect(a.passes).toHaveLength(0)
+    expect(a.passes.every((p) => p.hour !== undefined)).toBe(true)
+    expect(a.score.verdict).toBe('nejdi')
+    expect(a.gear).toEqual([])
+  })
+})

@@ -78,7 +78,9 @@ export function assess(
   const endsAfterSunset = day ? end > new Date(day.sunset) : false
 
   const highest = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
-  const gear = suggestGear({
+  // Bez jediné hodiny předpovědi se výbava neradí. Prázdné pole by přes Math.min
+  // propadlo jako nula stupňů a appka by si vymyslela čepici a rukavice.
+  const gear = passes.length === 0 ? [] : suggestGear({
     minApparent: min(passes.map((p) => p.hour.apparentTemperature)),
     maxGusts: max(passes.map((p) => p.hour.windGusts)),
     totalPrecip: passes.reduce((s, p) => s + p.hour.precipitation, 0),

@@ -63,7 +63,7 @@ interface Props {
 }
 
 export function TimelineScreen({ route, track, assessment, onBack }: Props) {
-  if (!route || !assessment || !track) {
+  if (!route || !assessment || !track || assessment.passes.length === 0) {
     return (
       <div className="app">
         <Header onBack={onBack} title="Počasí podél trasy" sub="" />
