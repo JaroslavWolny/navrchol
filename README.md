@@ -39,6 +39,13 @@ zatajil jednu smrtelnou hodinu na hřebeni mezi sedmi hezkými.
 s CAPE nad 1 200, viditelnost pod 300 m nebo pocitově −15 °C ve větru znamenají
 NEJDI bez ohledu na to, jak hezky vyšel zbytek.
 
+**Skóre jde rozporovat.** Verdikt neukáže jen číslo, ale i jeho rozpad: kolik bodů
+sebral chlad, vítr, srážky, bouřka, viditelnost a námraza — a v kterém bodě trasy.
+Nedůvěřivé číslo bez zdůvodnění je k ničemu.
+
+**Radar přímo u verdiktu.** Když se modely rozcházejí, appka radí ověřit si radar —
+tak ho rovnou ukáže (RainViewer, poslední dvě hodiny, bez klíče).
+
 **Barevnost východu a západu** se počítá z oblačnosti po vrstvách: vysoká chytá
 barvu (ideál kolem 45 %), nízká zacloní obzor a je proto **násobič**, ne sčítanec —
 při zavřeném obzoru nepomůže sebehezčí cirrus nad hlavou.
@@ -54,7 +61,7 @@ Open-Meteo i BRouter mají CORS a nechtějí klíč, takže se volají rovnou z 
 nvm use 20
 npm install
 npm run dev
-npm test        # 35 testů včetně živých proti Open-Meteo a BRouteru
+npm test        # 41 testů včetně živých proti Open-Meteo a BRouteru
 npm run build
 ```
 
@@ -62,7 +69,9 @@ npm run build
 
 - [Open-Meteo](https://open-meteo.com) — předpověď, geokódování, výšky (CC-BY 4.0)
 - [BRouter](https://brouter.de) — routování po pěšinách
+- [RainViewer](https://rainviewer.com) — srážkový radar
 - [OpenTopoMap](https://opentopomap.org) / OpenStreetMap — mapové dlaždice (CC-BY-SA)
+- Esri Dark Gray Canvas — tmavý podklad pod radar
 
 ## Když se nasazená změna neprojeví
 

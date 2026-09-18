@@ -150,6 +150,42 @@ describe('skóre podmínek', () => {
     expect(r.warnings.filter((w) => w.key === 'vitr')).toHaveLength(1)
   })
 
+  it('rozpad skóre sedí na výsledné číslo', () => {
+    const h = hour({ windGusts: 62, precipitation: 2.4, precipitationProbability: 70, apparentTemperature: -3 })
+    const r = scoreHour(h, SNEZKA)
+    const soucet = r.penalties.reduce((s, p) => s + p.points, 0)
+    expect(Math.round(100 - soucet)).toBe(r.score)
+  })
+
+  it('rozpad je seřazený od nejhoršího a nese důvod', () => {
+    const r = scoreHour(hour({ windGusts: 68, precipitation: 0.3 }), SNEZKA)
+    expect(r.penalties[0].label).toBe('Vítr')
+    expect(r.penalties[0].detail).toContain('exponované místo')
+    for (let i = 1; i < r.penalties.length; i++) {
+      expect(r.penalties[i - 1].points).toBeGreaterThanOrEqual(r.penalties[i].points)
+    }
+  })
+
+  it('za bezvadných podmínek nemá co vypsat', () => {
+    expect(scoreHour(calm, SNEZKA).penalties).toHaveLength(0)
+  })
+
+  it('stejný vítr sebere víc bodů nahoře než v údolí', () => {
+    const windy = hour({ windGusts: 60 })
+    const nahore = scoreHour(windy, SNEZKA).penalties.find((p) => p.key === 'vitr')!
+    const dole = scoreHour(windy, PEC).penalties.find((p) => p.key === 'vitr')!
+    expect(nahore.points).toBeGreaterThan(dole.points)
+  })
+
+  it('nejslabší místo trasy si nese vlastní rozpad', () => {
+    const r = scoreRoute([
+      { waypoint: PEC, hour: calm },
+      { waypoint: SNEZKA, hour: hour({ windGusts: 66 }) },
+    ])
+    expect(r.weakest?.waypoint.name).toBe('Sněžka')
+    expect(r.weakest?.penalties.some((p) => p.key === 'vitr')).toBe(true)
+  })
+
   it('prahy verdiktu', () => {
     expect(verdictOf(84)).toBe('jdi')
     expect(verdictOf(50)).toBe('zvaz')

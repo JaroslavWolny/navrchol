@@ -8,9 +8,18 @@ export interface Issue {
   severity: 'blok' | 'varovani'
 }
 
+/** Jedna položka rozpadu skóre — kolik bodů který jev sebral a proč. */
+export interface Penalty {
+  key: string
+  label: string
+  points: number
+  detail: string
+}
+
 export interface HourScore {
   score: number
   issues: Issue[]
+  penalties: Penalty[]
 }
 
 /**
@@ -67,13 +76,54 @@ export function scoreHour(hour: HourPoint, waypoint: Waypoint): HourScore {
   const exposed = waypoint.elevation >= EXPOSED_ABOVE_M
   const issues: Issue[] = []
 
-  const penalty =
-    tempPenalty(hour.apparentTemperature) +
-    gustPenalty(hour.windGusts) * (exposed ? 1.25 : 1) +
-    rainPenalty(hour.precipitation, hour.precipitationProbability) +
-    stormPenalty(hour.cape) * (exposed ? 1.4 : 1) +
-    visibilityPenalty(hour.visibility) +
-    icingPenalty(hour, waypoint.elevation)
+  // Penalizace se nesčítají naslepo — každá si nese, kolik sebrala a proč,
+  // aby šlo výsledné číslo rozporovat místo slepé důvěry.
+  const raw = {
+    teplota: tempPenalty(hour.apparentTemperature),
+    vitr: gustPenalty(hour.windGusts) * (exposed ? 1.25 : 1),
+    srazky: rainPenalty(hour.precipitation, hour.precipitationProbability),
+    bourka: stormPenalty(hour.cape) * (exposed ? 1.4 : 1),
+    mlha: visibilityPenalty(hour.visibility),
+    namraza: icingPenalty(hour, waypoint.elevation),
+  }
+  const penalty = Object.values(raw).reduce((a, b) => a + b, 0)
+
+  const t = Math.round(hour.apparentTemperature)
+  const penalties: Penalty[] = [
+    {
+      key: 'teplota',
+      label: hour.apparentTemperature < 5 ? 'Chlad' : 'Horko',
+      points: raw.teplota,
+      detail: `pocitově ${t < 0 ? '\u2212' + Math.abs(t) : t} °C`,
+    },
+    {
+      key: 'vitr',
+      label: 'Vítr',
+      points: raw.vitr,
+      detail: `nárazy ${Math.round(hour.windGusts)} km/h${exposed ? ', exponované místo' : ''}`,
+    },
+    {
+      key: 'srazky',
+      label: 'Srážky',
+      points: raw.srazky,
+      detail: `${hour.precipitation.toFixed(1)} mm, pravděpodobnost ${Math.round(hour.precipitationProbability)} %`,
+    },
+    { key: 'bourka', label: 'Bouřka', points: raw.bourka, detail: `CAPE ${Math.round(hour.cape)} J/kg` },
+    {
+      key: 'mlha',
+      label: 'Viditelnost',
+      points: raw.mlha,
+      detail: hour.visibility === null ? 'model ji nehlásí' : `${Math.round(hour.visibility)} m`,
+    },
+    {
+      key: 'namraza',
+      label: 'Námraza',
+      points: raw.namraza,
+      detail: 'nulová izoterma pod vrcholem a prší',
+    },
+  ]
+    .filter((x) => x.points >= 0.5)
+    .sort((a, b) => b.points - a.points)
 
   // Tvrdé zákazy. Ty přebijí skóre bez ohledu na to, jak hezky vyšlo.
   if (hour.windGusts >= 75 && exposed) {
@@ -135,7 +185,7 @@ export function scoreHour(hour: HourPoint, waypoint: Waypoint): HourScore {
     })
   }
 
-  return { score: Math.round(clamp(100 - penalty, 0, 100)), issues }
+  return { score: Math.round(clamp(100 - penalty, 0, 100)), issues, penalties }
 }
 
 export interface RouteScore {
@@ -144,7 +194,7 @@ export interface RouteScore {
   blockers: Issue[]
   warnings: Issue[]
   /** Nejhorší bod trasy — ten, který skóre stáhl dolů. */
-  weakest: { waypoint: Waypoint; hour: HourPoint; score: number } | null
+  weakest: { waypoint: Waypoint; hour: HourPoint; score: number; penalties: Penalty[] } | null
 }
 
 /**
@@ -174,7 +224,14 @@ export function scoreRoute(
     verdict: blockers.length > 0 ? 'nejdi' : verdictOf(score),
     blockers,
     warnings,
-    weakest: weakest ? { waypoint: weakest.waypoint, hour: weakest.hour, score: weakest.score } : null,
+    weakest: weakest
+      ? {
+          waypoint: weakest.waypoint,
+          hour: weakest.hour,
+          score: weakest.score,
+          penalties: weakest.penalties,
+        }
+      : null,
   }
 }
 

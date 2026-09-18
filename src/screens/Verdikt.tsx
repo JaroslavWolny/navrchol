@@ -1,4 +1,5 @@
 import { Icon } from '../components/Icon'
+import { RadarMap } from '../components/RadarMap'
 import { Empty, ErrorState, Loading } from '../components/States'
 import { modelDeviations, modelLabel } from '../lib/openMeteo'
 import { formatDuration } from '../lib/pace'
@@ -113,6 +114,12 @@ export function VerdiktScreen({
       )
     : 0
   const deviations = summitPoint ? modelDeviations(summitPoint, hourIdx) : []
+
+  const breakdown = assessment.score.weakest?.penalties ?? []
+  const worstPenalty = breakdown.length > 0 ? breakdown[0].points : 1
+  const weakestAt = assessment.score.weakest
+    ? assessment.passes.find((p) => p.waypoint.id === assessment.score.weakest!.waypoint.id)?.at
+    : undefined
 
   const startValue = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(
     start.getDate(),
@@ -338,6 +345,80 @@ export function VerdiktScreen({
             note={minVis !== null && minVis < 2000 ? 'mlha na trase' : 'bez mlhy'}
           />
         </div>
+      </div>
+
+      {/* rozpad skóre — ať jde to číslo rozporovat */}
+      <div className="pad" style={{ marginTop: 10 }}>
+        <div className="card" style={{ padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 11 }}>
+          <div className="row-between" style={{ alignItems: 'baseline' }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Proč {score}</div>
+            {assessment.score.weakest && (
+              <div className="mono" style={{ fontSize: 10.5, color: 'var(--mute)' }}>
+                {assessment.score.weakest.score} ze 100
+              </div>
+            )}
+          </div>
+
+          {assessment.score.weakest && (
+            <div className="mono" style={{ fontSize: 10.5, color: 'var(--mute)', marginTop: -5 }}>
+              nejslabší místo: {assessment.score.weakest.waypoint.name}
+              {weakestAt ? ` v ${clock(weakestAt)}` : ''}
+            </div>
+          )}
+
+          {breakdown.length === 0 ? (
+            <div style={{ fontSize: 12.5, color: 'var(--dim)', lineHeight: 1.45 }}>
+              Nic ti tam body nesebralo — teplota, vítr, srážky i viditelnost jsou v pohodě.
+            </div>
+          ) : (
+            <div className="stack" style={{ gap: 9 }}>
+              {breakdown.map((pen) => (
+                <div key={pen.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 76, flexShrink: 0, fontSize: 12.5, fontWeight: 600 }}>{pen.label}</div>
+                  <div style={{ flexGrow: 1, minWidth: 0 }}>
+                    <div style={{ height: 5, borderRadius: 3, background: 'var(--card-3)', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${Math.max(4, (pen.points / worstPenalty) * 100)}%`,
+                          height: '100%',
+                          borderRadius: 3,
+                          background:
+                            pen.points >= 20 ? 'var(--stop)' : pen.points >= 8 ? 'var(--warn)' : 'var(--acc)',
+                        }}
+                      />
+                    </div>
+                    <div className="mono" style={{ fontSize: 9.5, color: 'var(--mute)', marginTop: 4 }}>
+                      {pen.detail}
+                    </div>
+                  </div>
+                  <div
+                    className="mono"
+                    style={{
+                      width: 30,
+                      flexShrink: 0,
+                      textAlign: 'right',
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      color: pen.points >= 20 ? 'var(--stop)' : pen.points >= 8 ? 'var(--warn)' : 'var(--dim)',
+                    }}
+                  >
+                    &minus;{Math.round(pen.points)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ fontSize: 10.5, color: 'var(--faint)', lineHeight: 1.5 }}>
+            Skóre trasy je ze 60 % z nejslabšího místa a ze 40 % z průměru všech bodů — jedna
+            zlá hodina na hřebeni váží víc než šest hezkých v lese.
+          </div>
+        </div>
+      </div>
+
+      {/* radar — appka výš sama radí ověřit si ho */}
+      <div className="pad" style={{ marginTop: 10 }}>
+        <RadarMap track={data.track} center={summit} />
       </div>
 
       <div className="pad mono" style={{ marginTop: 9, fontSize: 10.5, color: 'var(--mute)', lineHeight: 1.5 }}>
