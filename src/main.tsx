@@ -5,6 +5,9 @@ import './styles.css'
 import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { registerServiceWorker } from './registerSW'
+import { watchSafeArea } from './lib/safeArea'
+
+watchSafeArea()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

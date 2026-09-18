@@ -95,7 +95,7 @@ button {
 .app::before {
   content: '';
   flex-shrink: 0;
-  height: env(safe-area-inset-top, 0px);
+  height: var(--safe-top, env(safe-area-inset-top, 0px));
   background: var(--bg);
 }
 

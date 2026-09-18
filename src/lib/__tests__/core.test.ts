@@ -4,6 +4,7 @@ import { formatDuration, legsOf, planRoute, toblerSpeed } from '../pace'
 import { scoreHour, scoreRoute, verdictOf } from '../score'
 import { scoreSky } from '../sky'
 import { suggestGear } from '../gear'
+import { resolveSafeTop } from '../safeArea'
 import type { HourPoint, Route, Waypoint } from '../types'
 
 const PEC: Waypoint = { id: 'a', name: 'Pec pod Sněžkou', lat: 50.6903, lon: 15.7322, elevation: 769 }
@@ -253,5 +254,24 @@ describe('výbava', () => {
   it('túra na celý den chce jídlo a vodu', () => {
     const g = suggestGear({ ...base, durationMin: 330 })
     expect(g.some((i) => i.name.includes('2,5 l vody'))).toBe(true)
+  })
+})
+
+describe('horní bezpečná zóna', () => {
+  it('okno o zónu už zkrácené ji podruhé nepřidá', () => {
+    // iPhone 15 Pro v režimu black-translucent: 852 - 793 = 59, hlášeno 59
+    expect(resolveSafeTop(59, 793, 852)).toBe(0)
+  })
+
+  it('okno v plné výšce zónu potřebuje', () => {
+    expect(resolveSafeTop(59, 852, 852)).toBe(59)
+  })
+
+  it('bez hlášené zóny se nic nepřidává', () => {
+    expect(resolveSafeTop(0, 800, 852)).toBe(0)
+  })
+
+  it('na šířku se nekoriguje', () => {
+    expect(resolveSafeTop(20, 393, 852)).toBe(20)
   })
 })

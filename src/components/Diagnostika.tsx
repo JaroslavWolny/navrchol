@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { resolveSafeTop } from '../lib/safeArea'
 
 interface Rozmery {
   okno: string
@@ -8,6 +9,8 @@ interface Rozmery {
   zonaDole: string
   rezim: string
   diraPodRamem: string
+  chybiOknu: string
+  zonaPouzita: string
 }
 
 /** Přečte bezpečné zóny tak, jak je vidí prohlížeč — spočítat se nedají. */
@@ -33,6 +36,8 @@ function zmer(): Rozmery {
     zonaDole: dole,
     rezim: standalone ? 'na ploše' : 'v prohlížeči',
     diraPodRamem: app ? `${Math.round(window.innerHeight - app.bottom)} px` : '—',
+    chybiOknu: `${Math.round(Math.max(window.screen.width, window.screen.height) - window.innerHeight)} px`,
+    zonaPouzita: `${Math.round(resolveSafeTop(parseFloat(nahore) || 0))} px`,
   }
 }
 
@@ -56,6 +61,8 @@ export function Diagnostika() {
     ['obrazovka', r.obrazovka],
     ['zóna nahoře', r.zonaNahore],
     ['zóna dole', r.zonaDole],
+    ['zóna použitá', r.zonaPouzita],
+    ['oknu chybí', r.chybiOknu],
     ['rám appky', r.ram],
     ['díra pod rámem', r.diraPodRamem],
   ]
