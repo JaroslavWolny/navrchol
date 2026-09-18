@@ -50,6 +50,32 @@ tak ho rovnou ukáže (RainViewer, poslední dvě hodiny, bez klíče).
 barvu (ideál kolem 45 %), nízká zacloní obzor a je proto **násobič**, ne sčítanec —
 při zavřeném obzoru nepomůže sebehezčí cirrus nad hlavou.
 
+## Jak to vypadá a proč
+
+Appka není počasí, je to měřicí přístroj a horský bulletin. Vzhled drží tři pravidla
+(`src/styles.css`):
+
+**Barva je údaj.** Sytá barva se smí objevit jen tam, kde nese naměřenou hodnotu —
+verdikt, skóre, srážky, barevnost oblohy. Ovládací prvky jsou proto křídově bílé.
+Barevné tlačítko nic neměří, takže barvu nemá.
+
+**Plochy dělají linky, ne karty.** Sekce odděluje vlasová linka a popiska veličiny,
+ne zaoblený box. Vlastní podklad dostane jen to, co se dá zmáčknout. Poloměr je 4 px,
+ne 16 — datový list, ne nástěnka s lístečky.
+
+**Jeden přístroj na skóre.** Číslo samo neřekne, jak daleko je k hranici verdiktu,
+proto se skóre nikdy neukazuje bez stupnice 0—100 se zářezy v 35 a 65
+(`src/components/Gauge.tsx`). Stejná stupnice je u verdiktu i v seznamu tras.
+
+Písmo je jedna nadrodina ve třech hlasech: IBM Plex Sans na text, Plex Sans Condensed
+na verdikt a nadpisy, Plex Mono na naměřené hodnoty s tabulkovými číslicemi. Ikony jsou
+vlastní, s hranatými konci a ostrými rohy — kreslí se jako technický výkres, ne jako
+zaoblená sada z balíčku.
+
+Táhnutím dolů se stáhne nová předpověď (`src/components/Scroll.tsx`); pod verdiktem
+je vidět, v kolik data dorazila. Bez toho vypadá půl hodiny stará předpověď stejně
+jako čerstvá.
+
 ## Stack
 
 Vite + React + TypeScript, Leaflet nad OpenTopoMap, Vitest. **Žádný backend** —

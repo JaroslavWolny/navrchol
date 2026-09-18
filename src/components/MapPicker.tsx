@@ -49,12 +49,13 @@ export function MapPicker({ waypoints, track, onAdd }: Props) {
 
     if (track && track.points.length > 1) {
       const line = track.points.map((p) => [p.lat, p.lon] as [number, number])
-      L.polyline(line, { color: '#0b0d12', weight: 7, opacity: 0.55, lineCap: 'round' }).addTo(g)
+      // Kartografická kresba: světlé pouzdro a tmavé jádro. Na světlé topo mapě
+      // je čitelné přes les i přes vrstevnice, barevná linka ne.
+      L.polyline(line, { color: 'oklch(0.96 0.008 95)', weight: 7, opacity: 0.9 }).addTo(g)
       L.polyline(line, {
-        color: 'oklch(0.80 0.13 200)',
-        weight: 3.5,
+        color: 'oklch(0.20 0.006 160)',
+        weight: 3,
         opacity: 1,
-        lineCap: 'round',
         dashArray: track.fallback ? '7 6' : undefined,
       }).addTo(g)
     }

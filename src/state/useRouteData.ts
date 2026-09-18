@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { invalidate, loadRouteData, signatureOf } from './routeCache'
+import { cachedAt, invalidate, loadRouteData, signatureOf } from './routeCache'
 import { weekOutlook, type DayOutlook } from '../lib/plan'
 import type { Forecast } from '../lib/openMeteo'
 import type { Track } from '../lib/routing'
@@ -10,6 +10,8 @@ export interface RouteData {
   forecast: Forecast | null
   loading: boolean
   error: string | null
+  /** Kdy data dorazila ze sítě. Null, dokud nic nedorazilo. */
+  fetchedAt: number | null
   reload: () => void
 }
 
@@ -20,7 +22,8 @@ export function useRouteData(route: Route | null): RouteData {
     signature: string | null
     track: Track | null
     forecast: Forecast | null
-  }>({ signature: null, track: null, forecast: null })
+    fetchedAt: number | null
+  }>({ signature: null, track: null, forecast: null, fetchedAt: null })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [nonce, setNonce] = useState(0)
@@ -34,7 +37,7 @@ export function useRouteData(route: Route | null): RouteData {
 
   useEffect(() => {
     if (!route || !signature) {
-      setBundle({ signature: null, track: null, forecast: null })
+      setBundle({ signature: null, track: null, forecast: null, fetchedAt: null })
       setLoading(false)
       return
     }
@@ -45,7 +48,7 @@ export function useRouteData(route: Route | null): RouteData {
 
     loadRouteData(route)
       .then((b) => {
-        if (alive) setBundle({ signature, ...b })
+        if (alive) setBundle({ signature, fetchedAt: cachedAt(route), ...b })
       })
       .catch((e: unknown) => {
         if (alive) setError(e instanceof Error ? e.message : 'Data se nepodařilo stáhnout.')
@@ -64,6 +67,7 @@ export function useRouteData(route: Route | null): RouteData {
   return {
     track: matches ? bundle.track : null,
     forecast: matches ? bundle.forecast : null,
+    fetchedAt: matches ? bundle.fetchedAt : null,
     loading: loading || (signature !== null && !matches && error === null),
     error,
     reload,

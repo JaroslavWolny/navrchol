@@ -31,19 +31,19 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className="app">
         <div className="state" style={{ justifyContent: 'center', flexGrow: 1 }}>
-          <Icon name="warn" size={40} stroke={1.4} color="var(--stop)" />
+          <Icon name="warn" size={34} stroke={1.6} color="var(--stop)" />
           <div className="state-title">Appka spadla</div>
-          <div style={{ fontSize: 13, lineHeight: 1.5, maxWidth: 280 }}>
+          <div className="hint" style={{ maxWidth: 280 }}>
             Něco se pokazilo při vykreslování. Tvoje trasy jsou v pořádku, jsou uložené v telefonu.
           </div>
           <code
             className="mono"
             style={{
               fontSize: 10.5,
-              color: 'var(--mute)',
-              background: 'var(--card)',
+              color: 'var(--paper-3)',
+              background: 'var(--surface)',
               padding: '8px 10px',
-              borderRadius: 8,
+              borderRadius: 3,
               maxWidth: 300,
               wordBreak: 'break-word',
               textAlign: 'left',
@@ -53,14 +53,15 @@ export class ErrorBoundary extends Component<Props, State> {
           </code>
           <button
             className="btn"
-            style={{ maxWidth: 220, marginTop: 6 }}
+            style={{ maxWidth: 240, marginTop: 6 }}
             onClick={() => this.setState({ error: null })}
           >
-            <Icon name="refresh" size={18} stroke={2.2} />
+            <Icon name="refresh" size={17} stroke={2} />
             Zkusit znovu
           </button>
           <button
-            style={{ fontSize: 12.5, color: 'var(--mute)', textDecoration: 'underline', marginTop: 2 }}
+            className="mono"
+            style={{ fontSize: 11.5, color: 'var(--paper-3)', textDecoration: 'underline' }}
             onClick={() => location.reload()}
           >
             Načíst appku od začátku

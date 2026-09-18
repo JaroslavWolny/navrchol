@@ -1,18 +1,15 @@
+import { Gauge } from '../components/Gauge'
 import { Icon } from '../components/Icon'
 import { Empty } from '../components/States'
 import { useAllOutlooks } from '../state/useRouteData'
 import { formatDuration } from '../lib/pace'
 import { verdictOf } from '../lib/score'
-import { clock, dayShort, km, metres, parseDay } from '../lib/format'
+import { bodu, clock, dayShort, km, metres, parseDay } from '../lib/format'
 import type { DayOutlook } from '../lib/plan'
 import { DEMO_ROUTE_ID, type StoredState } from '../state/store'
 import type { Route } from '../lib/types'
 
-const TONE = {
-  jdi: { color: 'var(--go)', wash: 'var(--go-wash)', word: 'JDI' },
-  zvaz: { color: 'var(--warn)', wash: 'var(--warn-wash)', word: 'ZVAŽ' },
-  nejdi: { color: 'var(--stop)', wash: 'var(--stop-wash)', word: 'NEJDI' },
-}
+const WORD = { jdi: 'jdi', zvaz: 'zvaž', nejdi: 'nejdi' } as const
 
 /** Nejlepší den v týdnu pro danou trasu. */
 function bestOfWeek(week: DayOutlook[]) {
@@ -35,45 +32,19 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit, onAbout
 
   return (
     <div className="scroll">
-      <div className="pad row-between" style={{ alignItems: 'flex-end', paddingTop: 20 }}>
-        <h1 className="page-title">Moje trasy</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={onAbout}
-            aria-label="O appce"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              border: '1px solid var(--line)',
-              color: 'var(--dim)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 17,
-              fontWeight: 700,
-            }}
-          >
-            ?
-          </button>
-          <button
-            onClick={onNew}
-            aria-label="Nová trasa"
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              background: 'var(--acc)',
-              color: 'var(--acc-ink)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon name="plus" size={22} stroke={2.4} />
-          </button>
+      <header className="masthead">
+        <div className="between">
+          <h1>Moje trasy</h1>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn-icon btn-icon--outline" onClick={onAbout} aria-label="O appce" style={{ fontSize: 16, fontWeight: 600 }}>
+              ?
+            </button>
+            <button className="btn-icon btn-icon--solid" onClick={onNew} aria-label="Nová trasa">
+              <Icon name="plus" size={20} stroke={2.2} />
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
       {state.routes.length === 0 ? (
         <Empty
@@ -82,132 +53,90 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit, onAbout
           action={{ label: 'Nová trasa', onClick: onNew }}
         />
       ) : (
-        <div className="pad stack" style={{ gap: 10, marginTop: 16 }}>
-          {state.routes.map((route) => {
-            const data = outlooks[route.id]
-            const best = data ? bestOfWeek(data.week) : null
-            const score = best?.best?.score ?? null
-            const tone = TONE[score === null ? 'zvaz' : verdictOf(score)]
+        <div className="sec" style={{ marginTop: 6 }}>
+          <div className="rows">
+            {state.routes.map((route) => {
+              const data = outlooks[route.id]
+              const best = data ? bestOfWeek(data.week) : null
+              const score = best?.best?.score ?? null
+              const verdict = score === null ? null : verdictOf(score)
 
-            return (
-              <div
-                key={route.id}
-                className="card"
-                style={{
-                  display: 'flex',
-                  gap: 13,
-                  outline:
-                    route.id === activeRoute?.id ? '1px solid oklch(0.45 0.06 200)' : 'none',
-                }}
-                onClick={() => onPick(route.id)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && onPick(route.id)}
-              >
+              return (
                 <div
-                  style={{
-                    width: 58,
-                    flexShrink: 0,
-                    borderRadius: 12,
-                    background: score === null ? 'var(--card-3)' : tone.wash,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 1,
-                  }}
+                  key={route.id}
+                  className="row row--tap"
+                  data-tone={verdict ?? 'none'}
+                  data-active={route.id === activeRoute?.id}
+                  onClick={() => onPick(route.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && onPick(route.id)}
+                  style={{ alignItems: 'flex-start', paddingTop: 12, paddingBottom: 12 }}
                 >
-                  {score === null ? (
-                    <div className="mono" style={{ fontSize: 18, color: 'var(--faint)' }}>
-                      &middot;&middot;&middot;
-                    </div>
-                  ) : (
-                    <>
-                      <div
-                        className="mono"
-                        style={{ fontSize: 23, fontWeight: 700, lineHeight: 1, color: tone.color }}
-                      >
-                        {score}
-                      </div>
-                      <div
-                        className="mono"
-                        style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', color: tone.color }}
-                      >
-                        {tone.word}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="stack" style={{ gap: 5, flexGrow: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                    <span
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 700,
-                        letterSpacing: '-0.01em',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
+                  {/* Skóre vlevo jako v tabulce výsledků — trasy se tak dají
+                      porovnat jedním sjetím očí dolů. */}
+                  <div style={{ width: 46, flexShrink: 0 }}>
+                    <div
+                      className="mono"
+                      style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, color: 'var(--tone)' }}
                     >
-                      {route.name || 'Bez názvu'}
-                    </span>
-                    {route.id === DEMO_ROUTE_ID && (
+                      {score ?? '··'}
+                    </div>
+                    <div className="label" style={{ fontSize: 9, color: 'var(--tone)', marginTop: 3 }}>
+                      {verdict ? WORD[verdict] : 'čekám'}
+                    </div>
+                  </div>
+
+                  <div style={{ flexGrow: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                       <span
-                        className="mono"
-                        style={{
-                          flexShrink: 0,
-                          fontSize: 8.5,
-                          fontWeight: 700,
-                          letterSpacing: '0.1em',
-                          color: 'var(--mute)',
-                          border: '1px solid var(--line)',
-                          borderRadius: 5,
-                          padding: '2px 5px',
-                        }}
+                        className="truncate"
+                        style={{ fontSize: 15.5, fontWeight: 600, letterSpacing: '-0.005em' }}
                       >
-                        UKÁZKA
+                        {route.name || 'Bez názvu'}
                       </span>
+                      {route.id === DEMO_ROUTE_ID && <span className="tag">ukázka</span>}
+                    </div>
+
+                    <div style={{ margin: '8px 0 7px' }}>
+                      {score === null ? (
+                        <div className="skel" style={{ height: 5 }} />
+                      ) : (
+                        <Gauge score={score} />
+                      )}
+                    </div>
+
+                    <div className="footnote truncate">
+                      {data
+                        ? `${km(data.track.lengthKm)} · ↑ ${metres(data.track.ascentM)}`
+                        : `${bodu(route.waypoints.length)} · počítám…`}
+                    </div>
+                    {best?.best && (
+                      <div className="footnote truncate">
+                        {dayShort(parseDay(best.date))} {clock(best.best.start)}–
+                        {clock(best.best.endsAt)} ·{' '}
+                        {formatDuration((best.best.endsAt.getTime() - best.best.start.getTime()) / 60000)}
+                      </div>
                     )}
                   </div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--dim)' }}>
-                    {data
-                      ? `${km(data.track.lengthKm)} · ↑ ${metres(data.track.ascentM)}${
-                          best?.best
-                            ? ` · ${formatDuration(
-                                (best.best.endsAt.getTime() - best.best.start.getTime()) / 60000,
-                              )}`
-                            : ''
-                        }`
-                      : `${route.waypoints.length} bodů · počítám…`}
-                  </div>
-                  {best?.best && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <Icon name="clock" size={12} stroke={2.2} color={tone.color} />
-                      <span style={{ fontSize: 12, fontWeight: 500, color: tone.color }}>
-                        {dayShort(parseDay(best.date))} {clock(best.best.start)}–
-                        {clock(best.best.endsAt)}
-                      </span>
-                    </div>
-                  )}
+
+                  <button
+                    className="btn-icon"
+                    aria-label={`Upravit ${route.name || 'trasu'}`}
+                    style={{ width: 34, height: 34, marginTop: -2 }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEdit(route)
+                    }}
+                  >
+                    <Icon name="edit" size={17} />
+                  </button>
                 </div>
+              )
+            })}
+          </div>
 
-                <button
-                  aria-label="Upravit trasu"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onEdit(route)
-                  }}
-                  style={{ color: 'var(--faint)', alignSelf: 'center', padding: 8 }}
-                >
-                  <Icon name="edit" size={18} />
-                </button>
-              </div>
-            )
-          })}
-
-          <button className="btn btn-ghost" style={{ marginTop: 4 }} onClick={onNew}>
+          <button className="btn btn--ghost" style={{ marginTop: 16 }} onClick={onNew}>
             <Icon name="plus" size={17} stroke={2} />
             Nová trasa
           </button>

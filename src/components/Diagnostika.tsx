@@ -64,22 +64,25 @@ export function Diagnostika() {
   ]
 
   return (
-    <div className="card-2" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {radky.map(([k, v]) => (
-        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-          <span className="mono" style={{ fontSize: 11, color: 'var(--mute)' }}>{k}</span>
-          <span
-            className="mono"
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: k === 'díra pod rámem' && !v.startsWith('0 ') ? 'var(--stop)' : 'var(--fg)',
-            }}
-          >
-            {v}
-          </span>
-        </div>
-      ))}
+    <div className="rows">
+      {radky.map(([k, v]) => {
+        // Nenulová díra pod rámem je jediná hodnota, která znamená rozbité okno.
+        const spatne = k === 'díra pod rámem' && !v.startsWith('0 ')
+        return (
+          <div className="row" key={k} style={{ minHeight: 32, paddingTop: 5, paddingBottom: 5 }}>
+            <span className="mono" style={{ flexGrow: 1, fontSize: 11, color: 'var(--paper-3)' }}>
+              {k}
+            </span>
+            <span
+              className="mono"
+              data-tone={spatne ? 'nejdi' : undefined}
+              style={{ fontSize: 11, fontWeight: 500, color: spatne ? 'var(--tone)' : 'var(--paper)' }}
+            >
+              {v}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }

@@ -61,7 +61,7 @@ export function RadarMap({ track, center }: Props) {
     const m = map.current
     if (!m || !track || track.points.length < 2) return
     const line = track.points.map((p) => [p.lat, p.lon] as [number, number])
-    const poly = L.polyline(line, { color: 'oklch(0.92 0.16 95)', weight: 3.5, opacity: 0.95 }).addTo(m)
+    const poly = L.polyline(line, { color: 'oklch(0.96 0.008 95)', weight: 3, opacity: 0.95 }).addTo(m)
     return () => {
       poly.remove()
     }
@@ -88,54 +88,33 @@ export function RadarMap({ track, center }: Props) {
   }, [playing, data])
 
   if (failed) {
-    return (
-      <div className="card-2" style={{ fontSize: 12.5, color: 'var(--dim)', lineHeight: 1.45 }}>
-        Radar se teď nenačetl. Zbytek předpovědi tím není dotčený.
-      </div>
-    )
+    return <p className="body">Radar se teď nenačetl. Zbytek předpovědi tím není dotčený.</p>
   }
 
   const frame = data?.frames[index]
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ position: 'relative', height: 196 }}>
+    <div className="frame">
+      <div style={{ position: 'relative', height: 192 }}>
         <div ref={host} style={{ width: '100%', height: '100%' }} />
-        <div
-          className="mono"
-          style={{
-            position: 'absolute',
-            left: 10,
-            top: 10,
-            zIndex: 500,
-            fontSize: 10,
-            letterSpacing: '0.06em',
-            background: 'rgba(0,0,0,0.62)',
-            padding: '4px 8px',
-            borderRadius: 6,
-            pointerEvents: 'none',
-          }}
-        >
-          {frame ? `RADAR ${clock(frame.at)}` : 'NAČÍTÁM RADAR'}
-        </div>
+        <div className="frame-tag">{frame ? `radar ${clock(frame.at)}` : 'načítám radar'}</div>
       </div>
 
       {data && data.frames.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 13px 12px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 11,
+            padding: '9px 10px',
+            borderTop: '1px solid var(--rule)',
+          }}
+        >
           <button
+            className="btn-icon"
             onClick={() => setPlaying((p) => !p)}
             aria-label={playing ? 'Zastavit' : 'Přehrát'}
-            style={{
-              width: 34,
-              height: 34,
-              flexShrink: 0,
-              borderRadius: 17,
-              background: 'var(--card-3)',
-              color: 'var(--acc)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ width: 32, height: 32 }}
           >
             {playing ? (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -158,26 +137,26 @@ export function RadarMap({ track, center }: Props) {
               setIndex(Number(e.target.value))
             }}
             aria-label="Čas radarového snímku"
-            style={{ flexGrow: 1, accentColor: 'var(--acc)', minHeight: 34 }}
+            style={{ flexGrow: 1, accentColor: 'var(--paper)', minHeight: 34 }}
           />
-          <span className="mono" style={{ fontSize: 11, color: 'var(--mute)', flexShrink: 0 }}>
+          <span className="mono" style={{ fontSize: 11, color: 'var(--paper-3)', flexShrink: 0 }}>
             {frame ? clock(frame.at) : '—'}
           </span>
         </div>
       )}
 
       <div
+        className="footnote"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 7,
-          padding: '0 13px 11px',
-          fontSize: 10.5,
-          color: 'var(--faint)',
+          padding: '8px 10px',
+          borderTop: '1px solid var(--rule-soft)',
         }}
       >
         <Icon name="drop" size={11} stroke={2} />
-        <span>Srážkový radar RainViewer, poslední dvě hodiny</span>
+        <span>RainViewer, poslední dvě hodiny</span>
       </div>
     </div>
   )

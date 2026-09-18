@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { MapPicker } from '../components/MapPicker'
+import { Section } from '../components/Section'
 import { lookupElevation, searchPlaces, type Place } from '../lib/geocode'
 import { fetchTrack, type Track } from '../lib/routing'
 import { formatDuration, planFromTrack } from '../lib/pace'
@@ -104,114 +105,71 @@ export function EditorScreen({ route: initial, onSave, onCancel, onDelete }: Pro
 
   return (
     <div className="app">
-      <div className="pad row-between" style={{ paddingTop: 20, paddingBottom: 12, flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <button onClick={onCancel} aria-label="Zpět" style={{ padding: 4, color: 'var(--dim)' }}>
-            <Icon name="back" size={22} stroke={2.2} />
-          </button>
-          <input
-            value={route.name}
-            onChange={(e) => patch({ name: e.target.value })}
-            placeholder="Název trasy"
-            className="disp"
-            style={{
-              fontSize: 19,
-              fontWeight: 700,
-              background: 'none',
-              border: 'none',
-              color: 'var(--fg)',
-              minWidth: 0,
-              flexGrow: 1,
-              padding: 0,
-              fontFamily: 'var(--font-disp)',
-            }}
-          />
-        </div>
+      <div className="topbar">
+        <button className="btn-icon" onClick={onCancel} aria-label="Zpět">
+          <Icon name="back" size={20} stroke={2} />
+        </button>
+        <input
+          className="cond"
+          value={route.name}
+          onChange={(e) => patch({ name: e.target.value })}
+          placeholder="Název trasy"
+          aria-label="Název trasy"
+          style={{
+            flexGrow: 1,
+            minWidth: 0,
+            fontSize: 19,
+            fontWeight: 700,
+            background: 'none',
+            border: 'none',
+            padding: 0,
+          }}
+        />
         <button
           onClick={() => canSave && onSave({ ...route, name: route.name.trim() || 'Bez názvu' })}
           disabled={!canSave}
-          style={{
-            minHeight: 34,
-            padding: '0 14px',
-            borderRadius: 17,
-            background: canSave ? 'var(--acc)' : 'var(--card-3)',
-            color: canSave ? 'var(--acc-ink)' : 'var(--faint)',
-            fontSize: 13,
-            fontWeight: 700,
-          }}
+          className="btn"
+          style={{ width: 'auto', minHeight: 34, padding: '0 14px', fontSize: 13 }}
         >
           Uložit
         </button>
       </div>
 
       <div className="scroll">
-        <div className="pad">
-          <div
-            style={{
-              position: 'relative',
-              height: 268,
-              borderRadius: 18,
-              overflow: 'hidden',
-              border: '1px solid var(--line)',
-            }}
-          >
+        <div className="sec" style={{ marginTop: 14 }}>
+          <div className="frame" style={{ height: 262 }}>
             <MapPicker waypoints={route.waypoints} track={track} onAdd={addFromMap} />
-            <div
-              className="mono"
-              style={{
-                position: 'absolute',
-                left: 10,
-                top: 10,
-                zIndex: 500,
-                fontSize: 9,
-                letterSpacing: '0.08em',
-                color: 'var(--fg)',
-                background: 'rgba(0,0,0,0.6)',
-                padding: '4px 7px',
-                borderRadius: 6,
-                pointerEvents: 'none',
-              }}
-            >
-              ŤUKNUTÍM DO MAPY PŘIDÁŠ BOD
-            </div>
+            <div className="frame-tag">ťuknutím přidáš bod</div>
           </div>
         </div>
 
-        <div className="pad" style={{ marginTop: 12 }}>
+        <div className="sec sec--tight">
           <input
+            className="field"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Najít místo — Sněžka, Praděd, Zermatt…"
-            style={{
-              width: '100%',
-              minHeight: 46,
-              padding: '0 14px',
-              borderRadius: 12,
-              background: 'var(--card-2)',
-              border: '1px solid var(--line)',
-              color: 'var(--fg)',
-              fontSize: 14,
-              fontFamily: 'var(--font)',
-            }}
+            aria-label="Najít místo"
           />
-          {searching && <div className="sub" style={{ marginTop: 6 }}>hledám…</div>}
+          {searching && (
+            <div className="footnote" style={{ marginTop: 7 }}>
+              hledám…
+            </div>
+          )}
           {hits.length > 0 && (
-            <div className="stack" style={{ gap: 4, marginTop: 8 }}>
+            <div className="rows" style={{ marginTop: 6 }}>
               {hits.map((p, i) => (
-                <button
-                  key={`${p.name}-${i}`}
-                  onClick={() => addPlace(p)}
-                  className="card-2"
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', minHeight: 46 }}
-                >
-                  <Icon name="peak" size={16} color="var(--acc)" />
+                <button key={`${p.name}-${i}`} className="row row--tap" onClick={() => addPlace(p)}>
+                  <Icon name="peak" size={16} color="var(--paper-3)" />
                   <span style={{ flexGrow: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, display: 'block' }}>{p.name}</span>
-                    <span className="mono" style={{ fontSize: 10.5, color: 'var(--mute)' }}>
+                    <span className="truncate" style={{ display: 'block', fontSize: 14.5, fontWeight: 500 }}>
+                      {p.name}
+                    </span>
+                    <span className="footnote truncate" style={{ display: 'block' }}>
                       {metres(p.elevation)} · {p.context}
                     </span>
                   </span>
-                  <Icon name="plus" size={18} stroke={2.2} color="var(--acc)" />
+                  <Icon name="plus" size={17} stroke={2.2} />
                 </button>
               ))}
             </div>
@@ -219,79 +177,68 @@ export function EditorScreen({ route: initial, onSave, onCancel, onDelete }: Pro
         </div>
 
         {track && (
-          <div className="pad" style={{ marginTop: 12, display: 'flex', gap: 7 }}>
-            <Stat value={km(track.lengthKm)} label="DÉLKA" />
-            <Stat value={metres(track.ascentM)} label="STOUPÁNÍ" />
-            <Stat value={formatDuration(planFromTrack(track, route, new Date()).minutes)} label="ODHAD" />
+          <div className="sec sec--tight">
+            <div className="stats">
+              <div>
+                <b>{km(track.lengthKm)}</b>
+                <span className="label">Délka</span>
+              </div>
+              <div>
+                <b>{metres(track.ascentM)}</b>
+                <span className="label">Stoupání</span>
+              </div>
+              <div>
+                <b>{formatDuration(planFromTrack(track, route, new Date()).minutes)}</b>
+                <span className="label">Odhad</span>
+              </div>
+            </div>
           </div>
         )}
 
-        <div className="pad" style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-          <div className="card-2" style={{ width: 118, flexShrink: 0 }}>
-            <div style={{ fontSize: 9.5, color: 'var(--mute)', letterSpacing: '0.04em' }}>START</div>
+        <Section label="Start a tempo">
+          <div className="row">
+            <span className="label row-key">Vyrazím v</span>
             <input
               type="time"
+              className="mono"
               value={route.startTime}
               onChange={(e) => patch({ startTime: e.target.value })}
-              className="mono"
+              aria-label="Čas startu"
               style={{
-                width: '100%',
+                marginLeft: 'auto',
                 background: 'none',
                 border: 'none',
-                color: 'var(--fg)',
                 fontSize: 19,
-                fontWeight: 700,
+                fontWeight: 600,
                 padding: 0,
-                fontFamily: 'var(--font-mono)',
+                textAlign: 'right',
               }}
             />
           </div>
-          <div className="card-2" style={{ flexGrow: 1 }}>
-            <div style={{ fontSize: 9.5, color: 'var(--mute)', letterSpacing: '0.04em', marginBottom: 6 }}>
-              TEMPO
-            </div>
-            <div className="seg">
-              {PACES.map((p) => (
-                <button key={p.id} aria-pressed={route.pace === p.id} onClick={() => patch({ pace: p.id })}>
-                  {p.label}
-                </button>
-              ))}
-            </div>
+          <div className="seg" style={{ marginTop: 12 }}>
+            {PACES.map((p) => (
+              <button key={p.id} aria-pressed={route.pace === p.id} onClick={() => patch({ pace: p.id })}>
+                {p.label}
+              </button>
+            ))}
           </div>
-        </div>
+        </Section>
 
-        <div className="pad" style={{ marginTop: 14 }}>
-          <div className="section-label" style={{ paddingBottom: 6 }}>
-            BODY TRASY {route.waypoints.length > 0 && `(${route.waypoints.length})`}
-          </div>
+        <Section label="Body trasy" meta={route.waypoints.length > 0 ? `${route.waypoints.length}` : undefined}>
           {route.waypoints.length === 0 ? (
-            <div className="card-2" style={{ fontSize: 12.5, color: 'var(--dim)', lineHeight: 1.45 }}>
+            <p className="body">
               Zatím nic. Ťukni do mapy nebo najdi místo podle jména — potřebuješ aspoň dva body.
-            </div>
+            </p>
           ) : (
-            <div className="stack" style={{ gap: 5 }}>
+            <div className="rows">
               {route.waypoints.map((w, i) => (
-                <div key={w.id} className="card-2" style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 46 }}>
-                  <span
-                    className="mono"
-                    style={{
-                      width: 22,
-                      height: 22,
-                      flexShrink: 0,
-                      borderRadius: 11,
-                      border: `1.5px solid ${w.id === highest?.id && route.waypoints.length > 1 ? 'var(--acc)' : 'var(--faint)'}`,
-                      color: w.id === highest?.id && route.waypoints.length > 1 ? 'var(--acc)' : 'var(--faint)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                    }}
-                  >
+                <div className="row" key={w.id}>
+                  <span className="wp-num" data-top={w.id === highest?.id && route.waypoints.length > 1}>
                     {i + 1}
                   </span>
                   <input
                     value={w.name}
+                    aria-label={`Název bodu ${i + 1}`}
                     onChange={(e) =>
                       setRoute((r) => ({
                         ...r,
@@ -303,50 +250,46 @@ export function EditorScreen({ route: initial, onSave, onCancel, onDelete }: Pro
                       minWidth: 0,
                       background: 'none',
                       border: 'none',
-                      color: 'var(--fg)',
-                      fontSize: 13.5,
-                      fontWeight: 600,
+                      fontSize: 14,
+                      fontWeight: 500,
                       padding: 0,
-                      fontFamily: 'var(--font)',
                     }}
                   />
-                  <span className="mono" style={{ fontSize: 11.5, color: 'var(--dim)', flexShrink: 0 }}>
+                  <span className="mono" style={{ fontSize: 11.5, color: 'var(--paper-3)', flexShrink: 0 }}>
                     {metres(w.elevation)}
                   </span>
-                  <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Nahoru" style={{ padding: 5, color: i === 0 ? 'var(--card-3)' : 'var(--faint)' }}>
-                    <Icon name="arrowUp" size={15} stroke={2.2} />
+                  <button
+                    className="btn-icon"
+                    style={{ width: 32, height: 32 }}
+                    onClick={() => move(i, -1)}
+                    disabled={i === 0}
+                    aria-label="Posunout nahoru"
+                  >
+                    <Icon name="arrowUp" size={15} stroke={2} color={i === 0 ? 'var(--rule)' : undefined} />
                   </button>
-                  <button onClick={() => removeWaypoint(w.id)} aria-label={`Smazat ${w.name}`} style={{ padding: 5, color: 'var(--faint)' }}>
+                  <button
+                    className="btn-icon"
+                    style={{ width: 32, height: 32 }}
+                    onClick={() => removeWaypoint(w.id)}
+                    aria-label={`Smazat ${w.name}`}
+                  >
                     <Icon name="trash" size={15} />
                   </button>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Section>
 
         {onDelete && (
-          <div className="pad" style={{ marginTop: 20 }}>
-            <button
-              onClick={onDelete}
-              className="btn btn-ghost"
-              style={{ color: 'var(--stop)', borderColor: 'oklch(0.38 0.08 25)' }}
-            >
-              <Icon name="trash" size={17} />
+          <div className="sec" style={{ marginTop: 28 }}>
+            <button onClick={onDelete} className="btn btn--ghost btn--danger">
+              <Icon name="trash" size={16} />
               Smazat trasu
             </button>
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="card-2" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-      <span className="mono" style={{ fontSize: 15, fontWeight: 700 }}>{value}</span>
-      <span style={{ fontSize: 9.5, color: 'var(--mute)', letterSpacing: '0.04em' }}>{label}</span>
     </div>
   )
 }

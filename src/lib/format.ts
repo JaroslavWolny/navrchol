@@ -42,3 +42,10 @@ export function parseDay(isoDate: string): Date {
   const [y, m, d] = isoDate.split('-').map(Number)
   return new Date(y, m - 1, d)
 }
+
+/** Český tvar podle počtu: 1 bod, 2—4 body, 5 a víc bodů. */
+export function bodu(count: number): string {
+  if (count === 1) return '1 bod'
+  if (count >= 2 && count <= 4) return `${count} body`
+  return `${count} bodů`
+}

@@ -1,41 +1,65 @@
+/* ==========================================================================
+   NaVrchol — designový systém „bulletin"
+
+   Východisko: appka není počasí, je to měřicí přístroj a horský bulletin.
+   Z toho plynou tři pravidla, která drží celý vzhled pohromadě:
+
+   1. BARVA JE ÚDAJ. Sytá barva se smí objevit jen tam, kde nese naměřenou
+      hodnotu (verdikt, skóre, srážky, barevnost oblohy). Ovládací prvky jsou
+      proto křídově bílé, ne barevné — barva tlačítka nic neměří.
+   2. PLOCHY DĚLAJÍ LINKY, NE KARTY. Sekce odděluje vlasová linka a mřížka,
+      ne zaoblený box. Vlastní podklad dostane jen to, co se dá zmáčknout.
+   3. ČÍSLA JSOU V TABULCE. Každá měřená hodnota je v monospace s tabulkovými
+      číslicemi, aby se pod sebou nehýbala při přepočtu.
+   ========================================================================== */
+
 :root {
-  --bg: oklch(0.16 0.014 255);
-  --bg-nav: oklch(0.205 0.016 255);
-  --card: oklch(0.215 0.016 255);
-  --card-2: oklch(0.198 0.015 255);
-  --card-3: oklch(0.26 0.018 255);
-  --line: oklch(0.32 0.02 255);
-  --fg: oklch(0.96 0.005 255);
-  --dim: oklch(0.72 0.012 255);
-  --mute: oklch(0.56 0.014 255);
-  --faint: oklch(0.46 0.016 255);
+  /* Podklad: grafit s náznakem zeleně (mokrá břidlice), ne modrý „tech dark". */
+  --ground: oklch(0.17 0.006 160);
+  --sunken: oklch(0.132 0.005 160);
+  --surface: oklch(0.213 0.007 160);
+  --track: oklch(0.285 0.008 160);
 
-  --acc: oklch(0.8 0.13 200);
-  --acc-ink: oklch(0.18 0.03 220);
-  --acc-wash: oklch(0.215 0.022 220);
+  --rule: oklch(0.315 0.008 160);
+  --rule-soft: oklch(0.245 0.007 160);
 
-  --go: oklch(0.78 0.16 152);
-  --go-wash: oklch(0.23 0.045 152);
-  --warn: oklch(0.8 0.15 78);
-  --warn-wash: oklch(0.24 0.045 78);
-  --stop: oklch(0.66 0.2 25);
-  --stop-wash: oklch(0.25 0.06 25);
-  --sun: oklch(0.82 0.15 62);
-  --sun-wash: oklch(0.235 0.03 62);
+  /* Text: teplá křída. Čistá bílá na OLEDu pálí a nemá charakter. */
+  --paper: oklch(0.955 0.008 95);
+  --paper-2: oklch(0.775 0.008 95);
+  --paper-3: oklch(0.615 0.008 95);
+  --paper-4: oklch(0.465 0.008 95);
 
-  --font: Archivo, system-ui, -apple-system, sans-serif;
-  --font-disp: 'Bricolage Grotesque', Archivo, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  /* Signální barvy — výhradně pro měřené hodnoty. */
+  --go: oklch(0.76 0.15 148);
+  --mid: oklch(0.80 0.145 78);
+  --stop: oklch(0.66 0.19 28);
+  --sun: oklch(0.81 0.13 62);
+  --cold: oklch(0.74 0.10 235);
 
-  --gutter: 16px;
-  --nav-h: calc(66px + env(safe-area-inset-bottom));
+  --go-wash: oklch(0.255 0.045 148);
+  --mid-wash: oklch(0.255 0.045 78);
+  --stop-wash: oklch(0.26 0.055 28);
+  --sun-wash: oklch(0.25 0.04 62);
+
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* Jediná vodorovná míra v appce. Vše ostatní je její násobek nebo půlka. */
+  --g: 16px;
   color-scheme: dark;
 }
 
+/* Tón nese rodič, potomci si barvu berou z proměnné. Díky tomu není v JSX
+   jediná natvrdo napsaná barva verdiktu. */
+[data-tone='jdi'] { --tone: var(--go); --tone-wash: var(--go-wash); }
+[data-tone='zvaz'] { --tone: var(--mid); --tone-wash: var(--mid-wash); }
+[data-tone='nejdi'] { --tone: var(--stop); --tone-wash: var(--stop-wash); }
+[data-tone='none'] { --tone: var(--paper-4); --tone-wash: var(--surface); }
+[data-tone='sun'] { --tone: var(--sun); --tone-wash: var(--sun-wash); }
+
 * { box-sizing: border-box; }
-
 h1, h2, h3, p { margin: 0; }
-
 html, body, #root { height: 100%; }
 
 /* Stránka samotná se nikdy neroluje — roluje jen .scroll uvnitř rámu.
@@ -47,10 +71,13 @@ html, body {
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--font);
+  background: var(--ground);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button {
@@ -63,17 +90,63 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
-.mono { font-family: var(--font-mono); font-variant-ligatures: none; }
-.disp { font-family: var(--font-disp); letter-spacing: -0.02em; }
+input, textarea {
+  font: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
 
-/* ---------- shell ---------- */
+a { color: var(--paper); text-underline-offset: 2px; }
+
+::selection { background: var(--paper); color: var(--ground); }
+
+:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 2px;
+}
+
+/* ---------- typografické třídy ---------- */
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'zero' 1;
+}
+
+.cond {
+  font-family: var(--cond);
+  letter-spacing: -0.005em;
+}
+
+/* Popiska měřené veličiny. Verzálky s mezerou, jako na štítku přístroje. */
+.label {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-3);
+}
+
+.hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--paper-3);
+  text-wrap: pretty;
+}
+
+.body {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--paper-2);
+  text-wrap: pretty;
+}
+
+/* ---------- rám ---------- */
 /*
   Rám je přibitý na viewport, ne na 100dvh. iOS si výšku po startu přepočítává
   a appka kvůli tomu poskakovala — jednou byla useknutá nahoře, podruhé zbyl
   pruh dole. position: fixed na tom nezávisí.
-
-  Horní bezpečná zóna je povinná: díky black-translucent si appka kreslí
-  i pod stavovou lištu, takže bez toho leží nadpis pod hodinami a baterií.
 */
 .app {
   position: fixed;
@@ -81,6 +154,7 @@ button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: var(--ground);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
 }
@@ -96,7 +170,7 @@ button {
   content: '';
   flex-shrink: 0;
   height: env(safe-area-inset-top, 0px);
-  background: var(--bg);
+  background: var(--ground);
 }
 
 .scroll {
@@ -106,10 +180,13 @@ button {
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 16px;
+  padding-bottom: 28px;
 }
 
+/* ---------- spodní navigace ---------- */
+
 .nav {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   /*
@@ -117,124 +194,793 @@ button {
     což je víc, než má systémová lišta iOS — a čte se to jako chybějící kus
     obrazovky. Zbytek pořád nechává čáru pro zavření appky volnou.
   */
-  padding: 6px 4px max(8px, calc(env(safe-area-inset-bottom, 8px) - 12px));
-  border-top: 1px solid var(--line);
-  background: var(--bg-nav);
+  padding: 0 2px max(8px, calc(env(safe-area-inset-bottom, 8px) - 12px));
+  border-top: 1px solid var(--rule);
+  background: var(--ground);
   flex-shrink: 0;
 }
 
+/* Náznak, že obsah pod lištou pokračuje. Bez něj vypadá useknutý řádek textu
+   jako chyba sazby. */
+.nav::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 20px;
+  background: linear-gradient(to top, var(--ground), transparent);
+  pointer-events: none;
+}
+
 .nav button {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-height: 44px;
-  color: var(--mute);
-  font-size: 9.5px;
-  font-weight: 500;
+  gap: 5px;
+  min-height: 52px;
+  padding-top: 9px;
+  color: var(--paper-4);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: color 120ms ease;
 }
 
-.nav button[aria-current='page'] { color: var(--acc); font-weight: 600; }
+/* Aktivní záložka je zaražená pod horní hranu jako jazýček v pořadači.
+   Barvu si nebere — barva v téhle appce znamená naměřenou hodnotu. */
+.nav button[aria-current='page'] { color: var(--paper); }
 
-/* ---------- headings ---------- */
-.page-title { font-family: var(--font-disp); font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.025em; }
-.sub { font-family: var(--font-mono); font-size: 11px; color: var(--mute); letter-spacing: 0.02em; }
-.section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: var(--mute); }
-/*
-  Značka byla v 11px s rozestupy 0,16 em a v syté azurové nečitelná — tenké tahy
-  roztažené od sebe a sytá barva drobné písmo na OLEDu rozmazává.
-  Větší, sevřenější a světlejší s nižší sytostí je ostrá.
-*/
-.wordmark {
-  font-size: 13px;
+.nav button[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  width: 26px;
+  height: 2px;
+  margin-left: -13px;
+  background: var(--paper);
+}
+
+.nav button:active { color: var(--paper-2); }
+
+/* ---------- hlavička obrazovky ---------- */
+
+.masthead {
+  padding: 18px var(--g) 14px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.masthead h1 {
+  font-family: var(--cond);
+  font-size: 27px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  /* Bílá, ne azurová. Drobné syté písmo na OLEDu rozpíjí barevné okraje
-     a čte se jako rozmazané; barvu nese vedle stojící ikona. */
-  color: oklch(0.93 0.015 255);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
-.row-between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.pad { padding-inline: var(--gutter); }
-.stack { display: flex; flex-direction: column; }
+.masthead .meta {
+  margin-top: 5px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--paper-3);
+}
 
-/* ---------- cards ---------- */
-.card { background: var(--card); border-radius: 16px; padding: 14px; }
-.card-2 { background: var(--card-2); border-radius: 12px; padding: 11px 12px; }
-
-.chip {
-  display: inline-flex;
+/* Hlavička podřízené obrazovky: zpět + název na jednom řádku. */
+.topbar {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  padding: 0 13px;
-  border-radius: 17px;
-  border: 1px solid var(--line);
-  color: var(--dim);
-  font-size: 12.5px;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 10px var(--g) 10px 8px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.topbar h1 {
+  font-family: var(--cond);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  min-width: 0;
+  flex-grow: 1;
+}
+
+/* ---------- sekce ---------- */
+
+.sec { padding: 0 var(--g); margin-top: 22px; }
+.sec--tight { margin-top: 14px; }
+
+.sec-hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 7px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.sec-hd .meta {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  color: var(--paper-4);
+  flex-shrink: 0;
+}
+
+/* ---------- řádky ---------- */
+
+.rows { display: flex; flex-direction: column; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 9px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.rows > .row:last-child { border-bottom: none; }
+
+/* Zmáčknutelný řádek se rozsvítí přes celou šířku obrazovky, ne jen v sazebním
+   zrcadle — jinak to vypadá, že tap minul. */
+.row--tap {
+  margin-inline: calc(var(--g) * -1);
+  padding-inline: var(--g);
+  transition: background-color 90ms ease;
+}
+
+.row--tap:active { background: var(--surface); }
+
+.row-name {
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 14px;
   font-weight: 500;
 }
+
+.row-value {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- měřidlo skóre ----------
+   Jeden přístroj pro celou appku: hodnota na stupnici 0—100 se zářezy
+   v místech, kde se láme verdikt. Číslo samo o sobě neřekne, jak daleko
+   je k hranici — stupnice ano. */
+
+.gauge { position: relative; }
+
+.gauge-track {
+  position: relative;
+  height: 8px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.gauge-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--tone);
+  transition: width 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Zářez prahu: skutečně proříznutý přes celou výšku, ne čárka nakreslená
+   navrch. Na pásu je tak vidět, na které straně hranice hodnota leží. */
+.gauge-notch {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ground);
+}
+
+.gauge-scale {
+  position: relative;
+  height: 13px;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 9.5px;
+  color: var(--paper-4);
+}
+
+.gauge-scale > span { position: absolute; top: 0; transform: translateX(-50%); }
+.gauge-scale > span:first-child { transform: none; }
+.gauge-scale > span:last-child { transform: translateX(-100%); }
+
+.gauge--sm .gauge-track { height: 5px; }
+
+/* ---------- verdikt ---------- */
+
+.verdict {
+  border-left: 3px solid var(--tone);
+  padding-left: 13px;
+}
+
+.verdict-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.verdict-word {
+  font-family: var(--cond);
+  font-size: 46px;
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: 0.005em;
+  color: var(--tone);
+}
+
+.verdict-score {
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.verdict-score b { font-size: 30px; font-weight: 600; line-height: 1; }
+.verdict-score span { font-size: 12px; color: var(--paper-4); }
+
+.verdict-why {
+  margin-top: 11px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--paper-2);
+  text-wrap: pretty;
+}
+
+/* ---------- tlačítka ---------- */
 
 .btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 50px;
-  border-radius: 14px;
-  background: var(--acc);
-  color: var(--acc-ink);
-  font-size: 15px;
-  font-weight: 700;
   width: 100%;
-}
-
-.btn-ghost {
-  background: none;
-  border: 1px dashed var(--line);
-  color: var(--dim);
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ground);
+  font-size: 14.5px;
   font-weight: 600;
+  letter-spacing: 0.005em;
+  transition: transform 80ms ease, background-color 120ms ease;
 }
 
-.btn:active { filter: brightness(0.92); }
+.btn:active { transform: translateY(1px); background: var(--paper-2); }
 
-.seg { display: flex; gap: 4px; }
+.btn:disabled {
+  background: var(--surface);
+  color: var(--paper-4);
+  transform: none;
+  cursor: default;
+}
+
+.btn--ghost {
+  background: none;
+  border: 1px solid var(--rule);
+  color: var(--paper-2);
+}
+
+.btn--ghost:active { background: var(--surface); color: var(--paper); }
+
+.btn--danger { border-color: oklch(0.38 0.08 28); color: var(--stop); }
+
+/* Kruh je tu jediná kulatá věc v celé appce — a jen proto, že terč o 44 px
+   se na dotykové ploše hledá líp než čtverec stejné velikosti. */
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  color: var(--paper-2);
+  transition: background-color 90ms ease, color 90ms ease;
+}
+
+.btn-icon:active { background: var(--surface); color: var(--paper); }
+
+.btn-icon--solid { background: var(--paper); color: var(--ground); }
+.btn-icon--solid:active { background: var(--paper-2); }
+
+/* ---------- ovládací prvky ---------- */
+
+.seg {
+  display: flex;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
 .seg button {
   flex: 1;
-  min-height: 34px;
-  border-radius: 8px;
-  font-size: 12.5px;
+  min-height: 40px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--dim);
+  color: var(--paper-3);
+  border-right: 1px solid var(--rule);
+  transition: background-color 110ms ease, color 110ms ease;
 }
-.seg button[aria-pressed='true'] { background: var(--acc); color: var(--acc-ink); font-weight: 700; }
 
-/* ---------- states ---------- */
-.state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 60px 24px; text-align: center; color: var(--mute); }
-.state-title { font-size: 15px; font-weight: 600; color: var(--dim); }
+.seg button:last-child { border-right: none; }
+.seg button:active { background: var(--surface); }
+.seg button[aria-pressed='true'] { background: var(--paper); color: var(--ground); font-weight: 600; }
 
-@keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.85; } }
-.skeleton { background: var(--card); border-radius: 14px; animation: pulse 1.4s ease-in-out infinite; }
+.field {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--sunken);
+  color: var(--paper);
+  font-size: 15px;
+  font-family: var(--sans);
+}
 
-.error-box { background: var(--stop-wash); border-radius: 14px; padding: 13px 14px; font-size: 13px; line-height: 1.45; }
+.field::placeholder { color: var(--paper-4); }
+.field:focus { outline: none; border-color: var(--paper-3); }
 
-/* ---------- map ---------- */
-.leaflet-container { background: var(--card-2); font-family: var(--font); }
-.leaflet-control-attribution { background: rgba(0, 0, 0, 0.55) !important; color: var(--mute) !important; font-size: 9px !important; }
-.leaflet-control-attribution a { color: var(--dim) !important; }
+/* Zaškrtávátko: čtverec, protože sbalená položka je odškrtnutá kolonka
+   v seznamu, ne zapnutý přepínač. */
+.chk {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--paper-4);
+  border-radius: 3px;
+  color: transparent;
+  transition: background-color 130ms ease, border-color 130ms ease;
+}
+
+.chk[aria-pressed='true'] {
+  background: var(--paper);
+  border-color: var(--paper);
+  color: var(--ground);
+}
+
+.chk:active { border-color: var(--paper-2); }
+
+/* Fajfka se dokreslí, místo aby problikla. */
+.chk svg path { stroke-dasharray: 24; stroke-dashoffset: 24; }
+.chk[aria-pressed='true'] svg path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 180ms cubic-bezier(0.3, 0.8, 0.4, 1) 40ms;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-3);
+}
+
+/* ---------- upozornění ---------- */
+/* Tónovaný pruh s levým pravítkem, ne bublina. Varování je poznámka na okraji
+   bulletinu — proto vypadá jako poznámka na okraji. */
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--tone, var(--rule));
+  background: var(--tone-wash, var(--surface));
+  font-size: 13px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.note svg { color: var(--tone, var(--paper-3)); margin-top: 1px; }
+
+/* ---------- stavy ---------- */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 72px var(--g) 40px;
+  text-align: center;
+}
+
+.state-title {
+  font-family: var(--cond);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--paper);
+}
+
+@keyframes sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(240%); }
+}
+
+/* Kostra kopíruje geometrii skutečného obsahu, ne obecný blok. Když data
+   dorazí, nic neposkočí. */
+.skel {
+  position: relative;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, oklch(0.30 0.008 160), transparent);
+  animation: sweep 1.25s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel::after { animation: none; }
+  .gauge-fill { transition: none; }
+}
+
+/* ---------- táhnutím obnovit ---------- */
+
+.pull {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper-4);
+}
+
+.pull svg { transition: transform 160ms ease; }
+.pull[data-armed='true'] { color: var(--paper-2); }
+.pull[data-armed='true'] svg { transform: rotate(180deg); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.pull[data-busy='true'] svg { animation: spin 900ms linear infinite; transform: none; }
+
+/* ---------- mapa ---------- */
+
+.frame {
+  position: relative;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--sunken);
+}
+
+/* Štítek nad mapou: sazba přístroje, ne bublina nápovědy. */
+.frame-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 500;
+  padding: 4px 8px;
+  background: var(--ground);
+  border-right: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-2);
+  pointer-events: none;
+}
+
+.leaflet-container { background: var(--sunken); font-family: var(--sans); }
+
+.leaflet-control-attribution {
+  background: color-mix(in oklab, var(--ground) 82%, transparent) !important;
+  color: var(--paper-4) !important;
+  font-size: 9px !important;
+}
+
+.leaflet-control-attribution a { color: var(--paper-3) !important; }
+
+.leaflet-bar a {
+  background: var(--ground) !important;
+  color: var(--paper-2) !important;
+  border-color: var(--rule) !important;
+}
+
 .wp-pin {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
-  background: var(--bg);
-  border: 2px solid var(--acc);
-  color: var(--acc);
-  font-family: var(--font-mono);
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  background: var(--ground);
+  border: 1.5px solid var(--paper);
+  color: var(--paper);
+  font-family: var(--mono);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
-.wp-pin.is-top { background: var(--acc); color: var(--acc-ink); border-color: var(--acc); }
+
+/* Nejvyšší bod je obrácený. Tmavý rámeček, aby bílý čtverec nesplynul se světlou topo mapou. */
+.wp-pin.is-top { background: var(--paper); color: var(--ground); border-color: var(--ground); }
+
+/* ==========================================================================
+   Stavební prvky obrazovek
+   ========================================================================== */
+
+/* Popiska měřené veličiny v řádku. Pevná šířka, aby hodnoty vpravo stály
+   pod sebou i mezi řádky s různě dlouhými názvy. */
+.row-key {
+  width: 96px;
+  flex-shrink: 0;
+}
+
+/* Vodorovný sloupec grafu. Barvu si bere z tónu rodiče. */
+.bar {
+  height: 4px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--tone, var(--paper-3));
+}
+
+/* Ovladač času startu. Jeden terč, který sám říká, co změní. */
+.masthead-time {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 11px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--paper-2);
+  cursor: pointer;
+  transition: background-color 90ms ease, border-color 90ms ease;
+}
+
+.masthead-time:active { background: var(--surface); border-color: var(--paper-4); }
+.masthead-time svg { color: var(--paper-4); margin-left: auto; }
+
+/* Nativní výběr data leží neviditelně přes celý terč — vlastní dialog by
+   na iOS byl horší než systémový. */
+.masthead-time input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+/* Vybraná varianta: tónovaný blok s pravítkem vlevo, sazba jako u verdiktu.
+   Používá se tam, kde appka sama něco doporučí. */
+.pick {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border-left: 3px solid var(--tone);
+  background: var(--tone-wash);
+  padding: 11px 13px;
+  transition: filter 90ms ease;
+}
+
+.pick:active { filter: brightness(1.12); }
+
+.pick-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pick-when {
+  font-family: var(--cond);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.pick-score {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--tone);
+  flex-shrink: 0;
+}
+
+/* Sloupcový graf hodin jednoho dne. */
+.day-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.5px;
+  flex-grow: 1;
+  height: 26px;
+  min-width: 0;
+}
+
+.day-bars > span { flex: 1 1 0; min-width: 0; }
+
+/* Průběh balení po položkách: jeden zářez = jedna věc v batohu. Spojitý pruh
+   by zatajil, kolik toho ještě zbývá. */
+.ticks { display: flex; gap: 2px; }
+
+.ticks > span {
+  flex: 1 1 0;
+  height: 6px;
+  background: var(--track);
+  transition: background-color 160ms ease;
+}
+
+.ticks > span[data-on='true'] { background: var(--paper); }
+
+/* Tři údaje vedle sebe oddělené svislicí — jako záhlaví mapového listu. */
+.stats { display: flex; border: 1px solid var(--rule); border-radius: 4px; }
+
+.stats > div {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 10px;
+  border-right: 1px solid var(--rule);
+}
+
+.stats > div:last-child { border-right: none; }
+
+.stats b {
+  display: block;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Pořadové číslo bodu trasy. Čtverec, protože je to buňka tabulky, ne odznak. */
+.wp-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 1px solid var(--paper-4);
+  border-radius: 2px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--paper-3);
+}
+
+.wp-num[data-top='true'] { border-color: var(--paper); color: var(--paper); }
+
+/* Sloupec hodiny v pásu podél trasy. */
+.hour-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--paper-3);
+}
+
+.legend i { width: 9px; height: 9px; }
+
+/* Provenience a poznámky pod čarou. Malé, ale nikdy schované — appka stojí
+   na tom, že jde zkontrolovat, odkud čísla jsou. */
+.footnote {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--paper-4);
+}
+
+/* Dva bloky na koncích řádku. Jediná rozvržená utilita v celém systému —
+   všechno ostatní má vlastní jméno podle toho, co to je. */
+.between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Pás hodin podél trasy: jeden sloupec = jedna hodina, svislice mezi nimi.
+   Čte se to jako jízdní řád, ne jako pět grafů nad sebou. */
+.hours {
+  display: flex;
+  border-block: 1px solid var(--rule);
+  padding: 10px 0;
+}
+
+.hour-col + .hour-col { border-left: 1px solid var(--rule-soft); }
+
+/* Značka. Prostrkaná verzálka v mono — jako ražba na přístroji, ne logo.
+   Barvu nemá schválně: v téhle appce barva znamená naměřenou hodnotu. */
+.wordmark {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  color: var(--paper);
+}
+
+/* Vybraná trasa: pravítko u kraje obrazovky, jako značka na okraji seznamu.
+   Odznak uvnitř řádku by ukrojil místo názvu trasy. */
+.row[data-active='true'] { box-shadow: inset 2px 0 0 var(--paper); }
+
+/* Obtažená varianta kruhového terče pro druhořadou akci vedle hlavní. */
+.btn-icon--outline { border: 1px solid var(--rule); }
+
+/* Appka je dělaná na telefon. Na širokém okně se ale otevře taky — roztažená
+   na 1 800 px vypadá rozbitě, tak se srazí do sloupce v šířce telefonu.
+   Bez transformu: ten by rozbil position: fixed uvnitř. */
+@media (min-width: 560px) {
+  .app {
+    width: 440px;
+    margin-inline: auto;
+    border-inline: 1px solid var(--rule-soft);
+  }
+}

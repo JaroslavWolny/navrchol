@@ -1,12 +1,11 @@
+import { Scroll } from '../components/Scroll'
+import { Section } from '../components/Section'
 import { Empty, ErrorState, Loading } from '../components/States'
 import { verdictOf } from '../lib/score'
 import { clock, dayShort, parseDay } from '../lib/format'
 import type { DayOutlook } from '../lib/plan'
 import type { RouteData } from '../state/useRouteData'
 import type { Route } from '../lib/types'
-
-const COLOR = { jdi: 'var(--go)', zvaz: 'var(--warn)', nejdi: 'var(--stop)' }
-const NIGHT = 'oklch(0.255 0.016 255)'
 
 /** Jistota klesá s tím, jak daleko do budoucna se díváme. Bledší pruh = míň jistoty. */
 const confidenceOf = (dayIndex: number) => Math.max(0.42, 1 - dayIndex * 0.1)
@@ -27,85 +26,50 @@ export function KdyJitScreen({ route, data, week, onPickStart }: Props) {
     )
   }
   if (data.error) return <div className="scroll"><ErrorState message={data.error} onRetry={data.reload} /></div>
-  if (!week) return <div className="scroll"><Loading what="Procházím všechny hodiny v týdnu…" /></div>
+  if (!week) return <div className="scroll"><Loading what="procházím všechny hodiny v týdnu" /></div>
 
   const usable = week.filter((d) => d.best)
   const best = usable.length ? usable.reduce((a, b) => (b.best!.score > a.best!.score ? b : a)) : null
 
   return (
-    <div className="scroll">
-      <div className="pad" style={{ paddingTop: 22 }}>
-        <h1 className="page-title">Kdy jít</h1>
-        <div className="sub" style={{ marginTop: 6 }}>
-          {route.name} · 7 dní po hodinách
-        </div>
-      </div>
+    <Scroll onRefresh={data.reload} refreshing={data.loading}>
+      <header className="masthead">
+        <h1>Kdy jít</h1>
+        <div className="meta">{route.name} · 7 dní po hodinách</div>
+      </header>
 
-      {best?.best ? (
-        <div className="pad" style={{ marginTop: 14 }}>
+      <div className="sec" style={{ marginTop: 18 }}>
+        {best?.best ? (
           <button
+            className="pick"
+            data-tone={verdictOf(best.best.score)}
             onClick={() => onPickStart(best.best!.start)}
-            className="card"
-            style={{
-              width: '100%',
-              textAlign: 'left',
-              background: COLOR[verdictOf(best.best.score)] === COLOR.jdi ? 'var(--go-wash)' : 'var(--warn-wash)',
-              borderRadius: 18,
-              padding: '15px 16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 7,
-            }}
           >
-            <div className="row-between">
-              <div className="stack" style={{ gap: 2 }}>
-                <div
-                  style={{
-                    fontSize: 10.5,
-                    fontWeight: 700,
-                    letterSpacing: '0.1em',
-                    color: COLOR[verdictOf(best.best.score)],
-                  }}
-                >
-                  NEJLEPŠÍ OKNO
+            <div className="pick-head">
+              <div>
+                <div className="label" style={{ color: 'var(--tone)' }}>
+                  Nejlepší okno
                 </div>
-                <div className="disp" style={{ fontSize: 21, fontWeight: 800 }}>
+                <div className="pick-when">
                   {dayShort(parseDay(best.date))} · {clock(best.best.start)}–{clock(best.best.endsAt)}
                 </div>
               </div>
-              <div
-                className="mono"
-                style={{
-                  fontSize: 34,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                  color: COLOR[verdictOf(best.best.score)],
-                }}
-              >
-                {best.best.score}
-              </div>
+              <div className="pick-score">{best.best.score}</div>
             </div>
-            <div style={{ fontSize: 12.5, lineHeight: 1.42, color: 'var(--dim)', textWrap: 'pretty' }}>
-              Ťukni a přepne se verdikt na tenhle termín.
+            <div className="hint" style={{ marginTop: 6 }}>
+              Ťukni a verdikt se přepne na tenhle termín.
             </div>
           </button>
-        </div>
-      ) : (
-        <div className="pad" style={{ marginTop: 14 }}>
-          <div className="error-box" style={{ background: 'var(--card)' }}>
-            Tenhle týden nevychází žádné použitelné okno — trasa se nevejde mezi východ a západ slunce,
-            nebo jsou podmínky mimo celou dobu.
+        ) : (
+          <div className="note">
+            Tenhle týden nevychází žádné použitelné okno — trasa se nevejde mezi východ a západ
+            slunce, nebo jsou podmínky mimo celou dobu.
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="pad" style={{ marginTop: 16 }}>
-        <div className="row-between" style={{ alignItems: 'baseline', paddingBottom: 6 }}>
-          <span className="section-label">SKÓRE PODLE HODINY STARTU</span>
-          <span className="mono" style={{ fontSize: 10, color: 'var(--faint)' }}>0—6—12—18—24 h</span>
-        </div>
-
-        <div className="stack" style={{ gap: 4 }}>
+      <Section label="Skóre podle hodiny startu" meta="0—6—12—18—24 h">
+        <div className="rows">
           {week.map((day, dayIndex) => {
             const isBest = best?.date === day.date
             const score = day.best?.score ?? null
@@ -113,48 +77,38 @@ export function KdyJitScreen({ route, data, week, onPickStart }: Props) {
             return (
               <button
                 key={day.date}
+                className="row row--tap"
                 onClick={() => day.best && onPickStart(day.best.start)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '7px 10px',
-                  borderRadius: 12,
-                  width: '100%',
-                  background: isBest ? 'oklch(0.225 0.018 255)' : 'var(--card-2)',
-                  border: isBest ? '1px solid oklch(0.45 0.09 152)' : '1px solid transparent',
-                }}
+                data-tone={score === null ? 'none' : verdictOf(score)}
               >
                 <span
                   className="mono"
-                  style={{ width: 46, fontSize: 11, fontWeight: 700, color: isBest ? 'var(--fg)' : 'var(--dim)', textAlign: 'left' }}
+                  style={{
+                    width: 48,
+                    flexShrink: 0,
+                    fontSize: 11.5,
+                    fontWeight: isBest ? 600 : 400,
+                    color: isBest ? 'var(--paper)' : 'var(--paper-3)',
+                  }}
                 >
                   {dayShort(parseDay(day.date))}
                 </span>
-                <span style={{ flexGrow: 1, display: 'flex', gap: 1.5, alignItems: 'flex-end', height: 26, minWidth: 0 }}>
+                <span className="day-bars">
                   {day.hourly.map((s, h) => (
                     <span
                       key={h}
+                      data-tone={s === null ? undefined : verdictOf(s)}
                       style={{
-                        flexGrow: 1,
-                        flexBasis: 0,
-                        height: s === null ? 7 : 9 + (s / 100) * 17,
-                        borderRadius: 1.5,
-                        background: s === null ? NIGHT : COLOR[verdictOf(s)],
+                        height: s === null ? 6 : 8 + (s / 100) * 18,
+                        background: s === null ? 'var(--rule-soft)' : 'var(--tone)',
                         opacity: s === null ? 1 : alpha,
                       }}
                     />
                   ))}
                 </span>
                 <span
-                  className="mono"
-                  style={{
-                    width: 26,
-                    textAlign: 'right',
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: score === null ? 'var(--faint)' : COLOR[verdictOf(score)],
-                  }}
+                  className="row-value"
+                  style={{ width: 26, textAlign: 'right', color: score === null ? 'var(--paper-4)' : 'var(--tone)' }}
                 >
                   {score ?? '—'}
                 </span>
@@ -162,24 +116,24 @@ export function KdyJitScreen({ route, data, week, onPickStart }: Props) {
             )
           })}
         </div>
-      </div>
 
-      <div className="pad" style={{ marginTop: 12, display: 'flex', gap: 14, alignItems: 'center' }}>
-        {[
-          ['var(--go)', 'jdi'],
-          ['var(--warn)', 'zvaž'],
-          ['var(--stop)', 'nejdi'],
-          [NIGHT, 'mimo světlo'],
-        ].map(([c, label]) => (
-          <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 9, height: 9, borderRadius: 2, background: c }} />
-            <span className="mono" style={{ fontSize: 10, color: 'var(--mute)' }}>{label}</span>
+        <div className="legend" style={{ marginTop: 14 }}>
+          {(['jdi', 'zvaz', 'nejdi'] as const).map((t) => (
+            <span key={t} data-tone={t}>
+              <i style={{ background: 'var(--tone)' }} />
+              {t === 'zvaz' ? 'zvaž' : t}
+            </span>
+          ))}
+          <span>
+            <i style={{ background: 'var(--rule-soft)' }} />
+            mimo světlo
           </span>
-        ))}
-      </div>
-      <div className="pad mono" style={{ marginTop: 8, fontSize: 10, color: 'var(--faint)', lineHeight: 1.5 }}>
-        Sytost barvy = jistota předpovědi. Čím vzdálenější den, tím je pruh bledší.
-      </div>
-    </div>
+        </div>
+
+        <p className="footnote" style={{ marginTop: 10 }}>
+          Sytost barvy = jistota předpovědi. Čím vzdálenější den, tím je pruh bledší.
+        </p>
+      </Section>
+    </Scroll>
   )
 }

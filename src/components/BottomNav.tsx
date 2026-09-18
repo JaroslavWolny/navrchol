@@ -13,16 +13,17 @@ const TABS: Array<{ id: Tab; label: string; icon: IconName }> = [
 export function BottomNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   return (
     <nav className="nav">
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          aria-current={active === t.id ? 'page' : undefined}
-        >
-          <Icon name={t.icon} size={20} stroke={1.7} />
-          <span>{t.label}</span>
-        </button>
-      ))}
+      {TABS.map((t) => {
+        const on = active === t.id
+        return (
+          <button key={t.id} onClick={() => onChange(t.id)} aria-current={on ? 'page' : undefined}>
+            {/* Aktivní ikona má o chlup silnější tah — doplňuje jazýček nad ní,
+                aby se stav poznal i periferním viděním. */}
+            <Icon name={t.icon} size={20} stroke={on ? 2 : 1.6} />
+            <span>{t.label}</span>
+          </button>
+        )
+      })}
     </nav>
   )
 }

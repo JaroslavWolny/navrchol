@@ -40,6 +40,11 @@ export function loadRouteData(route: Route, signal?: AbortSignal): Promise<Route
   return promise
 }
 
+/** Kdy se data pro trasu naposled stáhla. Předpověď bez data stáří se nedá vážit. */
+export function cachedAt(route: Route): number | null {
+  return cache.get(signatureOf(route))?.at ?? null
+}
+
 export function invalidate(route: Route): void {
   cache.delete(signatureOf(route))
 }

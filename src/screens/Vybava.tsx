@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Icon } from '../components/Icon'
+import { Scroll } from '../components/Scroll'
+import { Section } from '../components/Section'
 import { Empty, ErrorState, Loading } from '../components/States'
 import { clock, dayLabel } from '../lib/format'
 import { newId, type BaseGearItem, type StoredState } from '../state/store'
@@ -27,10 +29,8 @@ export function VybavaScreen({ route, data, assessment, state, onToggle, onBaseG
 
   const packed = new Set(state.packed[route.id] ?? [])
   const auto = assessment?.gear ?? []
-  const total = auto.length + state.baseGear.length
-  const done = [...auto.map((g) => g.name), ...state.baseGear.map((g) => g.name)].filter((n) =>
-    packed.has(n),
-  ).length
+  const names = [...auto.map((g) => g.name), ...state.baseGear.map((g) => g.name)]
+  const done = names.filter((n) => packed.has(n)).length
 
   const addItem = () => {
     const name = draft.trim()
@@ -40,47 +40,33 @@ export function VybavaScreen({ route, data, assessment, state, onToggle, onBaseG
   }
 
   return (
-    <div className="scroll">
-      <div className="pad" style={{ paddingTop: 22 }}>
-        <div className="row-between" style={{ alignItems: 'flex-end' }}>
-          <h1 className="page-title">Výbava</h1>
-          <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--acc)' }}>
-            {done} / {total}
+    <Scroll onRefresh={data.reload} refreshing={data.loading}>
+      <header className="masthead">
+        <div className="between" style={{ alignItems: 'baseline' }}>
+          <h1>Výbava</h1>
+          <span className="mono" style={{ fontSize: 15, fontWeight: 600 }}>
+            {done}<span style={{ color: 'var(--paper-4)' }}>/{names.length}</span>
           </span>
         </div>
-        <div style={{ height: 5, borderRadius: 3, background: 'var(--card-3)', marginTop: 10, overflow: 'hidden' }}>
-          <div
-            style={{
-              width: total ? `${(done / total) * 100}%` : '0%',
-              height: '100%',
-              borderRadius: 3,
-              background: 'var(--acc)',
-              transition: 'width 180ms ease',
-            }}
-          />
+        {/* Jeden zářez = jedna věc. Spojitý pruh by zatajil, kolik toho zbývá. */}
+        <div className="ticks" style={{ marginTop: 14, marginBottom: 12 }}>
+          {names.map((name) => (
+            <span key={name} data-on={packed.has(name)} />
+          ))}
         </div>
-        <div className="sub" style={{ marginTop: 8 }}>
+        <div className="meta">
           {route.name}
           {assessment ? ` · ${dayLabel(assessment.start)} · ${clock(assessment.start)}` : ''}
         </div>
-      </div>
+      </header>
 
-      <div className="pad" style={{ marginTop: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, paddingBottom: 8 }}>
-          <Icon name="sun" size={14} stroke={2.2} color="var(--acc)" />
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--acc)' }}>
-            PŘIDÁNO PODLE POČASÍ
-          </span>
-        </div>
-
+      <Section label="Přidáno podle počasí" meta={auto.length > 0 ? `${auto.length}` : undefined}>
         {!assessment ? (
-          <Loading what="Skládám výbavu podle předpovědi…" />
+          <Loading what="skládám výbavu podle předpovědi" />
         ) : auto.length === 0 ? (
-          <div className="card-2" style={{ fontSize: 12.5, color: 'var(--dim)', lineHeight: 1.45 }}>
-            Podmínky si nic navíc nevynutily. Stačí tvůj základ.
-          </div>
+          <p className="body">Podmínky si nic navíc nevynutily. Stačí tvůj základ.</p>
         ) : (
-          <div className="stack" style={{ gap: 6 }}>
+          <div className="rows">
             {auto.map((item) => (
               <GearRow
                 key={item.name}
@@ -88,22 +74,21 @@ export function VybavaScreen({ route, data, assessment, state, onToggle, onBaseG
                 why={item.why}
                 checked={packed.has(item.name)}
                 onToggle={() => onToggle(item.name)}
-                highlight
               />
             ))}
           </div>
         )}
-      </div>
+      </Section>
 
-      <div className="pad" style={{ marginTop: 18 }}>
-        <div className="row-between" style={{ alignItems: 'baseline', paddingBottom: 8 }}>
-          <span className="section-label">MŮJ ZÁKLAD</span>
-          <button className="mono" style={{ fontSize: 10.5, color: 'var(--acc)' }} onClick={() => setEditing((v) => !v)}>
+      <Section
+        label="Můj základ"
+        meta={
+          <button className="mono" style={{ fontSize: 11, color: 'var(--paper)', textDecoration: 'underline' }} onClick={() => setEditing((v) => !v)}>
             {editing ? 'hotovo' : 'upravit'}
           </button>
-        </div>
-
-        <div className="stack" style={{ gap: 5 }}>
+        }
+      >
+        <div className="rows">
           {state.baseGear.map((item) => (
             <GearRow
               key={item.id}
@@ -118,44 +103,21 @@ export function VybavaScreen({ route, data, assessment, state, onToggle, onBaseG
         </div>
 
         {editing && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <input
+              className="field"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addItem()}
               placeholder="Přidat do základu"
-              style={{
-                flexGrow: 1,
-                minHeight: 44,
-                padding: '0 13px',
-                borderRadius: 11,
-                background: 'var(--card-2)',
-                border: '1px solid var(--line)',
-                color: 'var(--fg)',
-                fontSize: 14,
-                fontFamily: 'var(--font)',
-              }}
             />
-            <button
-              onClick={addItem}
-              style={{
-                width: 44,
-                minHeight: 44,
-                borderRadius: 11,
-                background: 'var(--acc)',
-                color: 'var(--acc-ink)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              aria-label="Přidat položku"
-            >
-              <Icon name="plus" size={20} stroke={2.4} />
+            <button className="btn-icon btn-icon--solid" onClick={addItem} aria-label="Přidat položku">
+              <Icon name="plus" size={19} stroke={2.2} />
             </button>
           </div>
         )}
-      </div>
-    </div>
+      </Section>
+    </Scroll>
   )
 }
 
@@ -165,67 +127,43 @@ function GearRow({
   checked,
   onToggle,
   onRemove,
-  highlight,
 }: {
   name: string
   why?: string
   checked: boolean
   onToggle: () => void
   onRemove?: () => void
-  highlight?: boolean
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: why ? '9px 12px' : '8px 12px',
-        borderRadius: 12,
-        background: highlight ? 'var(--acc-wash)' : 'var(--card-2)',
-        minHeight: 46,
-      }}
-    >
+    <div className="row">
       <button
+        className="chk"
         onClick={onToggle}
         aria-pressed={checked}
         aria-label={checked ? `${name} sbaleno` : `Označit ${name} jako sbalené`}
-        style={{
-          width: 24,
-          height: 24,
-          flexShrink: 0,
-          borderRadius: 8,
-          background: checked ? 'var(--acc)' : 'transparent',
-          border: `1.5px solid ${checked ? 'var(--acc)' : 'oklch(0.38 0.02 255)'}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
       >
-        {checked && <Icon name="check" size={14} stroke={3.2} color="var(--acc-ink)" />}
+        <Icon name="check" size={13} stroke={3} />
       </button>
 
       <button onClick={onToggle} style={{ flexGrow: 1, textAlign: 'left', minWidth: 0 }}>
         <div
           style={{
-            fontSize: 14,
-            fontWeight: why ? 600 : 500,
-            color: checked ? 'var(--mute)' : 'var(--fg)',
+            fontSize: 14.5,
+            fontWeight: 500,
+            color: checked ? 'var(--paper-4)' : 'var(--paper)',
             textDecoration: checked ? 'line-through' : 'none',
           }}
         >
           {name}
         </div>
-        {why && (
-          <div className="mono" style={{ fontSize: 10, color: 'oklch(0.66 0.05 220)', marginTop: 2 }}>
-            {why}
-          </div>
-        )}
+        {/* Důvod je u položky pořád, ne jen při prvním zobrazení — jinak se
+            nedá zpochybnit, proč to appka do batohu přidala. */}
+        {why && <div className="footnote" style={{ marginTop: 2 }}>{why}</div>}
       </button>
 
       {onRemove && (
-        <button onClick={onRemove} aria-label={`Smazat ${name}`} style={{ color: 'var(--faint)', padding: 6 }}>
-          <Icon name="trash" size={16} />
+        <button className="btn-icon" onClick={onRemove} aria-label={`Smazat ${name}`} style={{ width: 34, height: 34 }}>
+          <Icon name="trash" size={15} />
         </button>
       )}
     </div>

@@ -1,18 +1,17 @@
+import { Gauge } from '../components/Gauge'
 import { Icon } from '../components/Icon'
 import { RadarMap } from '../components/RadarMap'
+import { Scroll } from '../components/Scroll'
+import { Section } from '../components/Section'
 import { Empty, ErrorState, Loading } from '../components/States'
 import { modelDeviations, modelLabel } from '../lib/openMeteo'
 import { formatDuration } from '../lib/pace'
-import { clock, dayLabel, km, metres, num, temp } from '../lib/format'
+import { bodu, clock, dayLabel, km, metres, num, temp } from '../lib/format'
 import type { Assessment } from '../lib/plan'
 import type { RouteData } from '../state/useRouteData'
 import type { Route } from '../lib/types'
 
-const TONE = {
-  jdi: { color: 'var(--go)', wash: 'var(--go-wash)', word: 'JDI' },
-  zvaz: { color: 'var(--warn)', wash: 'var(--warn-wash)', word: 'ZVAŽ' },
-  nejdi: { color: 'var(--stop)', wash: 'var(--stop-wash)', word: 'NEJDI' },
-}
+const WORD = { jdi: 'JDI', zvaz: 'ZVAŽ', nejdi: 'NEJDI' } as const
 
 /** Jedna věta, která shrne, proč verdikt vypadá takhle. */
 function summaryOf(a: Assessment): string {
@@ -27,9 +26,6 @@ function summaryOf(a: Assessment): string {
   }
   return a.score.warnings[0]?.text ?? 'Podmínky jsou na hraně, zvaž to podle sebe.'
 }
-
-const RING_R = 56
-const RING_C = 2 * Math.PI * RING_R
 
 interface Props {
   route: Route | null
@@ -75,7 +71,7 @@ export function VerdiktScreen({
     )
   }
   if (data.error) return <div className="scroll"><ErrorState message={data.error} onRetry={data.reload} /></div>
-  if (!assessment) return <div className="scroll"><Loading what="Počítám podmínky na trase…" /></div>
+  if (!assessment) return <div className="scroll"><Loading what="počítám podmínky na trase" /></div>
   if (assessment.passes.length === 0) {
     return (
       <div className="scroll">
@@ -87,11 +83,12 @@ export function VerdiktScreen({
     )
   }
 
-  const tone = TONE[assessment.score.verdict]
+  const verdict = assessment.score.verdict
   const score = assessment.score.score
   const summit = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
   const summitPass = assessment.passes.find((p) => p.waypoint.id === summit.id) ?? assessment.passes[0]
   const h = summitPass.hour
+  const end = assessment.plan.arrivals.at(-1)?.at ?? start
 
   const maxGust = Math.max(...assessment.passes.map((p) => p.hour.windGusts))
   const totalPrecip = assessment.passes.reduce((s, p) => s + p.hour.precipitation, 0)
@@ -116,7 +113,9 @@ export function VerdiktScreen({
   const deviations = summitPoint ? modelDeviations(summitPoint, hourIdx) : []
 
   const breakdown = assessment.score.weakest?.penalties ?? []
-  const worstPenalty = breakdown.length > 0 ? breakdown[0].points : 1
+  // Pruhy se poměřují k nejhorší penalizaci, ale nejmíň k dvaceti bodům. Bez
+  // toho vypadá osamocená ztráta čtyř bodů jako plný pruh, tedy jako katastrofa.
+  const penaltyScale = Math.max(20, breakdown[0]?.points ?? 1)
   const weakestAt = assessment.score.weakest
     ? assessment.passes.find((p) => p.waypoint.id === assessment.score.weakest!.waypoint.id)?.at
     : undefined
@@ -126,314 +125,176 @@ export function VerdiktScreen({
   ).padStart(2, '0')}T${clock(start)}`
 
   return (
-    <div className="scroll">
-      <div className="pad row-between" style={{ alignItems: 'flex-start', paddingTop: 20 }}>
-        <div className="stack" style={{ gap: 3, minWidth: 0 }}>
-          <h1 className="disp" style={{ fontSize: 21, fontWeight: 700, margin: 0, lineHeight: 1.1 }}>
-            {route.name || 'Bez názvu'}
-          </h1>
-          <div className="sub">
-            {dayLabel(start)} · start {clock(start)} · {formatDuration(assessment.plan.minutes)}
-          </div>
-        </div>
-        <label className="chip" style={{ position: 'relative', cursor: 'pointer' }}>
-          <Icon name="clock" size={13} stroke={2} />
-          Změnit
+    <Scroll onRefresh={data.reload} refreshing={data.loading}>
+      <header className="masthead">
+        <h1>{route.name || 'Bez názvu'}</h1>
+        <label className="masthead-time">
+          <span>
+            {dayLabel(start)} · {clock(start)}→{clock(end)}
+          </span>
+          <span style={{ color: 'var(--paper-4)' }}>{formatDuration(assessment.plan.minutes)}</span>
+          <Icon name="chevron" size={13} stroke={2} />
           <input
             type="datetime-local"
             value={startValue}
+            aria-label="Čas startu"
             onChange={(e) => e.target.value && onStartChange(new Date(e.target.value))}
-            style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', cursor: 'pointer' }}
           />
         </label>
-      </div>
+      </header>
 
-      {/* hrdina: skóre */}
-      <div
-        className="pad"
-        style={{ marginTop: 14 }}
-      >
-        <div
-          style={{
-            position: 'relative',
-            height: 260,
-            borderRadius: 20,
-            overflow: 'hidden',
-            background: tone.wash,
-            border: '1px solid oklch(0.30 0.02 255)',
-          }}
-        >
-          <svg
-            viewBox="0 0 358 260"
-            preserveAspectRatio="none"
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-            aria-hidden="true"
-          >
-            <g fill="none" stroke={tone.color} strokeWidth="1">
-              {[196, 170, 146, 124, 104, 86].map((rx, i) => (
-                <ellipse
-                  key={rx}
-                  cx="179"
-                  cy="126"
-                  rx={rx}
-                  ry={rx * 0.62}
-                  opacity={0.07 + i * 0.01}
-                  transform={`rotate(${-8 + i} 179 126)`}
-                />
-              ))}
-            </g>
-          </svg>
-
-          <div
-            style={{
-              position: 'relative',
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 24px',
-            }}
-          >
-            <div style={{ position: 'relative', width: 128, height: 128 }}>
-              <svg width="128" height="128" style={{ position: 'absolute', inset: 0, transform: 'rotate(-90deg)' }}>
-                <circle cx="64" cy="64" r={RING_R} fill="none" stroke="oklch(0.30 0.02 255)" strokeWidth="6" />
-                <circle
-                  cx="64"
-                  cy="64"
-                  r={RING_R}
-                  fill="none"
-                  stroke={tone.color}
-                  strokeWidth="6"
-                  strokeLinecap="round"
-                  strokeDasharray={`${(score / 100) * RING_C} ${RING_C}`}
-                />
-              </svg>
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <div
-                  className="disp"
-                  style={{ fontSize: 52, fontWeight: 800, lineHeight: 1, color: tone.color }}
-                >
-                  {score}
-                </div>
-                <div className="mono" style={{ fontSize: 9.5, letterSpacing: '0.16em', color: 'var(--mute)' }}>
-                  ZE 100
-                </div>
-              </div>
-            </div>
-            <div
-              className="disp"
-              style={{ marginTop: 12, fontSize: 27, fontWeight: 800, letterSpacing: '0.02em', color: tone.color }}
-            >
-              {tone.word}
-            </div>
-            <div
-              style={{
-                fontSize: 13.5,
-                lineHeight: 1.4,
-                color: 'var(--dim)',
-                textAlign: 'center',
-                textWrap: 'pretty',
-                maxWidth: 280,
-                marginTop: 2,
-              }}
-            >
-              {summaryOf(assessment)}
+      {/* Verdikt. Slovo je větší než číslo schválně — appka má vydat rozhodnutí,
+          skóre je až jeho doklad. */}
+      <div className="sec" style={{ marginTop: 20 }} data-tone={verdict}>
+        <div className="verdict">
+          <div className="verdict-head">
+            <div className="verdict-word">{WORD[verdict]}</div>
+            <div className="verdict-score">
+              <b>{score}</b>
+              <span>/100</span>
             </div>
           </div>
+          <Gauge score={score} tone={verdict} size="lg" scale />
+          <p className="verdict-why">{summaryOf(assessment)}</p>
         </div>
       </div>
 
-      {/* shoda modelů */}
-      <div className="pad" style={{ marginTop: 12 }}>
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '13px 14px' }}>
-          <div className="row-between" style={{ alignItems: 'baseline' }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Shoda modelů</div>
-            <div
-              className="mono"
-              style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color:
-                  assessment.agreement >= 75
-                    ? 'var(--go)'
-                    : assessment.agreement >= 50
-                      ? 'var(--warn)'
-                      : 'var(--stop)',
-              }}
-            >
-              {assessment.agreement} %
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {deviations.map((d) => (
-              <div key={d.model} className="stack" style={{ flexGrow: 1, gap: 5, alignItems: 'center' }}>
-                <div style={{ width: '100%', height: 4, borderRadius: 2, background: 'var(--card-3)', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      width: `${Math.round((1 - d.deviation) * 100)}%`,
-                      height: '100%',
-                      borderRadius: 2,
-                      background:
-                        d.deviation < 0.15 ? 'var(--go)' : d.deviation < 0.4 ? 'var(--warn)' : 'var(--stop)',
-                    }}
-                  />
-                </div>
-                <div className="mono" style={{ fontSize: 9, color: 'var(--mute)' }}>
-                  {modelLabel(d.model)}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mono" style={{ fontSize: 10.5, color: 'var(--mute)' }}>
-            teplota ±{num(assessment.spread.temperature, 1)} °C · nárazy ±
-            {num(assessment.spread.windGusts, 0)} km/h · srážky ±{num(assessment.spread.precipitation, 1)} mm
-          </div>
-        </div>
-      </div>
-
-      {/* zákazy a varování */}
       {[...assessment.score.blockers, ...assessment.score.warnings].slice(0, 3).map((issue, i) => (
-        <div className="pad" key={issue.key + i} style={{ marginTop: 10 }}>
-          <div
-            style={{
-              padding: '11px 13px',
-              borderRadius: 12,
-              background: issue.severity === 'blok' ? 'var(--stop-wash)' : 'var(--warn-wash)',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 10,
-            }}
-          >
-            <Icon
-              name="warn"
-              size={17}
-              stroke={2}
-              color={issue.severity === 'blok' ? 'var(--stop)' : 'var(--warn)'}
-              style={{ marginTop: 1 }}
-            />
-            <div style={{ fontSize: 12.5, lineHeight: 1.42, textWrap: 'pretty' }}>{issue.text}</div>
+        <div className="sec sec--tight" key={issue.key + i} data-tone={issue.severity === 'blok' ? 'nejdi' : 'zvaz'}>
+          <div className="note">
+            <Icon name="warn" size={15} stroke={2} />
+            <div>{issue.text}</div>
           </div>
         </div>
       ))}
 
-      {/* metriky */}
-      <div className="pad" style={{ marginTop: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-          <Metric icon="thermo" label="POCITOVĚ" value={temp(h.apparentTemperature)} note={`${summit.name}, ${metres(summit.elevation)}`} />
-          <Metric
-            icon="wind"
-            label="NÁRAZY"
-            value={`${Math.round(maxGust)} km/h`}
+      <Section label="Měření na trase" meta={bodu(assessment.passes.length)}>
+        <div className="rows">
+          <Measure label="Pocitově" note={`${summit.name}, ${metres(summit.elevation)}`} value={temp(h.apparentTemperature)} />
+          <Measure
+            label="Nárazy"
             note="nejhorší bod trasy"
-            color={maxGust >= 70 ? 'var(--stop)' : maxGust >= 50 ? 'var(--warn)' : undefined}
+            value={`${Math.round(maxGust)} km/h`}
+            tone={maxGust >= 70 ? 'nejdi' : maxGust >= 50 ? 'zvaz' : undefined}
           />
-          <Metric icon="drop" label="SRÁŽKY" value={`${num(totalPrecip, 1)} mm`} note={`pravděpodobnost ${Math.round(maxProb)} %`} />
-          <Metric
-            icon="eye"
-            label="VIDITELNOST"
-            value={minVis === null ? '—' : minVis >= 1000 ? `${num(minVis / 1000, 0)} km` : `${Math.round(minVis)} m`}
+          <Measure
+            label="Srážky"
+            note={`pravděpodobnost ${Math.round(maxProb)} %`}
+            value={`${num(totalPrecip, 1)} mm`}
+          />
+          <Measure
+            label="Viditelnost"
             note={minVis !== null && minVis < 2000 ? 'mlha na trase' : 'bez mlhy'}
+            value={minVis === null ? '—' : minVis >= 1000 ? `${num(minVis / 1000, 0)} km` : `${Math.round(minVis)} m`}
+            tone={minVis !== null && minVis < 1000 ? 'nejdi' : undefined}
           />
         </div>
-      </div>
+      </Section>
 
-      {/* rozpad skóre — ať jde to číslo rozporovat */}
-      <div className="pad" style={{ marginTop: 10 }}>
-        <div className="card" style={{ padding: '13px 14px', display: 'flex', flexDirection: 'column', gap: 11 }}>
-          <div className="row-between" style={{ alignItems: 'baseline' }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Proč {score}</div>
-            {assessment.score.weakest && (
-              <div className="mono" style={{ fontSize: 10.5, color: 'var(--mute)' }}>
-                {assessment.score.weakest.score} ze 100
-              </div>
-            )}
-          </div>
-
-          {assessment.score.weakest && (
-            <div className="mono" style={{ fontSize: 10.5, color: 'var(--mute)', marginTop: -5 }}>
-              nejslabší místo: {assessment.score.weakest.waypoint.name}
-              {weakestAt ? ` v ${clock(weakestAt)}` : ''}
-            </div>
-          )}
-
-          {breakdown.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: 'var(--dim)', lineHeight: 1.45 }}>
-              Nic ti tam body nesebralo — teplota, vítr, srážky i viditelnost jsou v pohodě.
-            </div>
-          ) : (
-            <div className="stack" style={{ gap: 9 }}>
-              {breakdown.map((pen) => (
-                <div key={pen.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{ width: 76, flexShrink: 0, fontSize: 12.5, fontWeight: 600 }}>{pen.label}</div>
-                  <div style={{ flexGrow: 1, minWidth: 0 }}>
-                    <div style={{ height: 5, borderRadius: 3, background: 'var(--card-3)', overflow: 'hidden' }}>
-                      <div
-                        style={{
-                          width: `${Math.max(4, (pen.points / worstPenalty) * 100)}%`,
-                          height: '100%',
-                          borderRadius: 3,
-                          background:
-                            pen.points >= 20 ? 'var(--stop)' : pen.points >= 8 ? 'var(--warn)' : 'var(--acc)',
-                        }}
-                      />
-                    </div>
-                    <div className="mono" style={{ fontSize: 9.5, color: 'var(--mute)', marginTop: 4 }}>
-                      {pen.detail}
-                    </div>
+      {/* Rozpad skóre — ať jde to číslo rozporovat, ne jen věřit. */}
+      <Section
+        label={`Proč ${score}`}
+        meta={
+          assessment.score.weakest
+            ? `${assessment.score.weakest.waypoint.name}${weakestAt ? ` v ${clock(weakestAt)}` : ''}`
+            : undefined
+        }
+      >
+        {breakdown.length === 0 ? (
+          <p className="body">
+            Nic ti tam body nesebralo — teplota, vítr, srážky i viditelnost jsou v pohodě.
+          </p>
+        ) : (
+          <div className="rows">
+            {breakdown.map((pen) => (
+              <div
+                className="row"
+                key={pen.key}
+                data-tone={pen.points >= 20 ? 'nejdi' : pen.points >= 8 ? 'zvaz' : 'none'}
+              >
+                <div className="row-key" style={{ fontSize: 13, fontWeight: 600 }}>
+                  {pen.label}
+                </div>
+                <div style={{ flexGrow: 1, minWidth: 0 }}>
+                  <div className="bar">
+                    <span style={{ width: `${Math.min(100, Math.max(4, (pen.points / penaltyScale) * 100))}%` }} />
                   </div>
-                  <div
-                    className="mono"
-                    style={{
-                      width: 30,
-                      flexShrink: 0,
-                      textAlign: 'right',
-                      fontSize: 13.5,
-                      fontWeight: 700,
-                      color: pen.points >= 20 ? 'var(--stop)' : pen.points >= 8 ? 'var(--warn)' : 'var(--dim)',
-                    }}
-                  >
-                    &minus;{Math.round(pen.points)}
+                  <div className="footnote" style={{ marginTop: 5 }}>
+                    {pen.detail}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ fontSize: 10.5, color: 'var(--faint)', lineHeight: 1.5 }}>
-            Skóre trasy je ze 60 % z nejslabšího místa a ze 40 % z průměru všech bodů — jedna
-            zlá hodina na hřebeni váží víc než šest hezkých v lese.
+                <div
+                  className="row-value"
+                  style={{ width: 34, textAlign: 'right', color: 'var(--tone)' }}
+                >
+                  &minus;{Math.round(pen.points)}
+                </div>
+              </div>
+            ))}
           </div>
+        )}
+        <p className="footnote" style={{ marginTop: 12 }}>
+          Skóre trasy je ze 60 % z nejslabšího místa a ze 40 % z průměru všech bodů — jedna zlá
+          hodina na hřebeni váží víc než šest hezkých v lese.
+        </p>
+      </Section>
+
+      <Section
+        label="Shoda modelů"
+        meta={
+          <span
+            data-tone={assessment.agreement >= 75 ? 'jdi' : assessment.agreement >= 50 ? 'zvaz' : 'nejdi'}
+            style={{ color: 'var(--tone)', fontWeight: 600, fontSize: 12 }}
+          >
+            {assessment.agreement} %
+          </span>
+        }
+      >
+        <div style={{ display: 'flex', gap: 8 }}>
+          {deviations.map((d) => (
+            <div
+              key={d.model}
+              style={{ flexGrow: 1, flexBasis: 0, minWidth: 0 }}
+              data-tone={d.deviation < 0.15 ? 'jdi' : d.deviation < 0.4 ? 'zvaz' : 'nejdi'}
+            >
+              <div className="bar">
+                <span style={{ width: `${Math.round((1 - d.deviation) * 100)}%` }} />
+              </div>
+              <div className="footnote" style={{ marginTop: 5 }}>
+                {modelLabel(d.model)}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+        <p className="footnote" style={{ marginTop: 12 }}>
+          teplota ±{num(assessment.spread.temperature, 1)} °C · nárazy ±
+          {num(assessment.spread.windGusts, 0)} km/h · srážky ±{num(assessment.spread.precipitation, 1)} mm
+        </p>
+      </Section>
 
-      {/* radar — appka výš sama radí ověřit si ho */}
-      <div className="pad" style={{ marginTop: 10 }}>
+      {/* Appka výš sama radí ověřit si radar, tak ho rovnou ukáže. */}
+      <Section label="Srážkový radar" meta="poslední 2 h">
         <RadarMap track={data.track} center={summit} />
+      </Section>
+
+      <div className="sec">
+        <p className="footnote">
+          Bouřka: {stormLabel(Math.max(...assessment.passes.map((p) => p.hour.cape)))}
+          <br />
+          Nulová izoterma {h.freezingLevel === null ? '—' : metres(h.freezingLevel)} · Trasa{' '}
+          {km(assessment.plan.distanceKm)}
+          {data.track?.fallback ? ' (vzdušnou čarou)' : ''}
+          {data.fetchedAt ? ` · staženo v ${clock(new Date(data.fetchedAt))}` : ''}
+        </p>
       </div>
 
-      <div className="pad mono" style={{ marginTop: 9, fontSize: 10.5, color: 'var(--mute)', lineHeight: 1.5 }}>
-        Bouřka: {stormLabel(Math.max(...assessment.passes.map((p) => p.hour.cape)))} · Nulová izoterma{' '}
-        {h.freezingLevel === null ? '—' : metres(h.freezingLevel)} · Trasa {km(assessment.plan.distanceKm)}
-        {data.track?.fallback ? ' (vzdušnou čarou)' : ''}
-      </div>
-
-      <div className="pad" style={{ marginTop: 14 }}>
+      <div className="sec">
         <button className="btn" onClick={onTimeline}>
-          <Icon name="peak" size={18} stroke={2.2} />
+          <Icon name="peak" size={17} stroke={2} />
           Počasí podél trasy
         </button>
       </div>
-    </div>
+    </Scroll>
   )
 }
 
@@ -444,29 +305,27 @@ function stormLabel(cape: number): string {
   return `bez rizika (CAPE ${Math.round(cape)})`
 }
 
-function Metric({
-  icon,
+/** Řádek naměřené hodnoty: co, kde, kolik. */
+function Measure({
   label,
-  value,
   note,
-  color,
+  value,
+  tone,
 }: {
-  icon: 'thermo' | 'wind' | 'drop' | 'eye'
   label: string
-  value: string
   note: string
-  color?: string
+  value: string
+  tone?: 'zvaz' | 'nejdi'
 }) {
   return (
-    <div className="card-2" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--mute)' }}>
-        <Icon name={icon} size={13} stroke={2} />
-        <span style={{ fontSize: 10.5, fontWeight: 500, letterSpacing: '0.03em' }}>{label}</span>
-      </div>
-      <div className="mono" style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color }}>
+    <div className="row" data-tone={tone}>
+      <span className="label row-key">{label}</span>
+      <span className="hint truncate" style={{ flexGrow: 1 }}>
+        {note}
+      </span>
+      <span className="row-value" style={tone ? { color: 'var(--tone)' } : undefined}>
         {value}
-      </div>
-      <div style={{ fontSize: 10.5, color: 'var(--mute)' }}>{note}</div>
+      </span>
     </div>
   )
 }

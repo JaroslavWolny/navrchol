@@ -1,5 +1,6 @@
 import { Icon } from '../components/Icon'
 import { Diagnostika } from '../components/Diagnostika'
+import { Section } from '../components/Section'
 
 const POJMY: Array<{ term: string; text: string }> = [
   {
@@ -39,87 +40,81 @@ export function OAppceScreen({ onBack, onShowIntro }: Props) {
 
   return (
     <div className="app">
-      <div className="pad" style={{ paddingTop: 20, paddingBottom: 10, flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={onBack} aria-label="Zpět" style={{ padding: 4, color: 'var(--dim)' }}>
-            <Icon name="back" size={22} stroke={2.2} />
-          </button>
-          <h1 className="disp" style={{ fontSize: 19, fontWeight: 700 }}>O appce</h1>
-        </div>
+      <div className="topbar">
+        <button className="btn-icon" onClick={onBack} aria-label="Zpět">
+          <Icon name="back" size={20} stroke={2} />
+        </button>
+        <h1>O appce</h1>
+        <span className="wordmark" style={{ fontSize: 10, color: 'var(--paper-4)' }}>
+          NAVRCHOL
+        </span>
       </div>
 
       <div className="scroll">
-        <div className="pad">
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 13.5, lineHeight: 1.5, textWrap: 'pretty' }}>
-              NaVrchol počítá počasí zvlášť pro každý bod tvojí trasy a pro jeho nadmořskou výšku,
-              a to ze čtyř modelů naráz. Z toho udělá jedno rozhodnutí: jít, nebo nejít.
-            </div>
-            <div className="mono" style={{ fontSize: 10.5, color: 'var(--mute)' }}>
-              verze {__BUILD_ID__}
-            </div>
-          </div>
+        <div className="sec" style={{ marginTop: 18 }}>
+          <p className="body" style={{ fontSize: 14 }}>
+            NaVrchol počítá počasí zvlášť pro každý bod tvojí trasy a pro jeho nadmořskou výšku,
+            a to ze čtyř modelů naráz. Z toho udělá jedno rozhodnutí: jít, nebo nejít.
+          </p>
+          <p className="footnote" style={{ marginTop: 8 }}>
+            verze {__BUILD_ID__}
+          </p>
         </div>
 
         {!standalone && (
-          <div className="pad" style={{ marginTop: 10 }}>
-            <div className="card-2" style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
-              <Icon name="plus" size={16} stroke={2.2} color="var(--acc)" style={{ marginTop: 2 }} />
-              <div className="stack" style={{ gap: 3 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>Přidej si to na plochu</div>
-                <div style={{ fontSize: 12, lineHeight: 1.45, color: 'var(--dim)', textWrap: 'pretty' }}>
-                  Na iPhonu tlačítko Sdílet a pak „Přidat na plochu". Na Androidu nabídka prohlížeče
-                  a „Nainstalovat aplikaci". Pak to běží na celou obrazovku jako běžná appka.
-                </div>
+          <div className="sec sec--tight">
+            <div className="note">
+              <Icon name="plus" size={15} stroke={2} />
+              <div>
+                <strong>Přidej si to na plochu.</strong> Na iPhonu tlačítko Sdílet a pak „Přidat na
+                plochu". Na Androidu nabídka prohlížeče a „Nainstalovat aplikaci". Pak to běží na
+                celou obrazovku jako běžná appka.
               </div>
             </div>
           </div>
         )}
 
-        <div className="pad" style={{ marginTop: 18 }}>
-          <div className="section-label" style={{ paddingBottom: 8 }}>ROZMĚRY TOHOTO TELEFONU</div>
-          <Diagnostika />
-        </div>
-
-        <div className="pad" style={{ marginTop: 18 }}>
-          <div className="section-label" style={{ paddingBottom: 8 }}>CO ZNAMENAJÍ TA ČÍSLA</div>
-          <div className="stack" style={{ gap: 8 }}>
+        <Section label="Co znamenají ta čísla">
+          <div className="rows">
             {POJMY.map((p) => (
-              <div key={p.term} className="card-2" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--acc)' }}>{p.term}</div>
-                <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--dim)', textWrap: 'pretty' }}>
-                  {p.text}
+              <div className="row" key={p.term} style={{ alignItems: 'flex-start', paddingTop: 12, paddingBottom: 12 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{p.term}</div>
+                  <div className="hint" style={{ marginTop: 4 }}>
+                    {p.text}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Section>
 
-        <div className="pad" style={{ marginTop: 18 }}>
-          <div className="section-label" style={{ paddingBottom: 8 }}>ODKUD JSOU DATA</div>
-          <div className="card-2" style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--dim)' }}>
-            Předpověď, výšky a geokódování: <a href="https://open-meteo.com">Open-Meteo</a>.
-            Trasy po pěšinách: <a href="https://brouter.de">BRouter</a>. Srážkový radar:{' '}
+        <Section label="Odkud jsou data">
+          <p className="hint">
+            Předpověď, výšky a geokódování: <a href="https://open-meteo.com">Open-Meteo</a>. Trasy po
+            pěšinách: <a href="https://brouter.de">BRouter</a>. Srážkový radar:{' '}
             <a href="https://rainviewer.com">RainViewer</a>. Mapy:{' '}
             <a href="https://opentopomap.org">OpenTopoMap</a> a OpenStreetMap, tmavý podklad Esri.
-          </div>
-        </div>
+          </p>
+        </Section>
 
-        <div className="pad" style={{ marginTop: 18 }}>
-          <div className="section-label" style={{ paddingBottom: 8 }}>SOUKROMÍ</div>
-          <div className="card-2" style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--dim)' }}>
-            Žádný účet, žádné sledování, žádný server. Trasy i sbalená výbava zůstávají jen
-            v tomhle telefonu. Ven odchází pouze souřadnice bodů trasy, aby se k nim dala stáhnout
-            předpověď.
-          </div>
-        </div>
+        <Section label="Soukromí">
+          <p className="hint">
+            Žádný účet, žádné sledování, žádný server. Trasy i sbalená výbava zůstávají jen v tomhle
+            telefonu. Ven odchází pouze souřadnice bodů trasy, aby se k nim dala stáhnout předpověď.
+          </p>
+        </Section>
 
-        <div className="pad stack" style={{ gap: 9, marginTop: 20, paddingBottom: 26 }}>
-          <button className="btn btn-ghost" onClick={onShowIntro}>
+        <Section label="Rozměry tohoto telefonu">
+          <Diagnostika />
+        </Section>
+
+        <div className="sec" style={{ marginTop: 26 }}>
+          <button className="btn btn--ghost" onClick={onShowIntro}>
             Zobrazit úvod znovu
           </button>
-          <p style={{ fontSize: 10.5, lineHeight: 1.5, color: 'var(--faint)', textAlign: 'center' }}>
-            Když se appka chová divně po aktualizaci, otevři ji s <span className="mono">?clear-sw=1</span> na konci adresy.
+          <p className="footnote" style={{ textAlign: 'center', marginTop: 12 }}>
+            Když se appka chová divně po aktualizaci, otevři ji s ?clear-sw=1 na konci adresy.
           </p>
         </div>
       </div>
