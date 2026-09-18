@@ -25,3 +25,4 @@ dist-ssr
 
 # Seedovaný design canvas — build artefakt, dá se znovu složit z design/*.dc.html
 design/*.html
+.vercel
