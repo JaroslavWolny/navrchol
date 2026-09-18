@@ -36,13 +36,7 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit, onAbout
   return (
     <div className="scroll">
       <div className="pad row-between" style={{ alignItems: 'flex-end', paddingTop: 20 }}>
-        <div className="stack" style={{ gap: 7 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Icon name="peak" size={14} stroke={2.4} color="var(--acc)" />
-            <span className="wordmark">NAVRCHOL</span>
-          </div>
-          <h1 className="page-title">Moje trasy</h1>
-        </div>
+        <h1 className="page-title">Moje trasy</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={onAbout}

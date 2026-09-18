@@ -29,8 +29,8 @@ export function UvodScreen({ onDemo, onOwn }: Props) {
       <div className="scroll">
         <div className="pad" style={{ paddingTop: 44 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon name="peak" size={20} stroke={2.4} color="var(--acc)" />
-            <span className="wordmark" style={{ fontSize: 14 }}>NAVRCHOL</span>
+            <Icon name="peak" size={24} stroke={2.4} color="var(--acc)" />
+            <span className="wordmark" style={{ fontSize: 18, letterSpacing: '0.06em' }}>NAVRCHOL</span>
           </div>
 
           <h1 className="disp" style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.02, marginTop: 18 }}>

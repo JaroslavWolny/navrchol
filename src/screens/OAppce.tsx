@@ -1,4 +1,5 @@
 import { Icon } from '../components/Icon'
+import { Diagnostika } from '../components/Diagnostika'
 
 const POJMY: Array<{ term: string; text: string }> = [
   {
@@ -74,6 +75,11 @@ export function OAppceScreen({ onBack, onShowIntro }: Props) {
             </div>
           </div>
         )}
+
+        <div className="pad" style={{ marginTop: 18 }}>
+          <div className="section-label" style={{ paddingBottom: 8 }}>ROZMĚRY TOHOTO TELEFONU</div>
+          <Diagnostika />
+        </div>
 
         <div className="pad" style={{ marginTop: 18 }}>
           <div className="section-label" style={{ paddingBottom: 8 }}>CO ZNAMENAJÍ TA ČÍSLA</div>
