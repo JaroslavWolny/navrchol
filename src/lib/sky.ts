@@ -52,8 +52,12 @@ function labelOf(score: number): SkyLabel {
 function reasonOf(l: { high: number; mid: number; low: number }, score: number): string {
   if (l.low > 65) return 'Nízká oblačnost zacloní obzor, slunce vůbec neuvidíš.'
   if (l.high + l.mid < 10) return 'Obloha bez mráčku — čisté, ale barvy se nemají do čeho opřít.'
-  if (l.high + l.mid > 90) return 'Zataženo až nahoru, světlo se skrz to nedostane.'
+  // Skóre rozhoduje dřív než součet vrstev. Vysoká a střední oblačnost jsou
+  // dvě nezávislá procenta, ne jedna pokrývka: 63 % vysoké a 34 % střední
+  // dá v součtu 97, přitom obě leží blízko ideálu a obloha bude nádherná.
+  // Bez tohohle pořadí dostal východ se skóre 79 komentář „zataženo až nahoru".
   if (score >= 75) return 'Vysoká oblačnost chytne barvu a nízká skoro žádná není, takže nic nezacloní obzor.'
+  if (l.high + l.mid > 90) return 'Zataženo až nahoru, světlo se skrz to nedostane.'
   if (l.low > 30) return 'Vysoko to vypadá dobře, ale nízká oblačnost může obzor přikrýt.'
   return 'Slušné rozložení oblačnosti, barvy by mohly být.'
 }

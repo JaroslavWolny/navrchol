@@ -212,6 +212,12 @@ describe('barevnost oblohy', () => {
     expect(r.label).toBe('nic moc')
   })
 
+  it('dvě vrstvy blízko ideálu nejsou zataženo, i když dají v součtu skoro sto', () => {
+    const r = scoreSky(hour({ cloudHigh: 63, cloudMid: 34, cloudLow: 0 }))
+    expect(r.score).toBeGreaterThanOrEqual(75)
+    expect(r.reason).not.toContain('Zataženo')
+  })
+
   it('zákal barvy vymyje', () => {
     const cisto = scoreSky(hour({ cloudHigh: 45, cloudMid: 20, cloudLow: 3, visibility: 30000 }))
     const zakal = scoreSky(hour({ cloudHigh: 45, cloudMid: 20, cloudLow: 3, visibility: 4000 }))
