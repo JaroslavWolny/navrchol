@@ -50,6 +50,13 @@ export default function App() {
     return weekOutlook(route, data.track, data.forecast)
   }, [route, data.track, data.forecast])
 
+  /** Smazání trasy. Aktivní se přepne na první zbylou, a když žádná není, na nic. */
+  const deleteRoute = (id: string) =>
+    setState((s) => {
+      const routes = s.routes.filter((r) => r.id !== id)
+      return { ...s, routes, activeRouteId: routes[0]?.id ?? null }
+    })
+
   const patchRoute = (next: Route) =>
     setState((s) => ({
       ...s,
@@ -112,10 +119,7 @@ export default function App() {
         onDelete={
           state.routes.some((r) => r.id === editing.id)
             ? () => {
-                setState((s) => {
-                  const routes = s.routes.filter((r) => r.id !== editing.id)
-                  return { ...s, routes, activeRouteId: routes[0]?.id ?? null }
-                })
+                deleteRoute(editing.id)
                 setView('tabs')
                 setTab('trasy')
               }
@@ -148,6 +152,7 @@ export default function App() {
           }}
           onNew={() => openEditor(null)}
           onEdit={(r) => openEditor(r)}
+          onDelete={deleteRoute}
           onAbout={() => setView('about')}
         />
       )}

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Gauge } from '../components/Gauge'
 import { Icon } from '../components/Icon'
 import { Empty } from '../components/States'
@@ -24,11 +25,15 @@ interface Props {
   onPick: (id: string) => void
   onNew: () => void
   onEdit: (route: Route) => void
+  onDelete: (id: string) => void
   onAbout: () => void
 }
 
-export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit, onAbout }: Props) {
+export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit, onDelete, onAbout }: Props) {
   const outlooks = useAllOutlooks(state.routes)
+  // Smazání je nevratné, tak si řádek nejdřív řekne o potvrzení. Modální okno
+  // by na tohle bylo moc; řádek se prostě na jedno ťuknutí zeptá sám.
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   return (
     <div className="scroll">
@@ -60,6 +65,36 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit, onAbout
               const best = data ? bestOfWeek(data.week) : null
               const score = best?.best?.score ?? null
               const verdict = score === null ? null : verdictOf(score)
+
+              if (confirmId === route.id) {
+                return (
+                  <div className="row" key={route.id} data-tone="nejdi" style={{ gap: 8 }}>
+                    <Icon name="trash" size={16} color="var(--tone)" />
+                    <span className="row-name truncate" style={{ flexGrow: 1, color: 'var(--tone)' }}>
+                      Smazat {route.name || 'trasu'}?
+                    </span>
+                    <button
+                      className="btn-icon"
+                      style={{ width: 34, height: 34 }}
+                      onClick={() => setConfirmId(null)}
+                      aria-label="Nechat trasu"
+                    >
+                      <Icon name="back" size={17} />
+                    </button>
+                    <button
+                      className="btn-icon"
+                      style={{ width: 34, height: 34, color: 'var(--tone)' }}
+                      onClick={() => {
+                        onDelete(route.id)
+                        setConfirmId(null)
+                      }}
+                      aria-label={`Smazat ${route.name || 'trasu'} natrvalo`}
+                    >
+                      <Icon name="check" size={17} stroke={2} />
+                    </button>
+                  </div>
+                )
+              }
 
               return (
                 <div
@@ -130,6 +165,18 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onEdit, onAbout
                     }}
                   >
                     <Icon name="edit" size={17} />
+                  </button>
+
+                  <button
+                    className="btn-icon"
+                    aria-label={`Smazat ${route.name || 'trasu'}`}
+                    style={{ width: 34, height: 34, marginTop: -2 }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setConfirmId(route.id)
+                    }}
+                  >
+                    <Icon name="trash" size={17} />
                   </button>
                 </div>
               )
