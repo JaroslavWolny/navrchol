@@ -1,5 +1,5 @@
 // Verzi zvyš při každém vydání — vynutí to zahození starých cache.
-const VERSION = 'navrchol-v7'
+const VERSION = 'navrchol-v8'
 
 self.addEventListener('install', (event) => {
   // Nová verze se nesmí schovávat za starou. Zastaralý service worker je

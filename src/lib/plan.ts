@@ -7,7 +7,7 @@ import type { Forecast } from './openMeteo'
 import type { HourPoint, PointForecast, Route, Spread, Waypoint } from './types'
 
 /** Index hodiny v předpovědi pro daný okamžik. Řady jsou souvisle po hodinách. */
-function hourIndex(hours: HourPoint[], at: Date): number {
+export function hourIndex(hours: HourPoint[], at: Date): number {
   if (hours.length === 0) return 0
   const t0 = new Date(hours[0].time).getTime()
   const i = Math.round((at.getTime() - t0) / 3_600_000)

@@ -108,6 +108,27 @@ tak ho rovnou ukáže (RainViewer, poslední dvě hodiny, bez klíče).
 barvu (ideál kolem 45 %), nízká zacloní obzor a je proto **násobič**, ne sčítanec —
 při zavřeném obzoru nepomůže sebehezčí cirrus nad hlavou.
 
+**Na fotky se počítá i to, co se nedá stáhnout.** Open-Meteo dává jen východ
+a západ pro rovný obzor, takže zbytek si appka spočítá sama (`src/lib/sun.ts`,
+`horizon.ts`, `inversion.ts`):
+
+- **Skutečný obzor.** Výšky terénu ve vějíři kolem azimutu slunce řeknou, kdy
+  slunce doopravdy vyleze. Ze Sněžky o jedenáct minut dřív než podle tabulky
+  (z vrcholu vidíš za obzor), z Pece pod Sněžkou o tři hodiny později a
+  v prosinci tam nevyleze vůbec.
+- **Modrá a zlatá hodina jako okna**, ne jako okamžik. A nejsou to hodiny:
+  v prosinci trvá zlaté světlo skoro sedmdesát minut, v červnu padesát tři —
+  slunce tehdy stoupá strměji. Z toho appka dopočítá, v kolik vyrazit, abys
+  na vrcholu stál na začátku toho okna.
+- **Moře mlhy.** Inverze se pozná z teplotního profilu po tlakových hladinách:
+  běžně teplota s výškou klesá, v inverzi roste a horní hrana té vrstvy je
+  hladina mlhy. K fotce je pak potřeba být nad ní — pod ní stojíš v mlze.
+- **Měsíc a tma.** Fáze, východ a západ Měsíce a astronomický soumrak; k tomu
+  výška jádra Mléčné dráhy, protože z padesáté rovnoběžky vyleze sotva na
+  jedenáct stupňů a jen část roku.
+- **Zákal.** Na vrstvené hřebeny nerozhoduje přízemní dohlednost, ale aerosol
+  v celém sloupci (Air Quality API). Je to odhad, ne měření.
+
 ## Jak to vypadá a proč
 
 Appka není počasí, je to měřicí přístroj a horský bulletin. Vzhled drží tři pravidla

@@ -122,7 +122,10 @@ function reasonOf(chance: number, above: boolean, inversion: Inversion, hour: Ho
 export function haze(hour: HourPoint): { rangeKm: number; label: string } | null {
   if (hour.aerosol === null) return null
   const aod = hour.aerosol
-  const rangeKm = aod <= 0 ? 150 : clamp(Math.round(22 / Math.max(aod, 0.02)), 8, 200)
+  // Optická tloušťka je pro celý sloupec, dohled nad ní se odhaduje hrubě:
+  // z hřebene koukáš nad většinou zákalu, takže konstanta je vyšší, než by
+  // vyšla pro přízemní pozorování. Je to odhad, ne měření.
+  const rangeKm = aod <= 0 ? 200 : clamp(Math.round(12 / Math.max(aod, 0.02)), 10, 200)
   const label =
     aod < 0.08
       ? 'průzračno, vrstvy hor až za obzor'

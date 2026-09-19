@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ensembleModelsFor, fetchForecast } from '../openMeteo'
+import { haze, inversionIn } from '../inversion'
 import { scoreHour } from '../score'
 import type { Waypoint } from '../types'
 
@@ -76,6 +77,31 @@ describe('živé Open-Meteo', () => {
     // Oblačnost po vrstvách a UV musí dorazit — bez nich nejde východ a západ.
     expect(h.cloudLow + h.cloudMid + h.cloudHigh).toBeGreaterThanOrEqual(0)
     expect(Number.isFinite(h.uvIndex)).toBe(true)
+
+    // Teplotní profil: sedm hladin, odspodu nahoru, s rozumnými výškami.
+    expect(h.levels.length).toBeGreaterThanOrEqual(5)
+    for (let k = 1; k < h.levels.length; k++) {
+      expect(h.levels[k].height).toBeGreaterThan(h.levels[k - 1].height)
+    }
+    expect(h.levels[0].height).toBeLessThan(600)
+    expect(h.levels.at(-1)!.height).toBeGreaterThan(1500)
+    // Inverze buď je, nebo není — obojí je platná odpověď, ale ne nesmysl.
+    const inverze = inversionIn(h.levels)
+    if (inverze) {
+      expect(inverze.topM).toBeGreaterThan(inverze.baseM)
+      expect(inverze.strengthK).toBeGreaterThan(0)
+    }
+    console.log(
+      `profil na Sněžce: ${h.levels.map((l) => `${Math.round(l.height)}m ${l.temperature.toFixed(1)}°`).join(' · ')}` +
+        ` → ${inverze ? `inverze do ${inverze.topM} m` : 'bez inverze'}`,
+    )
+
+    // Zákal dorazí na pár dní dopředu, dál ne — a to se nesmí tvářit jako nula.
+    const sAerosolem = snezka.hours.filter((x) => x.aerosol !== null)
+    expect(sAerosolem.length).toBeGreaterThan(24)
+    const z = haze(sAerosolem[0])!
+    expect(z.rangeKm).toBeGreaterThan(8)
+    console.log(`zákal: ${sAerosolem[0].aerosol} → ${z.rangeKm} km, ${z.label}`)
   })
 
   it('rozptyl ansámblu roste s předstihem, ne naopak', { timeout: 40000 }, async () => {
