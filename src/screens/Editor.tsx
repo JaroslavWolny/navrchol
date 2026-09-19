@@ -268,7 +268,8 @@ export function EditorScreen({ route: initial, onSave, onCancel, onDelete }: Pro
                       minWidth: 0,
                       background: 'none',
                       border: 'none',
-                      fontSize: 14,
+                      // Pod šestnáct jít nesmí, jinak iOS při psaní přiblíží stránku.
+                      fontSize: 16,
                       fontWeight: 500,
                       padding: 0,
                     }}

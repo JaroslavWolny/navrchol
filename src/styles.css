@@ -71,6 +71,7 @@ html, body {
 
 body {
   margin: 0;
+  -webkit-text-size-adjust: 100%;
   background: var(--ground);
   color: var(--paper);
   font-family: var(--sans);
@@ -90,8 +91,13 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
-input, textarea {
+/* Šestnáct pixelů není estetika, ale nutnost: nad menším písmem si iOS při
+   ťuknutí do políčka stránku sám přiblíží, hlavička s tlačítky Zpět a Uložit
+   vyjede mimo obrazovku a zpátky se k ní nedostaneš. Platí pro všechna
+   políčka včetně těch neviditelných pod výběrem data. */
+input, textarea, select {
   font: inherit;
+  font-size: 16px;
   color: inherit;
   -webkit-tap-highlight-color: transparent;
 }
@@ -541,7 +547,7 @@ a { color: var(--paper); text-underline-offset: 2px; }
   border-radius: 4px;
   background: var(--sunken);
   color: var(--paper);
-  font-size: 15px;
+  font-size: 16px;
   font-family: var(--sans);
 }
 
