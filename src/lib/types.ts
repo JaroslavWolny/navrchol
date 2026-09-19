@@ -16,6 +16,12 @@ export interface Route {
   /** "HH:MM" v lokálním čase trasy. */
   startTime: string
   pace: PaceKey
+  /**
+   * Vracíš se po stejné trati? Pak se počítá i cesta zpátky — do času, do rezervy
+   * do tmy i do toho, které hodiny se vůbec oskórují. Odpoledne na hřebeni je
+   * přesně ta část túry, kterou jednosměrný plán zatajil.
+   */
+  roundTrip?: boolean
 }
 
 /**

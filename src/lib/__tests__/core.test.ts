@@ -15,6 +15,7 @@ import { assess } from '../plan'
 import { scoreSky } from '../sky'
 import { suggestGear } from '../gear'
 import type { Forecast } from '../openMeteo'
+import { withReturn } from '../routing'
 import type { Track } from '../routing'
 import type { HourPoint, Route, Spread, Waypoint } from '../types'
 
@@ -591,3 +592,65 @@ function fakeTrack(waypoints: Waypoint[]): Track {
   })
   return { points, lengthKm: 0, ascentM: 0, descentM: 0, waypointIndices, fallback: true }
 }
+
+describe('tam a zpět', () => {
+  const DOLE: Waypoint = { id: 'd', name: 'Parkoviště', lat: 50.0, lon: 15.0, elevation: 600 }
+  const NAHORE: Waypoint = { id: 'n', name: 'Hřeben', lat: 50.1, lon: 15.2, elevation: 1400 }
+  const tam: Route = {
+    id: 'tz',
+    name: 'Výstup',
+    waypoints: [DOLE, NAHORE],
+    startTime: '07:00',
+    pace: 'stredni',
+  }
+  const zpet: Route = { ...tam, roundTrip: true }
+
+  it('trať se zrcadlí a body zůstanou na správných místech', () => {
+    const jednosmerna = fakeTrack([DOLE, NAHORE])
+    const obousmerna = withReturn(jednosmerna)
+
+    expect(obousmerna.points).toHaveLength(jednosmerna.points.length * 2 - 1)
+    expect(obousmerna.lengthKm).toBeCloseTo(jednosmerna.lengthKm * 2, 6)
+    // Co se vystoupá, to se i sejde.
+    expect(obousmerna.ascentM).toBe(jednosmerna.ascentM + jednosmerna.descentM)
+    expect(obousmerna.descentM).toBe(obousmerna.ascentM)
+
+    // Obrátka je jeden bod, ne dva: dva body tam → tři průchody celkem.
+    expect(obousmerna.waypointIndices).toHaveLength(3)
+    const [start, vrchol, navrat] = obousmerna.waypointIndices
+    expect(start).toBe(0)
+    expect(obousmerna.points[vrchol].elevation).toBe(1400)
+    expect(obousmerna.points[navrat].elevation).toBe(600)
+    expect(navrat).toBe(obousmerna.points.length - 1)
+  })
+
+  it('cesta zpátky se započítá do času i do bodů průchodu', () => {
+    const forecast = fakeForecast([DOLE, NAHORE])
+    const a = assess(tam, fakeTrack([DOLE, NAHORE]), forecast, new Date('2026-09-20T07:00:00'))
+    const b = assess(zpet, withReturn(fakeTrack([DOLE, NAHORE])), forecast, new Date('2026-09-20T07:00:00'))
+
+    expect(a.passes).toHaveLength(2)
+    expect(b.passes).toHaveLength(3)
+    // Sestup je rychlejší než výstup, takže návrat čas nezdvojnásobí, ale musí
+    // ho výrazně prodloužit — a rezerva do tmy o stejný kus spadnout.
+    expect(b.plan.minutes).toBeGreaterThan(a.plan.minutes * 1.5)
+    expect(b.daylightReserveMin!).toBeLessThan(a.daylightReserveMin! - 60)
+    expect(b.samples.length).toBeGreaterThan(a.samples.length)
+  })
+
+  it('odpolední bouřka na sestupu se do verdiktu dostane až s návratem', () => {
+    // Nahoře jsi kolem desáté, dole zpátky odpoledne. Bouřka ve 13:00 potká
+    // jen toho, kdo počítá i cestu zpátky.
+    const forecast = fakeForecast([DOLE, NAHORE], (i) =>
+      i === 13 ? { cape: 1500, precipitation: 3, precipitationProbability: 90 } : {},
+    )
+    const track = fakeTrack([DOLE, NAHORE])
+    const jenTam = assess(tam, track, forecast, new Date('2026-09-20T07:00:00'))
+    const iZpet = assess(zpet, withReturn(track), forecast, new Date('2026-09-20T07:00:00'))
+
+    expect(jenTam.samples.some((s) => s.hour.time === '2026-09-20T13:00')).toBe(false)
+    expect(iZpet.samples.some((s) => s.hour.time === '2026-09-20T13:00')).toBe(true)
+    expect(jenTam.score.blockers).toHaveLength(0)
+    expect(iZpet.score.blockers.some((b) => b.key === 'bourka')).toBe(true)
+  })
+})

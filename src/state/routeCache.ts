@@ -1,5 +1,5 @@
 import { fetchForecast, type Forecast } from '../lib/openMeteo'
-import { fetchTrack, type Track } from '../lib/routing'
+import { fetchTrack, withReturn, type Track } from '../lib/routing'
 import type { Route } from '../lib/types'
 
 export interface RouteBundle {
@@ -16,11 +16,15 @@ const cache = new Map<string, Entry>()
 /** Předpověď starší než půl hodiny už nemá cenu držet. */
 const TTL_MS = 30 * 60 * 1000
 
-/** Podpis trasy se mění jen s body. Start ani tempo stažená data neovlivní. */
+/**
+ * Podpis trasy se mění s body a s tím, jestli se jde i zpátky. Start ani tempo
+ * stažená data neovlivní.
+ */
 export function signatureOf(route: Route): string {
-  return route.waypoints
+  const points = route.waypoints
     .map((w) => `${w.lat.toFixed(5)},${w.lon.toFixed(5)},${Math.round(w.elevation)}`)
     .join(';')
+  return `${points}|${route.roundTrip ? 'tam-zpet' : 'tam'}`
 }
 
 /** Jedno stažení na trasu, sdílené mezi obrazovkami. */
@@ -32,7 +36,10 @@ export function loadRouteData(route: Route, signal?: AbortSignal): Promise<Route
   const promise = Promise.all([
     fetchTrack(route.waypoints, signal),
     fetchForecast(route.waypoints, 7, signal),
-  ]).then(([track, forecast]) => ({ track, forecast }))
+  ]).then(([track, forecast]) => ({
+    track: route.roundTrip ? withReturn(track) : track,
+    forecast,
+  }))
 
   // Neúspěch se nesmí zacementovat v cache, jinak by se to už nikdy nezkusilo.
   promise.catch(() => cache.delete(key))

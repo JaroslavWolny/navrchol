@@ -222,7 +222,7 @@ export function TimelineScreen({ route, track, assessment, onBack }: Props) {
               return (
                 <div
                   className="row"
-                  key={p.waypoint.id}
+                  key={`${p.waypoint.id}-${p.at.toISOString()}`}
                   data-tone={gust >= 70 ? 'nejdi' : gust >= 50 ? 'zvaz' : 'none'}
                 >
                   <span className="mono" style={{ width: 42, flexShrink: 0, fontSize: 12, color: 'var(--paper-3)' }}>

@@ -67,6 +67,17 @@ export interface Assessment {
   wetGround: { mm24: number; mm48: number }
 }
 
+/**
+ * Trasa tak, jak se opravdu jde. U túry tam a zpět se každý bod kromě obrátky
+ * míjí dvakrát; trať návrat už obsahuje (zrcadlí se hned po stažení), tady se
+ * k ní dorovná seznam bodů — jinak by se druhá polovina túry nenaplánovala
+ * ani neoskórovala.
+ */
+export function walkedRoute(route: Route): Route {
+  if (!route.roundTrip || route.waypoints.length < 2) return route
+  return { ...route, waypoints: [...route.waypoints, ...route.waypoints.slice(0, -1).reverse()] }
+}
+
 function withStart(route: Route, start: Date): Route {
   const hh = String(start.getHours()).padStart(2, '0')
   const mm = String(start.getMinutes()).padStart(2, '0')
@@ -135,7 +146,8 @@ export function assess(
 ): Assessment {
   const byId = new Map(forecast.points.map((p) => [p.waypointId, p]))
   const snow = snowAt(route, byId, start)
-  const plan = planFromTrack(track, withStart(route, start), start, snow)
+  const walked = walkedRoute(route)
+  const plan = planFromTrack(track, withStart(walked, start), start, snow)
 
   const passes: PassPoint[] = plan.arrivals.flatMap((a) => {
     const pf = byId.get(a.waypoint.id)
@@ -150,7 +162,7 @@ export function assess(
     // Předpověď je jen v bodech trasy. Pro hodinu mezi nimi se vezme ta z nejbližšího
     // bodu, ale exponovanost se posuzuje ze skutečné výšky trati — hřeben mezi dvěma
     // waypointy je hřeben, i když tam žádný waypoint není.
-    const nearest = nearestWaypoint(route, track, idx)
+    const nearest = nearestWaypoint(walked, track, idx)
     const pf = byId.get(nearest.id)
     if (!pf || pf.hours.length === 0) return []
     const i = hourIndex(pf.hours, at)
@@ -158,7 +170,7 @@ export function assess(
     return [
       {
         at,
-        where: { ...nearest, name: placeName(route, plan, offsetMin), elevation },
+        where: { ...nearest, name: placeName(walked, plan, offsetMin), elevation },
         hour: pf.hours[i],
         spread: pf.spread[i],
       },
@@ -192,7 +204,7 @@ export function assess(
   const daylightReserveMin = sunset ? Math.round((sunset.getTime() - end.getTime()) / 60000) : null
 
   const highest = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
-  const storm = stormWindowOf(route, track, byId, plan, start, end, snow, highest)
+  const storm = stormWindowOf(walked, track, byId, plan, start, end, snow, highest)
 
   const wetGround = wetnessBefore(forecast, start)
 

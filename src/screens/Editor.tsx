@@ -5,6 +5,8 @@ import { Section } from '../components/Section'
 import { lookupElevation, searchPlaces, type Place } from '../lib/geocode'
 import { fetchTrack, type Track } from '../lib/routing'
 import { formatDuration, planFromTrack } from '../lib/pace'
+import { walkedRoute } from '../lib/plan'
+import { withReturn } from '../lib/routing'
 import { km, metres } from '../lib/format'
 import { newId } from '../state/store'
 import type { PaceKey, Route, Waypoint } from '../lib/types'
@@ -98,6 +100,8 @@ export function EditorScreen({ route: initial, onSave, onCancel, onDelete }: Pro
       return { ...r, waypoints: next }
     })
 
+  // Náhled musí ukazovat túru tak, jak se opravdu půjde — včetně cesty zpátky.
+  const preview = track && route.roundTrip ? withReturn(track) : track
   const canSave = route.waypoints.length >= 2
   const highest = route.waypoints.length
     ? [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
@@ -176,19 +180,19 @@ export function EditorScreen({ route: initial, onSave, onCancel, onDelete }: Pro
           )}
         </div>
 
-        {track && (
+        {preview && (
           <div className="sec sec--tight">
             <div className="stats">
               <div>
-                <b>{km(track.lengthKm)}</b>
+                <b>{km(preview.lengthKm)}</b>
                 <span className="label">Délka</span>
               </div>
               <div>
-                <b>{metres(track.ascentM)}</b>
+                <b>{metres(preview.ascentM)}</b>
                 <span className="label">Stoupání</span>
               </div>
               <div>
-                <b>{formatDuration(planFromTrack(track, route, new Date()).minutes)}</b>
+                <b>{formatDuration(planFromTrack(preview, walkedRoute(route), new Date()).minutes)}</b>
                 <span className="label">Odhad</span>
               </div>
             </div>
@@ -222,6 +226,20 @@ export function EditorScreen({ route: initial, onSave, onCancel, onDelete }: Pro
               </button>
             ))}
           </div>
+
+          <div className="seg" style={{ marginTop: 10 }}>
+            <button aria-pressed={route.roundTrip !== false} onClick={() => patch({ roundTrip: true })}>
+              Tam a zpět
+            </button>
+            <button aria-pressed={route.roundTrip === false} onClick={() => patch({ roundTrip: false })}>
+              Jen tam
+            </button>
+          </div>
+          <p className="footnote" style={{ marginTop: 8 }}>
+            Tam a zpět počítá i návrat po stejné trati — do času, do rezervy do tmy i do toho,
+            které hodiny se oskórují. Odpoledne na hřebeni je přesně ta část túry, kterou
+            jednosměrný plán zatají. „Jen tam" nech, když se vracíš lanovkou nebo jinudy.
+          </p>
         </Section>
 
         <Section label="Body trasy" meta={route.waypoints.length > 0 ? `${route.waypoints.length}` : undefined}>

@@ -35,6 +35,7 @@ export const DEMO_ROUTE: Route = {
   name: 'Sněžka z Pece',
   startTime: '07:00',
   pace: 'stredni',
+  roundTrip: true,
   waypoints: [
     { id: 'w1', name: 'Pec pod Sněžkou', lat: 50.6903, lon: 15.7322, elevation: 769 },
     { id: 'w2', name: 'Růžová hora', lat: 50.7253, lon: 15.7397, elevation: 1390 },

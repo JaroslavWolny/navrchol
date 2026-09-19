@@ -345,6 +345,7 @@ export function VerdiktScreen({
           <br />
           Nulová izoterma {h.freezingLevel === null ? '—' : metres(h.freezingLevel)} · Trasa{' '}
           {km(assessment.plan.distanceKm)}
+          {route.roundTrip ? ' tam a zpět' : ' jednosměrně'}
           {data.track?.fallback ? ' (vzdušnou čarou)' : ''}
           {data.fetchedAt ? ` · staženo v ${clock(new Date(data.fetchedAt))}` : ''}
         </p>

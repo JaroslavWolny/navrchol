@@ -86,6 +86,32 @@ function finish(points: TrackPoint[], waypoints: Waypoint[], fallback: boolean):
   }
 }
 
+/**
+ * Trať tam i zpátky. Návrat po stejné pěšině není teleport: má vlastní čas
+ * (Tobler počítá klesání jinak než stoupání), vlastní hodiny počasí a vlastní
+ * riziko. Vrchol se neopakuje — obrátka je jeden bod, ne dva.
+ */
+export function withReturn(track: Track): Track {
+  const n = track.points.length
+  if (n < 2) return track
+
+  const points = [...track.points, ...track.points.slice(0, -1).reverse()]
+  // Bod, který byl na indexu i, leží po obrátce na 2·(n−1) − i.
+  const back = track.waypointIndices
+    .slice(0, -1)
+    .reverse()
+    .map((i) => 2 * (n - 1) - i)
+
+  return {
+    points,
+    lengthKm: track.lengthKm * 2,
+    ascentM: track.ascentM + track.descentM,
+    descentM: track.descentM + track.ascentM,
+    waypointIndices: [...track.waypointIndices, ...back],
+    fallback: track.fallback,
+  }
+}
+
 /** Ke kterému bodu trati je zadaný waypoint nejblíž. */
 export function nearestIndex(points: TrackPoint[], target: { lat: number; lon: number }): number {
   let best = 0

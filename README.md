@@ -57,6 +57,12 @@ nepromluvila vůbec. Teď se pro každou hodinu túry dohledá, kde v tu hodinu 
 tempa jsi — včetně skutečné výšky trati, takže hřeben mezi dvěma waypointy se
 posoudí jako hřeben.
 
+**Túra tam a zpět je celá túra.** Plán uměl jen cestu tam: kdo si návrat nenaklikal
+jako další body, tomu se počítala půlka — délka, rezerva do tmy, výbava i to, které
+hodiny se vůbec oskórovaly. Přitom odpoledne na sestupu přicházejí bouřky. Přepínač
+v editoru trať zrcadlí (obrátka se neopakuje) a Tobler počítá klesání vlastní
+rychlostí, takže návrat čas nezdvojnásobí, jen prodlouží.
+
 **Nejhorší hodina váží 60 %.** Túra je tak dobrá jako její nejslabší úsek. Průměr
 by zatajil jednu smrtelnou hodinu na hřebeni mezi sedmi hezkými.
 

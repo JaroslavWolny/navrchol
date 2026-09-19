@@ -68,7 +68,7 @@ export default function App() {
 
   const openEditor = (r: Route | null) => {
     setEditing(
-      r ?? { id: newId(), name: '', waypoints: [], startTime: '07:00', pace: 'stredni' },
+      r ?? { id: newId(), name: '', waypoints: [], startTime: '07:00', pace: 'stredni', roundTrip: true },
     )
     setView('editor')
   }
