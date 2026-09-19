@@ -51,6 +51,16 @@ const EMPTY: StoredState = {
   seenIntro: false,
 }
 
+/**
+ * Ukázková trasa se uložila dřív, než appka uměla návrat, takže počítá jen
+ * výstup. Sněžka z Pece se chodí tam a zpět — ať to tak i počítá. Vlastních
+ * tras se to netýká, ty si nastavení drží podle toho, jak je kdo založil.
+ */
+function upgradeDemo(route: Route): Route {
+  if (route.id !== DEMO_ROUTE_ID || route.roundTrip !== undefined) return route
+  return { ...route, roundTrip: true }
+}
+
 /** localStorage umí selhat v anonymním okně i při zaplněné kvótě — nikdy kvůli tomu nespadnout. */
 export function load(): StoredState {
   try {
@@ -58,7 +68,7 @@ export function load(): StoredState {
     if (!raw) return EMPTY
     const parsed = JSON.parse(raw) as Partial<StoredState>
     return {
-      routes: parsed.routes ?? EMPTY.routes,
+      routes: (parsed.routes ?? EMPTY.routes).map(upgradeDemo),
       activeRouteId: parsed.activeRouteId ?? parsed.routes?.[0]?.id ?? null,
       baseGear: parsed.baseGear ?? DEFAULT_BASE_GEAR,
       packed: parsed.packed ?? {},

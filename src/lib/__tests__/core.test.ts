@@ -12,6 +12,7 @@ import {
 } from '../pace'
 import { certaintyOf, scoreHour, scoreRoute, verdictOf } from '../score'
 import { assess } from '../plan'
+import { DEMO_ROUTE_ID, load } from '../../state/store'
 import { scoreSky } from '../sky'
 import { suggestGear } from '../gear'
 import type { Forecast } from '../openMeteo'
@@ -660,5 +661,37 @@ describe('tam a zpět', () => {
     expect(iZpet.samples.some((s) => s.hour.time === '2026-09-20T13:00')).toBe(true)
     expect(jenTam.score.blockers).toHaveLength(0)
     expect(iZpet.score.blockers.some((b) => b.key === 'bourka')).toBe(true)
+  })
+})
+
+describe('uložená data', () => {
+  // Testy běží v Node, kde localStorage není. Stačí ale to, co store používá.
+  const pamet: Record<string, string> = {}
+  globalThis.localStorage = {
+    getItem: (k: string) => pamet[k] ?? null,
+    setItem: (k: string, v: string) => {
+      pamet[k] = v
+    },
+    removeItem: (k: string) => delete pamet[k],
+    clear: () => Object.keys(pamet).forEach((k) => delete pamet[k]),
+    key: () => null,
+    length: 0,
+  } as Storage
+
+  it('ukázková trasa se překlopí na tam a zpět, vlastní zůstanou', () => {
+    const stara: Route = { ...route, id: DEMO_ROUTE_ID, roundTrip: undefined }
+    const vlastni: Route = { ...route, id: 'moje', roundTrip: undefined }
+    const rucne: Route = { ...route, id: DEMO_ROUTE_ID, roundTrip: false }
+
+    localStorage.setItem(
+      'navrchol.v1',
+      JSON.stringify({ routes: [stara, vlastni, rucne], activeRouteId: DEMO_ROUTE_ID }),
+    )
+    const [a, b, c] = load().routes
+    expect(a.roundTrip).toBe(true)
+    expect(b.roundTrip).toBeUndefined()
+    // Kdo si ukázku vědomě přepnul na jednosměrnou, tomu to appka nepřepíše.
+    expect(c.roundTrip).toBe(false)
+    localStorage.clear()
   })
 })
