@@ -228,10 +228,12 @@ export function EditorScreen({ route: initial, onSave, onCancel, onDelete }: Pro
           </div>
 
           <div className="seg" style={{ marginTop: 10 }}>
-            <button aria-pressed={route.roundTrip !== false} onClick={() => patch({ roundTrip: true })}>
+            {/* Trasy uložené dřív návrat neznají a počítají se jednosměrně —
+                přepínač musí ukazovat, jak to opravdu je, ne jak by to slušelo. */}
+            <button aria-pressed={route.roundTrip === true} onClick={() => patch({ roundTrip: true })}>
               Tam a zpět
             </button>
-            <button aria-pressed={route.roundTrip === false} onClick={() => patch({ roundTrip: false })}>
+            <button aria-pressed={route.roundTrip !== true} onClick={() => patch({ roundTrip: false })}>
               Jen tam
             </button>
           </div>
