@@ -43,6 +43,30 @@ export function parseDay(isoDate: string): Date {
   return new Date(y, m - 1, d)
 }
 
+/**
+ * Odpočet ke světlu. Dává smysl jen v den samotné události — na předpověď za
+ * tři dny se odpočet nehodí, tam se plánuje, ne pospíchá.
+ */
+export function countdown(now: Date, leaveAt: Date, eventAt: Date): string | null {
+  const sameDay =
+    now.getFullYear() === eventAt.getFullYear() &&
+    now.getMonth() === eventAt.getMonth() &&
+    now.getDate() === eventAt.getDate()
+  if (!sameDay || now >= eventAt) return null
+
+  const minutes = Math.round((leaveAt.getTime() - now.getTime()) / 60000)
+  if (minutes > 0) return `Do odchodu zbývá ${duration(minutes)}.`
+  if (minutes > -15) return 'Vyrazit máš právě teď.'
+  return `Vyrazit jsi měl před ${duration(-minutes)} — nahoře budeš až po začátku okna.`
+}
+
+/** "4 h 20 min", nebo "45 min" pod hodinu. Stejný tvar jako u délky túry. */
+function duration(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return h > 0 ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`
+}
+
 /** Český tvar podle počtu: 1 bod, 2—4 body, 5 a víc bodů. */
 export function bodu(count: number): string {
   if (count === 1) return '1 bod'

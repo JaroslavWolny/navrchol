@@ -7,7 +7,7 @@ import { compassPoint, sunAzimuths } from '../lib/geo'
 import { fetchHorizon, terrainSun, type Horizon, type TerrainSun } from '../lib/horizon'
 import { fogSeaAt, haze } from '../lib/inversion'
 import { dayLight, milkyWayCore, moonInfo } from '../lib/sun'
-import { clock, dayShort, metres, num, parseDay } from '../lib/format'
+import { clock, countdown, dayShort, metres, num, parseDay } from '../lib/format'
 import { formatDuration } from '../lib/pace'
 import { hourIndex, type Assessment, type DayOutlook } from '../lib/plan'
 import type { RouteData } from '../state/useRouteData'
@@ -19,6 +19,19 @@ import type { Route, Waypoint } from '../lib/types'
  */
 function fanAround(azimuth: number): number[] {
   return [-15, -10, -5, 0, 5, 10, 15].map((d) => (((azimuth + d) % 360) + 360) % 360)
+}
+
+/**
+ * Aktuální čas, který se sám hlásí každou minutu. Bez něj by odpočet na
+ * otevřené obrazovce zamrzl na čase posledního překreslení.
+ */
+function useMinuteTick(): Date {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+  return now
 }
 
 /** Terén kolem nejvyššího bodu trasy. Stáhne se, až když je co počítat. */
@@ -96,16 +109,32 @@ function SunDetail({
   const light = dayLight(summit.lat, summit.lon, hero.sky.at)
   const moon = moonInfo(summit.lat, summit.lon, hero.sky.at)
   const horizon = useHorizon(summit, azimuth)
+  const now = useMinuteTick()
   const terrain: TerrainSun | null = horizon
     ? terrainSun(summit, hero.sky.at, horizon, light)
     : null
   const terrainEvent = hero.kind === 'vychod' ? terrain?.sunrise : terrain?.sunset
 
-  // Počasí na vrcholu v tu hodinu — z něj inverze a zákal.
+  // Počasí na vrcholu v tu hodinu — z něj zákal.
   const summitPoint = data.forecast?.points.find((p) => p.waypointId === summit.id)
   const heroHour = summitPoint?.hours[hourIndex(summitPoint.hours, hero.sky.at)] ?? null
-  const fog = heroHour ? fogSeaAt(heroHour, summit.elevation) : null
   const zakal = heroHour ? haze(heroHour) : null
+
+  // Inverze se neváže na nejhezčí oblohu — je vzácná a stojí za to říct ji
+  // kterýkoliv den v týdnu. Hledá se proto přes všechna rána zvlášť.
+  const fogDays = week.flatMap((d) => {
+    if (!summitPoint) return []
+    const at = d.sunrise.at
+    const sea = fogSeaAt(summitPoint.hours[hourIndex(summitPoint.hours, at)], summit.elevation)
+    return sea ? [{ date: d.date, at, sea }] : []
+  })
+  const fogDay = fogDays.reduce<(typeof fogDays)[number] | null>((best, x) => {
+    if (!best) return x
+    // Být nad hladinou je víc než silná inverze, ve které stojíš.
+    const rank = (y: typeof x) => (y.sea.above ? 1000 : 0) + y.sea.chance
+    return rank(x) > rank(best) ? x : best
+  }, null)
+  const fog = fogDay?.sea ?? null
 
   // Zlaté světlo je okno, ne okamžik: nahoře se má stát na jeho začátku.
   const goldenStart =
@@ -194,6 +223,7 @@ function SunDetail({
               data-tone={fog.above && fog.chance >= 60 ? 'jdi' : fog.chance >= 30 ? 'zvaz' : 'none'}
               style={{ color: 'var(--tone)', fontWeight: 600, fontSize: 12 }}
             >
+              {fogDay ? `${dayShort(parseDay(fogDay.date))} · ` : ''}
               {fog.chance} %
             </span>
           }
@@ -203,7 +233,7 @@ function SunDetail({
               <span className="label row-key">Hladina mlhy</span>
               <span className="hint truncate" style={{ flexGrow: 1 }}>
                 inverze {fog.strengthK > 0 ? '+' : ''}
-                {fog.strengthK} °C
+                {num(fog.strengthK, 1)} °C
               </span>
               <span className="row-value">{metres(fog.topM)}</span>
             </div>
@@ -218,7 +248,9 @@ function SunDetail({
             </div>
           </div>
           <p className="footnote" style={{ marginTop: 12 }}>
-            {fog.reason}
+            {fog.reason} Počítáno k východu slunce
+            {fogDay ? ` ${dayShort(parseDay(fogDay.date))} v ${clock(fogDay.at)}` : ''} — přes den
+            se inverze obvykle rozpustí.
           </p>
         </Section>
       )}
@@ -257,6 +289,7 @@ function SunDetail({
             <strong className="mono">{clock(beThereAt)}</strong> — to začíná{' '}
             {hero.kind === 'vychod' ? 'modrá hodina' : 'zlaté světlo'}
             {summitOffsetMin > 0 ? `, výstup ti zabere ${formatDuration(summitOffsetMin)}.` : '.'}
+            {countdown(now, leaveAt, hero.sky.at) ? ` ${countdown(now, leaveAt, hero.sky.at)}` : ''}
           </div>
         </div>
       </div>

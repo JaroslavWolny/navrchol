@@ -1,3 +1,4 @@
+import { num } from './format'
 import type { HourPoint } from './types'
 
 /**
@@ -101,16 +102,16 @@ export function fogSeaAt(hour: HourPoint, elevation: number): FogSea | null {
 
 function reasonOf(chance: number, above: boolean, inversion: Inversion, hour: HourPoint): string {
   if (!above) {
-    return `Hladina mlhy kolem ${inversion.topM} m je nad tebou — budeš uvnitř, ne nad ní.`
+    return `Hladina mlhy kolem ${num(inversion.topM)} m je nad tebou — budeš uvnitř, ne nad ní.`
   }
   if (chance >= 60) {
-    return `Inverze ${inversion.strengthK} °C s hladinou kolem ${inversion.topM} m. Pod sebou máš mít mlhu, nad sebou čisto.`
+    return `Inverze ${num(inversion.strengthK, 1)} °C s hladinou kolem ${num(inversion.topM)} m. Pod sebou máš mít mlhu, nad sebou čisto.`
   }
   if (hour.windGusts > 30) {
     return `Inverze tam je, ale nárazy ${Math.round(hour.windGusts)} km/h ji nejspíš rozfoukají.`
   }
   if (chance >= 30) {
-    return `Inverze slabší (${inversion.strengthK} °C). Moře mlhy může být, ale nespoléhej na něj.`
+    return `Inverze slabší (${num(inversion.strengthK, 1)} °C). Moře mlhy může být, ale nespoléhej na něj.`
   }
   return `Teplotní profil je stabilní, ale na mlhu je moc sucho.`
 }

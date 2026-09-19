@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { countdown } from '../format'
 import {
   crossings,
   dayLight,
@@ -161,5 +162,27 @@ describe('Mléčná dráha', () => {
     // 90 − šířka − deklinace jádra (−29°) dává zhruba jedenáct stupňů.
     expect(max).toBeGreaterThan(8)
     expect(max).toBeLessThan(14)
+  })
+})
+
+describe('odpočet ke světlu', () => {
+  const event = new Date('2026-09-20T18:56:00')
+  const leave = new Date('2026-09-20T17:02:00')
+
+  it('před odchodem odpočítává', () => {
+    expect(countdown(new Date('2026-09-20T15:32:00'), leave, event)).toBe('Do odchodu zbývá 1 h 30 min.')
+  })
+
+  it('v čase odchodu pobízí', () => {
+    expect(countdown(new Date('2026-09-20T17:05:00'), leave, event)).toBe('Vyrazit máš právě teď.')
+  })
+
+  it('po odchodu řekne, o kolik jsi pozadu', () => {
+    expect(countdown(new Date('2026-09-20T17:40:00'), leave, event)).toContain('před 38 min')
+  })
+
+  it('jiný den ani po události mlčí', () => {
+    expect(countdown(new Date('2026-09-19T15:00:00'), leave, event)).toBeNull()
+    expect(countdown(new Date('2026-09-20T19:30:00'), leave, event)).toBeNull()
   })
 })

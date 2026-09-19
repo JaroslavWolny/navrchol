@@ -166,7 +166,8 @@ Open-Meteo i BRouter mají CORS a nechtějí klíč, takže se volají rovnou z 
 nvm use 20
 npm install
 npm run dev
-npm test        # 63 testů včetně živých proti Open-Meteo a BRouteru
+npm test        # jednotkové i živé testy proti Open-Meteo, BRouteru a výškám
+                # živé se přeskočí, když API hlásí minutový limit (429)
 npm run build
 ```
 
