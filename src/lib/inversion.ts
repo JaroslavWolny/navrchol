@@ -8,9 +8,10 @@ import type { HourPoint } from './types'
  * o 6,5 °C na kilometr, v inverzi roste. Horní hrana té vrstvy je hladina mlhy.
  */
 
-/** Běžný pokles teploty s výškou, °C na metr. */
-const NORMAL_LAPSE = -0.0065
-/** Vrstva, která je aspoň takhle blízko izotermii, se počítá jako inverzní. */
+/**
+ * Vrstva, která je aspoň takhle blízko izotermii, se počítá jako inverzní.
+ * Běžný pokles je −0,0065 °C na metr, tady stačí, že teplota skoro neklesá.
+ */
 const STABLE_LAPSE = -0.001
 /** Výš než tohle už to není inverze v údolí, ale počasí nad horami. */
 const MAX_TOP_M = 2200
@@ -86,7 +87,7 @@ export function fogSeaAt(hour: HourPoint, elevation: number): FogSea | null {
   // Vítr nad pětadvacet inverzi promíchá a je po představení.
   const calm = 1 - clamp((hour.windGusts - 10) / 25, 0, 1)
 
-  const chance = Math.round(100 * strength * (0.35 + 0.65 * deck) * (0.4 + 0.6 * calm))
+  const chance = Math.round(100 * strength * (0.25 + 0.75 * deck) * (0.4 + 0.6 * calm))
   const above = elevation > inversion.topM + 50
 
   return {

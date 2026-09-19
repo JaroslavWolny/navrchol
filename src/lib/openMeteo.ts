@@ -2,6 +2,7 @@ import type { DayInfo, HourPoint, PointForecast, Spread, Waypoint } from './type
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
 const ENSEMBLE_URL = 'https://ensemble-api.open-meteo.com/v1/ensemble'
+const AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality'
 
 /**
  * Tvar počasí. Nejjemnější model, který na dané místo dosáhne, vybírá Open-Meteo samo
@@ -27,6 +28,17 @@ const SHAPE = [
   'relative_humidity_2m',
   'uv_index',
 ] as const
+
+/**
+ * Tlakové hladiny pro teplotní profil. Bez něj se inverze nepozná: přízemní
+ * teplota sama o sobě neřekne, jestli je nad údolím teplejší vzduch, který
+ * drží mlhu dole.
+ */
+const LEVELS_HPA = [1000, 975, 950, 925, 900, 850, 800] as const
+const LEVEL_VARS = LEVELS_HPA.flatMap((hpa) => [
+  `temperature_${hpa}hPa`,
+  `geopotential_height_${hpa}hPa`,
+])
 
 /**
  * Veličiny, na kterých stojí rozhodnutí, se berou z pravého ansámblu — desítky členů
@@ -122,20 +134,26 @@ export async function fetchForecast(
   const shapeUrl = buildUrl(FORECAST_URL, {
     ...common,
     past_days: String(PAST_DAYS),
-    hourly: SHAPE.join(','),
+    hourly: [...SHAPE, ...LEVEL_VARS].join(','),
     daily: 'sunrise,sunset',
   })
+  const airUrl = buildUrl(AIR_URL, { ...common, hourly: 'aerosol_optical_depth' })
   const ensembleUrl = buildUrl(ENSEMBLE_URL, {
     ...common,
     hourly: ENSEMBLE_VARS.join(','),
     models: models.join(','),
   })
 
-  const [shapeRes, ensembleRaw] = await Promise.all([
+  const [shapeRes, ensembleRaw, airRaw] = await Promise.all([
     fetch(shapeUrl, { signal }),
     // Ansámbl je velký a bez klíče se mu dá vyčerpat kvóta. Jeho selhání nesmí
     // shodit celou předpověď — jen se pak skóruje z jemného modelu bez rezervy.
     fetch(ensembleUrl, { signal })
+      .then((r) => (r.ok ? (r.json() as Promise<unknown>) : null))
+      .catch(() => null),
+    // Zákal je třešnička pro fotky, ne podklad pro rozhodnutí — když nedorazí,
+    // appka o něm mlčí a jede dál.
+    fetch(airUrl, { signal })
       .then((r) => (r.ok ? (r.json() as Promise<unknown>) : null))
       .catch(() => null),
   ])
@@ -143,8 +161,9 @@ export async function fetchForecast(
 
   const shape = asArray(await shapeRes.json())
   const ensemble = ensembleRaw === null ? [] : asArray(ensembleRaw)
+  const air = airRaw === null ? [] : asArray(airRaw)
 
-  const points = waypoints.map((w, i) => mergePoint(w, shape[i], ensemble[i]))
+  const points = waypoints.map((w, i) => mergePoint(w, shape[i], ensemble[i], air[i]))
   const daily = shape[0]?.daily
   const todayKey = dateKey(new Date())
   const dayInfo: DayInfo[] = (daily?.time ?? [])
@@ -199,10 +218,13 @@ function mergePoint(
   waypoint: Waypoint,
   raw: RawLocation | undefined,
   ensembleRaw: RawLocation | undefined,
+  airRaw: RawLocation | undefined,
 ): PointForecast {
   const times = (raw?.hourly?.time as unknown as string[]) ?? []
   const { times: ensTimes, series } = memberSeries(ensembleRaw)
   const ensIndex = new Map(ensTimes.map((t, i) => [t, i]))
+  const airTimes = (airRaw?.hourly?.time as unknown as string[]) ?? []
+  const airIndex = new Map(airTimes.map((t, i) => [t, i]))
 
   const at = (base: string, i: number, fallback = 0): number => {
     const v = raw?.hourly?.[base]?.[i]
@@ -268,6 +290,8 @@ function mergePoint(
       snowDepth: at('snow_depth', i),
       humidity: at('relative_humidity_2m', i, 60),
       uvIndex: at('uv_index', i),
+      levels: levelsAt(raw, i),
+      aerosol: aerosolAt(airRaw, airIndex.get(times[i])),
       members: mPrecip.length,
     })
 
@@ -282,6 +306,25 @@ function mergePoint(
   }
 
   return { waypointId: waypoint.id, hours, spread }
+}
+
+/** Teplotní profil v dané hodině, setříděný od země nahoru. */
+function levelsAt(raw: RawLocation | undefined, i: number): HourPoint['levels'] {
+  const out: HourPoint['levels'] = []
+  for (const hpa of LEVELS_HPA) {
+    const temperature = raw?.hourly?.[`temperature_${hpa}hPa`]?.[i]
+    const height = raw?.hourly?.[`geopotential_height_${hpa}hPa`]?.[i]
+    if (typeof temperature === 'number' && typeof height === 'number') {
+      out.push({ height, temperature })
+    }
+  }
+  return out.sort((a, b) => a.height - b.height)
+}
+
+function aerosolAt(raw: RawLocation | undefined, index: number | undefined): number | null {
+  if (raw === undefined || index === undefined) return null
+  const v = raw.hourly?.aerosol_optical_depth?.[index]
+  return typeof v === 'number' && Number.isFinite(v) ? v : null
 }
 
 /** Krátký, čitelný název ansámblu. */

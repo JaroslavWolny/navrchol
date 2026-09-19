@@ -57,6 +57,14 @@ const calm: HourPoint = {
   snowDepth: 0,
   humidity: 55,
   uvIndex: 3,
+  // Normální profil: teplota klesá o 6,5 °C na kilometr, žádná inverze.
+  levels: [
+    { height: 200, temperature: 16 },
+    { height: 800, temperature: 12 },
+    { height: 1500, temperature: 7.5 },
+    { height: 2000, temperature: 4 },
+  ],
+  aerosol: 0.12,
   members: 40,
 }
 

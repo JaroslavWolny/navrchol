@@ -65,6 +65,14 @@ export interface HourPoint {
   snowDepth: number
   humidity: number
   uvIndex: number
+  /**
+   * Teplota po tlakových hladinách i s jejich nadmořskou výškou. Z toho se pozná
+   * inverze: běžně teplota s výškou klesá, v inverzi roste — a horní hrana té
+   * vrstvy je hladina mlhy, nad kterou se vylézá na fotky.
+   */
+  levels: Array<{ height: number; temperature: number }>
+  /** Optická tloušťka aerosolu — zákal pro dálky. Null = data nedorazila. */
+  aerosol: number | null
   /** Kolik členů ansámblu tuhle hodinu pokrylo. 0 = ansámbl tak daleko nedosáhl. */
   members: number
 }
