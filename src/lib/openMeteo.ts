@@ -1,13 +1,19 @@
-import type { DayInfo, HourPoint, ModelSeries, PointForecast, Spread, Waypoint } from './types'
+import type { DayInfo, HourPoint, PointForecast, Spread, Waypoint } from './types'
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
+const ENSEMBLE_URL = 'https://ensemble-api.open-meteo.com/v1/ensemble'
 
-/** Proměnné, které tahám zvlášť za každý model. */
-const PER_MODEL = [
+/**
+ * Tvar počasí. Nejjemnější model, který na dané místo dosáhne, vybírá Open-Meteo samo
+ * (`best_match`) — v Krkonoších ICON-D2 na 2,2 km, v Alpách ICON-CH1, jinde globál.
+ * Tohle jsou hodnoty, které se ukazují: jeden ostrý scénář z modelu, který vrchol vidí.
+ */
+const SHAPE = [
   'temperature_2m',
   'apparent_temperature',
   'precipitation',
-  'precipitation_probability',
+  'rain',
+  'snowfall',
   'wind_speed_10m',
   'wind_gusts_10m',
   'cape',
@@ -19,51 +25,53 @@ const PER_MODEL = [
   'freezing_level_height',
   'snow_depth',
   'relative_humidity_2m',
+  'uv_index',
 ] as const
+
+/**
+ * Veličiny, na kterých stojí rozhodnutí, se berou z pravého ansámblu — desítky členů
+ * jednoho modelu, ne pár různě jemných modelů vedle sebe. Porovnávat ICON-D2 (2,2 km)
+ * s ECMWF (11 km) měří rozlišení, ne nejistotu: ICON-D2 dává na Sněžce nárazy
+ * 40—106 km/h, ECMWF 6—63, a z toho rozdílu žádná „shoda modelů" nevyjde.
+ */
+const ENSEMBLE_VARS = ['apparent_temperature', 'precipitation', 'snowfall', 'wind_gusts_10m', 'cape'] as const
+
+/** Dva dny dozadu: kolik napadlo před túrou rozhoduje o bahně, mokrých kamenech a brodech. */
+const PAST_DAYS = 2
+
+/** Nad tímhle úhrnem za hodinu se členovi ansámblu počítá, že „prší". */
+const WET_MM = 0.2
+
+/** Sníh se hlásí v centimetrech, srážky v milimetrech vody. Open-Meteo drží poměr 1 : 0,7. */
+export const SNOW_CM_PER_MM = 0.7
 
 const inBox = (lat: number, lon: number, la1: number, la2: number, lo1: number, lo2: number) =>
   lat >= la1 && lat <= la2 && lon >= lo1 && lon <= lo2
 
 /**
- * Nejjemnější dostupný model pro dané místo plus tři hrubší pro porovnání.
- * Shoda mezi nimi je to, co appka prodává jako spolehlivost.
+ * Členské ansámbly podle polohy. Jemný ansámbl sahá jen na pár dní, proto se mísí
+ * s hrubšími a každý člen váží stejně: ICON-D2-EPS (20 členů, 2 dny) doplní
+ * ICON-EU-EPS (40 členů, 5 dní) a ECMWF (51 členů, 7 dní).
  */
-export function modelsFor(lat: number, lon: number): string[] {
-  // Alpský oblouk. ICON-CH1 (1 km) i AROME (1,3 km) sem oba dosáhnou a jejich domény
-  // se překrývají, tak se použijí oba — dva nezávislé jemné modely dají nejpoctivější
-  // odhad shody, což je v Alpách to, na čem záleží nejvíc.
-  if (inBox(lat, lon, 45.6, 48.0, 5.8, 11.0)) {
-    return ['meteoswiss_icon_ch1', 'arome_france_hd', 'ecmwf_ifs025', 'gfs_seamless']
-  }
-  // Francie včetně francouzských Alp a Pyrenejí: AROME 1,3 km.
-  if (inBox(lat, lon, 41.0, 51.2, -5.5, 8.3)) {
-    return ['arome_france_hd', 'icon_eu', 'ecmwf_ifs025', 'gfs_seamless']
-  }
-  // Doména ICON-D2 (2,2 km): Česko, Německo, Rakousko, Polsko, sever Itálie.
+export function ensembleModelsFor(lat: number, lon: number): string[] {
+  // Doména ICON-D2: Česko, Německo, Rakousko, Polsko, Alpy, sever Itálie.
   if (inBox(lat, lon, 43.2, 58.0, -3.9, 20.3)) {
-    return ['icon_d2', 'icon_eu', 'ecmwf_ifs025', 'gfs_seamless']
+    return ['icon_d2_eps', 'icon_eu_eps', 'ecmwf_ifs025']
   }
-  return ['icon_seamless', 'ecmwf_ifs025', 'gfs_seamless', 'gem_seamless']
+  // Zbytek Evropy a Turecko na doménu ICON-EU dosáhnou.
+  if (inBox(lat, lon, 29.5, 70.5, -25.0, 45.0)) {
+    return ['icon_eu_eps', 'ecmwf_ifs025', 'gfs025']
+  }
+  return ['ecmwf_ifs025', 'gfs025', 'gem_global']
 }
 
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
-
-function median(values: number[]): number | null {
-  if (values.length === 0) return null
-  const s = [...values].sort((a, b) => a - b)
-  const mid = Math.floor(s.length / 2)
-  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
-}
-
-function range(values: number[]): number {
-  return values.length < 2 ? 0 : Math.max(...values) - Math.min(...values)
-}
-
-/** Rozptyl přepočtený na jedno číslo shody. Prahy jsou empirické, ne posvátné. */
-function agreementOf(tempRange: number, gustRange: number, precipRange: number): number {
-  const disagreement =
-    (clamp(tempRange / 6, 0, 1) + clamp(gustRange / 40, 0, 1) + clamp(precipRange / 8, 0, 1)) / 3
-  return Math.round(100 * (1 - disagreement))
+/** Kvantil z členů ansámblu. Pole musí být setřídené. */
+function quantile(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0
+  const i = (sorted.length - 1) * p
+  const lo = Math.floor(i)
+  const hi = Math.min(lo + 1, sorted.length - 1)
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo)
 }
 
 interface RawLocation {
@@ -77,9 +85,8 @@ interface RawLocation {
 const asArray = (data: unknown): RawLocation[] =>
   Array.isArray(data) ? (data as RawLocation[]) : [data as RawLocation]
 
-function buildUrl(params: Record<string, string>): string {
-  const q = new URLSearchParams(params)
-  return `${FORECAST_URL}?${q.toString()}`
+function buildUrl(base: string, params: Record<string, string>): string {
+  return `${base}?${new URLSearchParams(params).toString()}`
 }
 
 export interface Forecast {
@@ -87,11 +94,14 @@ export interface Forecast {
   days: DayInfo[]
   /** Kdy se data stáhla — na mobilu se běžně kouká na hodinu staré. */
   fetchedAt: Date
+  /** Které ansámbly dorazily. Prázdné = ansámbl se nestáhl a skóruje se bez rezervy. */
+  ensembles: string[]
 }
 
 /**
- * Jeden request na všechny body trasy a všechny modely naráz, druhý na UV a časy slunce.
- * Open-Meteo umí dávku souřadnic, takže čtyři waypointy nestojí čtyři kola po síti.
+ * Dva requesty na celou trasu: tvar počasí z nejjemnějšího modelu a rizikové veličiny
+ * z ansámblu. Open-Meteo umí dávku souřadnic, takže čtyři waypointy nestojí čtyři kola
+ * po síti. Když ansámbl nedorazí, appka jede dál jen s jemným modelem.
  */
 export async function fetchForecast(
   waypoints: Waypoint[],
@@ -100,7 +110,6 @@ export async function fetchForecast(
 ): Promise<Forecast> {
   if (waypoints.length === 0) throw new Error('Trasa nemá žádné body.')
 
-  const models = modelsFor(waypoints[0].lat, waypoints[0].lon)
   const common = {
     latitude: waypoints.map((w) => w.lat).join(','),
     longitude: waypoints.map((w) => w.lon).join(','),
@@ -108,147 +117,181 @@ export async function fetchForecast(
     forecast_days: String(days),
     timezone: 'auto',
   }
+  const models = ensembleModelsFor(waypoints[0].lat, waypoints[0].lon)
 
-  const mainUrl = buildUrl({ ...common, hourly: PER_MODEL.join(','), models: models.join(',') })
-  // UV index ani časy slunce se přes `models` nevrací — jsou jen v základní sadě.
-  const auxUrl = buildUrl({ ...common, hourly: 'uv_index', daily: 'sunrise,sunset' })
+  const shapeUrl = buildUrl(FORECAST_URL, {
+    ...common,
+    past_days: String(PAST_DAYS),
+    hourly: SHAPE.join(','),
+    daily: 'sunrise,sunset',
+  })
+  const ensembleUrl = buildUrl(ENSEMBLE_URL, {
+    ...common,
+    hourly: ENSEMBLE_VARS.join(','),
+    models: models.join(','),
+  })
 
-  const [mainRes, auxRes] = await Promise.all([
-    fetch(mainUrl, { signal }),
-    fetch(auxUrl, { signal }),
+  const [shapeRes, ensembleRaw] = await Promise.all([
+    fetch(shapeUrl, { signal }),
+    // Ansámbl je velký a bez klíče se mu dá vyčerpat kvóta. Jeho selhání nesmí
+    // shodit celou předpověď — jen se pak skóruje z jemného modelu bez rezervy.
+    fetch(ensembleUrl, { signal })
+      .then((r) => (r.ok ? (r.json() as Promise<unknown>) : null))
+      .catch(() => null),
   ])
-  if (!mainRes.ok) throw new Error(`Předpověď se nestáhla (${mainRes.status}).`)
-  if (!auxRes.ok) throw new Error(`Data o slunci se nestáhla (${auxRes.status}).`)
+  if (!shapeRes.ok) throw new Error(`Předpověď se nestáhla (${shapeRes.status}).`)
 
-  const main = asArray(await mainRes.json())
-  const aux = asArray(await auxRes.json())
+  const shape = asArray(await shapeRes.json())
+  const ensemble = ensembleRaw === null ? [] : asArray(ensembleRaw)
 
-  const points = waypoints.map((w, i) => mergeModels(w, main[i], aux[i], models))
-  const days0 = aux[0]?.daily
-  const dayInfo: DayInfo[] = (days0?.time ?? []).map((date, i) => ({
-    date: String(date),
-    sunrise: String(days0?.sunrise?.[i] ?? ''),
-    sunset: String(days0?.sunset?.[i] ?? ''),
-  }))
+  const points = waypoints.map((w, i) => mergePoint(w, shape[i], ensemble[i]))
+  const daily = shape[0]?.daily
+  const todayKey = dateKey(new Date())
+  const dayInfo: DayInfo[] = (daily?.time ?? [])
+    .map((date, i) => ({
+      date: String(date),
+      sunrise: String(daily?.sunrise?.[i] ?? ''),
+      sunset: String(daily?.sunset?.[i] ?? ''),
+    }))
+    // `past_days` přitáhne i dny dozadu. V hodinových řadách je chceme (kvůli tomu,
+    // co napadlo před túrou), v seznamu dnů by z nich byly prázdné řádky.
+    .filter((d) => d.date >= todayKey)
 
-  return { points, days: dayInfo, fetchedAt: new Date() }
+  return {
+    points,
+    days: dayInfo,
+    fetchedAt: new Date(),
+    ensembles: ensemble.length > 0 ? models : [],
+  }
 }
 
-/** Z N modelů udělá jednu řadu mediánů plus rozptyl, který se ukáže jako shoda. */
-function mergeModels(
+const dateKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** Setříděné hodnoty členů ansámblu po hodinách, naindexované časem. */
+type MemberSeries = Record<(typeof ENSEMBLE_VARS)[number], number[][]>
+
+function memberSeries(raw: RawLocation | undefined): { times: string[]; series: MemberSeries } {
+  const times = (raw?.hourly?.time as unknown as string[]) ?? []
+  const series = {} as MemberSeries
+  for (const v of ENSEMBLE_VARS) {
+    // Klíče vypadají jako `precipitation_member07_icon_d2_eps`, řídicí člen bez `_memberNN`.
+    const keys = Object.keys(raw?.hourly ?? {}).filter((k) => k.startsWith(`${v}_`))
+    series[v] = times.map((_, i) => {
+      const vals: number[] = []
+      for (const k of keys) {
+        const x = raw?.hourly?.[k]?.[i]
+        if (typeof x === 'number' && Number.isFinite(x)) vals.push(x)
+      }
+      return vals.sort((a, b) => a - b)
+    })
+  }
+  return { times, series }
+}
+
+/**
+ * Z jemného modelu a z ansámblu udělá jednu řadu hodin: ukazované hodnoty z modelu,
+ * rizikové kvantily z ansámblu. Riziková hodnota je vždycky ta horší z obou — ostrý
+ * jemný model se nesmí ztratit v ansámblu hrubších členů a chvost ansámblu se nesmí
+ * ztratit za jedním hezkým scénářem.
+ */
+function mergePoint(
   waypoint: Waypoint,
   raw: RawLocation | undefined,
-  auxRaw: RawLocation | undefined,
-  models: string[],
+  ensembleRaw: RawLocation | undefined,
 ): PointForecast {
   const times = (raw?.hourly?.time as unknown as string[]) ?? []
-  const uv = auxRaw?.hourly?.uv_index ?? []
+  const { times: ensTimes, series } = memberSeries(ensembleRaw)
+  const ensIndex = new Map(ensTimes.map((t, i) => [t, i]))
 
-  const valuesAt = (base: string, i: number): number[] =>
-    models
-      .map((m) => raw?.hourly?.[`${base}_${m}`]?.[i])
-      .filter((v): v is number => typeof v === 'number' && Number.isFinite(v))
-
-  const present = models.filter((m) =>
-    (raw?.hourly?.[`temperature_2m_${m}`] ?? []).some((v) => typeof v === 'number'),
-  )
+  const at = (base: string, i: number, fallback = 0): number => {
+    const v = raw?.hourly?.[base]?.[i]
+    return typeof v === 'number' && Number.isFinite(v) ? v : fallback
+  }
+  const maybeAt = (base: string, i: number): number | null => {
+    const v = raw?.hourly?.[base]?.[i]
+    return typeof v === 'number' && Number.isFinite(v) ? v : null
+  }
 
   const hours: HourPoint[] = []
   const spread: Spread[] = []
 
   for (let i = 0; i < times.length; i++) {
-    const temps = valuesAt('temperature_2m', i)
-    const gusts = valuesAt('wind_gusts_10m', i)
-    const precip = valuesAt('precipitation', i)
+    const e = ensIndex.get(times[i])
+    const members = (v: (typeof ENSEMBLE_VARS)[number]): number[] =>
+      e === undefined ? [] : series[v][e] ?? []
 
-    const num = (base: string, fallback = 0): number => median(valuesAt(base, i)) ?? fallback
-    const maybe = (base: string): number | null => median(valuesAt(base, i))
+    const apparent = at('apparent_temperature', i, at('temperature_2m', i))
+    const precip = at('precipitation', i)
+    const snow = at('snowfall', i)
+    const gusts = at('wind_gusts_10m', i)
+    const cape = at('cape', i)
+
+    const mApparent = members('apparent_temperature')
+    const mPrecip = members('precipitation')
+    const mSnow = members('snowfall')
+    const mGusts = members('wind_gusts_10m')
+    const mCape = members('cape')
+
+    const worse = (deterministic: number, ens: number[], p: number) =>
+      ens.length === 0 ? deterministic : Math.max(deterministic, quantile(ens, p))
+    const colder = (deterministic: number, ens: number[], p: number) =>
+      ens.length === 0 ? deterministic : Math.min(deterministic, quantile(ens, p))
 
     hours.push({
       time: times[i],
-      temperature: num('temperature_2m'),
-      apparentTemperature: median(valuesAt('apparent_temperature', i)) ?? num('temperature_2m'),
-      precipitation: num('precipitation'),
-      precipitationProbability: num('precipitation_probability'),
-      windSpeed: num('wind_speed_10m'),
-      windGusts: num('wind_gusts_10m'),
-      cape: num('cape'),
-      cloudCover: num('cloud_cover'),
-      cloudLow: num('cloud_cover_low'),
-      cloudMid: num('cloud_cover_mid'),
-      cloudHigh: num('cloud_cover_high'),
-      visibility: maybe('visibility'),
-      freezingLevel: maybe('freezing_level_height'),
-      snowDepth: num('snow_depth'),
-      humidity: num('relative_humidity_2m', 60),
-      uvIndex: typeof uv[i] === 'number' ? (uv[i] as number) : 0,
+      temperature: at('temperature_2m', i),
+      apparentTemperature: apparent,
+      apparentTemperatureRisk: colder(apparent, mApparent, 0.25),
+      precipitation: precip,
+      precipitationRisk: worse(precip, mPrecip, 0.75),
+      precipitationProbability:
+        mPrecip.length > 0
+          ? (100 * mPrecip.filter((v) => v > WET_MM).length) / mPrecip.length
+          : precip > WET_MM
+            ? 100
+            : 0,
+      snowfall: snow,
+      snowfallRisk: worse(snow, mSnow, 0.75),
+      windSpeed: at('wind_speed_10m', i),
+      windGusts: gusts,
+      windGustsRisk: worse(gusts, mGusts, 0.75),
+      windGustsHigh: worse(gusts, mGusts, 0.9),
+      cape,
+      capeRisk: worse(cape, mCape, 0.75),
+      cloudCover: at('cloud_cover', i),
+      cloudLow: at('cloud_cover_low', i),
+      cloudMid: at('cloud_cover_mid', i),
+      cloudHigh: at('cloud_cover_high', i),
+      visibility: maybeAt('visibility', i),
+      freezingLevel: maybeAt('freezing_level_height', i),
+      snowDepth: at('snow_depth', i),
+      humidity: at('relative_humidity_2m', i, 60),
+      uvIndex: at('uv_index', i),
+      members: mPrecip.length,
     })
 
-    const tRange = range(temps)
-    const gRange = range(gusts)
-    const pRange = range(precip)
+    const width = (vals: number[]) =>
+      vals.length < 2 ? 0 : quantile(vals, 0.9) - quantile(vals, 0.1)
     spread.push({
-      temperature: tRange,
-      windGusts: gRange,
-      precipitation: pRange,
-      agreement: agreementOf(tRange, gRange, pRange),
+      temperature: width(mApparent),
+      windGusts: width(mGusts),
+      precipitation: width(mPrecip),
+      members: mPrecip.length,
     })
   }
 
-  const byModel: Record<string, ModelSeries> = {}
-  for (const m of present) {
-    byModel[m] = {
-      temperature: raw?.hourly?.[`temperature_2m_${m}`] ?? [],
-      windGusts: raw?.hourly?.[`wind_gusts_10m_${m}`] ?? [],
-      precipitation: raw?.hourly?.[`precipitation_${m}`] ?? [],
-    }
-  }
-
-  return { waypointId: waypoint.id, hours, spread, models: present, byModel }
+  return { waypointId: waypoint.id, hours, spread }
 }
 
-export interface ModelDeviation {
-  model: string
-  /** 0 = sedí s ostatními, 1 = úplně mimo. */
-  deviation: number
-}
-
-/**
- * Jak daleko je každý model od mediánu ostatních v dané hodině.
- * Tohle je to, co uživatel uvidí jako proužky pod „shodou modelů“ — a co mu
- * dovolí říct „ECMWF si vymýšlí“ místo slepé důvěry v jedno číslo.
- */
-export function modelDeviations(point: PointForecast, hourIdx: number): ModelDeviation[] {
-  const hour = point.hours[hourIdx]
-  if (!hour) return []
-
-  return point.models.map((model) => {
-    const s = point.byModel[model]
-    const t = s?.temperature?.[hourIdx]
-    const g = s?.windGusts?.[hourIdx]
-    const p = s?.precipitation?.[hourIdx]
-
-    const parts: number[] = []
-    if (typeof t === 'number') parts.push(clamp(Math.abs(t - hour.temperature) / 4, 0, 1))
-    if (typeof g === 'number') parts.push(clamp(Math.abs(g - hour.windGusts) / 25, 0, 1))
-    if (typeof p === 'number') parts.push(clamp(Math.abs(p - hour.precipitation) / 5, 0, 1))
-
-    const deviation = parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : 0
-    return { model, deviation }
-  })
-}
-
-/** Krátký, čitelný název modelu. */
+/** Krátký, čitelný název ansámblu. */
 export function modelLabel(model: string): string {
   const map: Record<string, string> = {
-    icon_d2: 'ICON-D2',
-    icon_eu: 'ICON-EU',
-    icon_seamless: 'ICON',
-    ecmwf_ifs025: 'ECMWF',
-    gfs_seamless: 'GFS',
-    gem_seamless: 'GEM',
-    meteoswiss_icon_ch1: 'ICON-CH1',
-    arome_france_hd: 'AROME',
+    icon_d2_eps: 'ICON-D2-EPS',
+    icon_eu_eps: 'ICON-EU-EPS',
+    ecmwf_ifs025: 'ECMWF-ENS',
+    gfs025: 'GEFS',
+    gem_global: 'GEM',
   }
   return map[model] ?? model.toUpperCase()
 }

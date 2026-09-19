@@ -10,6 +10,8 @@ export interface GearContext {
   maxPrecipProbability: number
   maxUv: number
   minVisibility: number | null
+  /** Nejvyšší sněhová pokrývka na trase, v metrech. */
+  maxSnowDepth: number
   anyIcing: boolean
   startsBeforeSunrise: boolean
   endsAfterSunset: boolean
@@ -27,18 +29,29 @@ export function suggestGear(c: GearContext): GearItem[] {
   const add = (name: string, why: string) => items.push({ name, why })
 
   if (c.maxGusts >= 40) {
-    add('Větrovka', `nárazy ${Math.round(c.maxGusts)} km/h na nejvyšším bodě trasy`)
+    add('Větrovka', `nárazy ${Math.round(c.maxGusts)} km/h v nejhorší hodině trasy`)
   }
   if (c.minApparent <= 2) {
-    add('Čepice a rukavice', `pocitově ${Math.round(c.minApparent)} °C na vrcholu`)
+    add('Čepice a rukavice', `pocitově ${Math.round(c.minApparent)} °C v nejchladnější hodině`)
   }
   if (c.minApparent <= -8) {
-    add('Termoska s teplým pitím', `pocitově ${Math.round(c.minApparent)} °C, na vrcholu se nenajíš v klidu`)
+    add('Termoska s teplým pitím', `pocitově ${Math.round(c.minApparent)} °C, venku se v klidu nenajíš`)
   }
   if (c.totalPrecip >= 0.3 || c.maxPrecipProbability >= 40) {
     add(
       'Pláštěnka',
       `srážky ${c.totalPrecip.toFixed(1)} mm, pravděpodobnost ${Math.round(c.maxPrecipProbability)} %`,
+    )
+  }
+  // Promočený člověk se v horách nezahřeje pohybem. Suchá vrstva do batohu je
+  // rozdíl mezi nepohodou a podchlazením.
+  if (c.totalPrecip >= 3) {
+    add('Suché náhradní vršek a ponožky', `za túru na tebe spadne ${c.totalPrecip.toFixed(1)} mm`)
+  }
+  if (c.maxSnowDepth >= 0.3) {
+    add(
+      c.maxSnowDepth >= 0.6 ? 'Sněžnice a návleky' : 'Návleky a vysoké boty',
+      `na trase leží ${Math.round(c.maxSnowDepth * 100)} cm sněhu`,
     )
   }
   if (c.startsBeforeSunrise || c.endsAfterSunset) {

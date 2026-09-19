@@ -21,17 +21,36 @@ describe('celý plán na živých datech', () => {
   it('posoudí konkrétní start i celý týden', { timeout: 60000 }, async () => {
     const [track, forecast] = await Promise.all([fetchTrack(WPS), fetchForecast(WPS, 7)])
 
-    const start = new Date(forecast.points[0].hours[0].time)
-    start.setDate(start.getDate() + 1)
-    start.setHours(7, 0, 0, 0)
+    // Zítra v sedm. Hodinové řady začínají dva dny v minulosti (kvůli tomu, co
+    // spadlo před túrou), takže se start bere ze seznamu dnů, ne z první hodiny.
+    const start = new Date(`${forecast.days[1].date}T07:00:00`)
 
     const a = assess(route, track, forecast, start)
     expect(a.passes).toHaveLength(3)
     expect(a.score.score).toBeGreaterThanOrEqual(0)
     expect(a.score.score).toBeLessThanOrEqual(100)
     expect(['jdi', 'zvaz', 'nejdi']).toContain(a.score.verdict)
-    expect(a.agreement).toBeGreaterThanOrEqual(0)
-    expect(a.agreement).toBeLessThanOrEqual(100)
+    // Ansámbl je velká odpověď a minutový limit Open-Meteo je skutečný; když
+    // nedorazí, appka i tak musí dát verdikt — jen bez rezervy na horší scénář.
+    if (forecast.ensembles.length > 0) {
+      expect(a.certainty).not.toBeNull()
+      expect(a.certainty!).toBeGreaterThanOrEqual(0)
+      expect(a.certainty!).toBeLessThanOrEqual(100)
+    }
+
+    // Skóruje se hodinu po hodině po celé túře, ne jen v bodech trasy.
+    expect(a.samples.length).toBeGreaterThan(a.passes.length)
+    expect(a.samples[0].at.getTime()).toBe(start.getTime())
+    for (let i = 1; i < a.samples.length; i++) {
+      const dt = a.samples[i].at.getTime() - a.samples[i - 1].at.getTime()
+      expect(dt).toBeGreaterThan(0)
+      expect(dt).toBeLessThanOrEqual(3_600_000)
+    }
+
+    // Rezerva do tmy a co spadlo před startem jsou spočítané, ne vymyšlené.
+    expect(a.daylightReserveMin).not.toBeNull()
+    expect(a.wetGround.mm24).toBeGreaterThanOrEqual(0)
+    expect(a.wetGround.mm48).toBeGreaterThanOrEqual(a.wetGround.mm24)
 
     // Body se míjejí v pořadí a vrchol je nejchladnější.
     expect(a.passes[2].at.getTime()).toBeGreaterThan(a.passes[0].at.getTime())
@@ -54,7 +73,7 @@ describe('celý plán na živých datech', () => {
 
     const bestDay = week.filter((d) => d.best).sort((x, y) => y.best!.score - x.best!.score)[0]
     console.log(
-      `nejlepší okno: ${bestDay.date} v ${bestDay.best!.start.getHours()}:00, skóre ${bestDay.best!.score}, shoda ${a.agreement} %`,
+      `nejlepší okno: ${bestDay.date} v ${bestDay.best!.start.getHours()}:00, skóre ${bestDay.best!.score}, jistota ${a.certainty} %`,
     )
     console.log(
       `trať ${track.lengthKm.toFixed(1)} km, ↑${track.ascentM} m, ${track.fallback ? 'vzdušná čára' : 'po pěšinách'}`,
@@ -79,6 +98,7 @@ describe('nesouhlasná data', () => {
     const a = assess(jinaTrasa, track, forecast, start)
     // Smí vyjít prázdno, ale nesmí to spadnout ani vyrobit body bez hodiny.
     expect(a.passes).toHaveLength(0)
+    expect(a.samples).toHaveLength(0)
     expect(a.passes.every((p) => p.hour !== undefined)).toBe(true)
     expect(a.score.verdict).toBe('nejdi')
     expect(a.gear).toEqual([])

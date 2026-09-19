@@ -7,11 +7,11 @@ const CLAIMS: Array<{ title: string; text: string }> = [
   },
   {
     title: 'Počítá pro tvůj vrchol, ne pro nejbližší město',
-    text: 'Čtyři modely naráz, do každého jde nadmořská výška každého bodu. Když se modely rozejdou, appka to řekne rovnou, místo aby předstírala jistotu.',
+    text: 'Do předpovědi jde nadmořská výška každého bodu a rizika se berou z ansámblu desítek členů. Když se rozejdou, appka to řekne rovnou, místo aby předstírala jistotu.',
   },
   {
     title: 'Poradí, v kolik vyrazit',
-    text: 'Projde všechny hodiny sedmi dní a najde okno, kdy se trasa dá projít nejlíp. Plus východy a západy slunce a výbava, kterou si vynutilo počasí.',
+    text: 'Projde všechny hodiny sedmi dní a najde okno, kdy se trasa dá projít nejlíp. Spočítá i obrat před bouřkou, rezervu do tmy a výbavu, kterou si vynutilo počasí.',
   },
 ]
 

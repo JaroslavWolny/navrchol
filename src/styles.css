@@ -907,8 +907,10 @@ a { color: var(--paper); text-underline-offset: 2px; }
 
 /* Sloupec hodiny v pásu podél trasy. */
 .hour-col {
-  flex: 1 1 0;
-  min-width: 0;
+  /* Vejde se jich do šířky kolik chce; delší túra pás vodorovně posouvá,
+     místo aby hodiny osekala. */
+  flex: 1 0 auto;
+  min-width: 38px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -953,7 +955,11 @@ a { color: var(--paper); text-underline-offset: 2px; }
   display: flex;
   border-block: 1px solid var(--rule);
   padding: 10px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+
+.hours::-webkit-scrollbar { display: none; }
 
 .hour-col + .hour-col { border-left: 1px solid var(--rule-soft); }
 

@@ -5,11 +5,23 @@ import { Section } from '../components/Section'
 const POJMY: Array<{ term: string; text: string }> = [
   {
     term: 'Skóre a verdikt',
-    text: '0 až 100. Nad 65 jdi, 35 až 64 zvaž, pod 35 nejdi. Skóre trasy je ze 60 % z jejího nejslabšího místa a ze 40 % z průměru všech bodů — jedna zlá hodina na hřebeni váží víc než šest hezkých v lese. Bouřka, nárazy nad 75 km/h na exponovaném místě nebo viditelnost pod 300 m skóre přebijí úplně.',
+    text: '0 až 100. Nad 65 jdi, 35 až 64 zvaž, pod 35 nejdi. Počítá se hodinu po hodině po celé túře, ne jen v bodech trasy. Skóre je ze 60 % z nejslabší hodiny a ze 40 % z průměru všech — jedna zlá hodina na hřebeni váží víc než šest hezkých v lese. Bouřka, nárazy nad 75 km/h na exponovaném místě, viditelnost pod 300 m nebo mokro s chladem a větrem skóre přebijí úplně.',
   },
   {
-    term: 'Shoda modelů',
-    text: 'Předpověď se netahá z jednoho modelu, ale ze čtyř. Shoda říká, jak moc se mezi sebou srovnaly. Vysoká shoda znamená, že se dá předpovědi věřit. Nízká znamená, že se máš radši rozhodnout až ráno podle radaru.',
+    term: 'Jistota',
+    text: 'Rizikové veličiny se berou z ansámblu — desítek běhů téhož modelu s trochu jinými vstupy. Jistota říká, o kolik bodů se skóre mezi jeho nejlepší a nepříznivou variantou hýbe. Vysoká znamená, že se dá předpovědi věřit. Nízká znamená, že se máš radši rozhodnout až ráno podle radaru.',
+  },
+  {
+    term: 'Nepříznivý kvartil',
+    text: 'Skóruje se ze čtvrtiny členů ansámblu, kterým to vyšlo špatně, ne z nejpravděpodobnější hodnoty. Túra se plánuje na horší variantu — ta pravděpodobná se o sebe postará sama.',
+  },
+  {
+    term: 'Podchlazení',
+    text: 'Nedělá ho chlad, déšť ani vítr samotný, ale jejich součin. Osm stupňů, dva milimetry a nárazy 45 km/h vypadají každý zvlášť nevinně; dohromady je to nejčastější důvod zásahu horské služby. Promočení se navíc kumuluje — mokré vrstvy netopí ani potom, co přestane pršet.',
+  },
+  {
+    term: 'Obrat',
+    text: 'Hodina, kdy se musíš otočit, abys byl pod hranicí lesa, než přijde bouřka. Sestup se počítá po skutečné trati kratším z obou směrů, ne odhadem.',
   },
   {
     term: 'CAPE',
@@ -54,7 +66,7 @@ export function OAppceScreen({ onBack, onShowIntro }: Props) {
         <div className="sec" style={{ marginTop: 18 }}>
           <p className="body" style={{ fontSize: 14 }}>
             NaVrchol počítá počasí zvlášť pro každý bod tvojí trasy a pro jeho nadmořskou výšku,
-            a to ze čtyř modelů naráz. Z toho udělá jedno rozhodnutí: jít, nebo nejít.
+            a to z ansámblu desítek členů. Z toho udělá jedno rozhodnutí: jít, nebo nejít.
           </p>
           <p className="footnote" style={{ marginTop: 8 }}>
             verze {__BUILD_ID__}

@@ -4,9 +4,9 @@ import { RadarMap } from '../components/RadarMap'
 import { Scroll } from '../components/Scroll'
 import { Section } from '../components/Section'
 import { Empty, ErrorState, Loading } from '../components/States'
-import { modelDeviations, modelLabel } from '../lib/openMeteo'
+import { modelLabel } from '../lib/openMeteo'
 import { formatDuration } from '../lib/pace'
-import { bodu, clock, dayLabel, km, metres, num, temp } from '../lib/format'
+import { clock, dayLabel, km, metres, num, temp } from '../lib/format'
 import type { Assessment } from '../lib/plan'
 import type { RouteData } from '../state/useRouteData'
 import type { Route } from '../lib/types'
@@ -16,8 +16,8 @@ const WORD = { jdi: 'JDI', zvaz: 'ZVAŽ', nejdi: 'NEJDI' } as const
 /** Jedna věta, která shrne, proč verdikt vypadá takhle. */
 function summaryOf(a: Assessment): string {
   if (a.score.blockers.length > 0) return a.score.blockers[0].text
-  if (a.agreement < 55) {
-    return 'Modely se mezi sebou neshodnou. Ráno se podívej na radar, než vyrazíš.'
+  if (a.certainty !== null && a.certainty < 55) {
+    return 'Skóre se v rozptylu ansámblu hýbe o desítky bodů. Ráno se podívej na radar, než vyrazíš.'
   }
   if (a.score.verdict === 'jdi') {
     return a.score.warnings.length > 0
@@ -72,7 +72,7 @@ export function VerdiktScreen({
   }
   if (data.error) return <div className="scroll"><ErrorState message={data.error} onRetry={data.reload} /></div>
   if (!assessment) return <div className="scroll"><Loading what="počítám podmínky na trase" /></div>
-  if (assessment.passes.length === 0) {
+  if (assessment.samples.length === 0) {
     return (
       <div className="scroll">
         <ErrorState
@@ -87,38 +87,28 @@ export function VerdiktScreen({
   const score = assessment.score.score
   const summit = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
   const summitPass = assessment.passes.find((p) => p.waypoint.id === summit.id) ?? assessment.passes[0]
-  const h = summitPass.hour
+  const h = summitPass?.hour ?? assessment.samples[0].hour
   const end = assessment.plan.arrivals.at(-1)?.at ?? start
 
-  const maxGust = Math.max(...assessment.passes.map((p) => p.hour.windGusts))
-  const totalPrecip = assessment.passes.reduce((s, p) => s + p.hour.precipitation, 0)
-  const maxProb = Math.max(...assessment.passes.map((p) => p.hour.precipitationProbability))
-  const visibilities = assessment.passes
-    .map((p) => p.hour.visibility)
+  const samples = assessment.samples
+  const minApparent = Math.min(...samples.map((s) => s.hour.apparentTemperatureRisk))
+  const maxGust = Math.max(...samples.map((s) => s.hour.windGustsRisk))
+  const maxGustTail = Math.max(...samples.map((s) => s.hour.windGustsHigh))
+  const maxProb = Math.max(...samples.map((s) => s.hour.precipitationProbability))
+  const maxSnowDepth = Math.max(...samples.map((s) => s.hour.snowDepth))
+  const visibilities = samples
+    .map((s) => s.hour.visibility)
     .filter((v): v is number => v !== null)
   const minVis = visibilities.length ? Math.min(...visibilities) : null
-
-  const summitPoint = data.forecast?.points.find((p) => p.waypointId === summit.id)
-  const hourIdx = summitPoint
-    ? Math.max(
-        0,
-        Math.min(
-          summitPoint.hours.length - 1,
-          Math.round(
-            (summitPass.at.getTime() - new Date(summitPoint.hours[0].time).getTime()) / 3_600_000,
-          ),
-        ),
-      )
-    : 0
-  const deviations = summitPoint ? modelDeviations(summitPoint, hourIdx) : []
+  const maxCape = Math.max(...samples.map((s) => s.hour.capeRisk))
 
   const breakdown = assessment.score.weakest?.penalties ?? []
   // Pruhy se poměřují k nejhorší penalizaci, ale nejmíň k dvaceti bodům. Bez
   // toho vypadá osamocená ztráta čtyř bodů jako plný pruh, tedy jako katastrofa.
   const penaltyScale = Math.max(20, breakdown[0]?.points ?? 1)
-  const weakestAt = assessment.score.weakest
-    ? assessment.passes.find((p) => p.waypoint.id === assessment.score.weakest!.waypoint.id)?.at
-    : undefined
+  const weakestAt = assessment.score.weakest ? new Date(assessment.score.weakest.hour.time) : null
+  const reserve = assessment.daylightReserveMin
+  const storm = assessment.storm
 
   const startValue = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(
     start.getDate(),
@@ -168,19 +158,55 @@ export function VerdiktScreen({
         </div>
       ))}
 
-      <Section label="Měření na trase" meta={bodu(assessment.passes.length)}>
+      {/* Bouřka se neřeší frází „buď dole do poledne", ale hodinou. */}
+      {storm && (
+        <Section label="Bouřka a obrat" meta={`riziko od ${clock(storm.from)}`}>
+          <div className="rows">
+            <Measure
+              label="Obrat nahoře"
+              note={`sestup z hřebene ${formatDuration(storm.exitMin)}`}
+              value={clock(storm.turnaround)}
+              tone="zvaz"
+            />
+            <Measure
+              label="Nejpozdější start"
+              note={
+                storm.latestStart < start
+                  ? `o ${formatDuration((start.getTime() - storm.latestStart.getTime()) / 60000)} dřív, než máš`
+                  : 'tvůj start se do okna vejde'
+              }
+              value={clock(storm.latestStart)}
+              tone={storm.latestStart < start ? 'nejdi' : undefined}
+            />
+          </div>
+          <p className="footnote" style={{ marginTop: 12 }}>
+            Riziko začíná, když CAPE přeleze 500 J/kg a aspoň dvě pětiny členů ansámblu hlásí
+            srážky. Obrat je ten čas, kdy se ještě stihneš dostat pod hranici lesa.
+          </p>
+        </Section>
+      )}
+
+      <Section label="Měření na trase" meta="hodinu po hodině">
         <div className="rows">
-          <Measure label="Pocitově" note={`${summit.name}, ${metres(summit.elevation)}`} value={temp(h.apparentTemperature)} />
+          {/* Ukazuje se ta hodnota, ze které se skóruje. Medián na vrcholu vedle
+              rozpadu, který počítá z nepříznivého kvartilu, by si odporovaly. */}
+          <Measure
+            label="Pocitově"
+            note="nejchladnější hodina trasy"
+            value={temp(minApparent)}
+            tone={minApparent <= -8 ? 'nejdi' : minApparent <= 0 ? 'zvaz' : undefined}
+          />
           <Measure
             label="Nárazy"
-            note="nejhorší bod trasy"
+            note={maxGustTail > maxGust + 8 ? `v chvostu ansámblu ${Math.round(maxGustTail)} km/h` : 'nejhorší hodina trasy'}
             value={`${Math.round(maxGust)} km/h`}
             tone={maxGust >= 70 ? 'nejdi' : maxGust >= 50 ? 'zvaz' : undefined}
           />
           <Measure
             label="Srážky"
-            note={`pravděpodobnost ${Math.round(maxProb)} %`}
-            value={`${num(totalPrecip, 1)} mm`}
+            note={`za celou túru, prší ${Math.round(maxProb)} % členů`}
+            value={`${num(assessment.score.rainMm, 1)} mm`}
+            tone={assessment.score.rainMm >= 8 ? 'nejdi' : assessment.score.rainMm >= 3 ? 'zvaz' : undefined}
           />
           <Measure
             label="Viditelnost"
@@ -188,6 +214,37 @@ export function VerdiktScreen({
             value={minVis === null ? '—' : minVis >= 1000 ? `${num(minVis / 1000, 0)} km` : `${Math.round(minVis)} m`}
             tone={minVis !== null && minVis < 1000 ? 'nejdi' : undefined}
           />
+        </div>
+      </Section>
+
+      <Section label="Světlo a terén" meta={dayLabel(start)}>
+        <div className="rows">
+          <Measure
+            label="Do tmy"
+            note={
+              reserve === null
+                ? 'časy slunce nedorazily'
+                : reserve < 0
+                  ? 'vracíš se po západu, čelovka povinně'
+                  : 'mezi koncem túry a západem slunce'
+            }
+            value={reserve === null ? '—' : reserve < 0 ? `−${formatDuration(-reserve)}` : formatDuration(reserve)}
+            tone={reserve === null ? undefined : reserve < 0 ? 'nejdi' : reserve < 60 ? 'zvaz' : undefined}
+          />
+          <Measure
+            label="Před startem spadlo"
+            note={`za 48 h ${num(assessment.wetGround.mm48, 1)} mm · ${groundLabel(assessment.wetGround.mm24)}`}
+            value={`${num(assessment.wetGround.mm24, 1)} mm`}
+            tone={assessment.wetGround.mm24 >= 20 ? 'nejdi' : assessment.wetGround.mm24 >= 8 ? 'zvaz' : undefined}
+          />
+          {maxSnowDepth > 0.02 && (
+            <Measure
+              label="Sníh na trase"
+              note={maxSnowDepth >= 0.3 ? 'tempo je přepočítané na prošlapávání' : 'jen vrchní část trasy'}
+              value={`${Math.round(maxSnowDepth * 100)} cm`}
+              tone={maxSnowDepth >= 0.4 ? 'zvaz' : undefined}
+            />
+          )}
         </div>
       </Section>
 
@@ -234,41 +291,46 @@ export function VerdiktScreen({
           </div>
         )}
         <p className="footnote" style={{ marginTop: 12 }}>
-          Skóre trasy je ze 60 % z nejslabšího místa a ze 40 % z průměru všech bodů — jedna zlá
-          hodina na hřebeni váží víc než šest hezkých v lese.
+          Skóre trasy je ze 60 % z nejslabší hodiny a ze 40 % z průměru všech — jedna zlá
+          hodina na hřebeni váží víc než šest hezkých v lese. Penalizace se počítají
+          z nepříznivého kvartilu ansámblu, ne z nejpravděpodobnější hodnoty.
         </p>
       </Section>
 
       <Section
-        label="Shoda modelů"
+        label="Jistota"
         meta={
           <span
-            data-tone={assessment.agreement >= 75 ? 'jdi' : assessment.agreement >= 50 ? 'zvaz' : 'nejdi'}
+            data-tone={
+              assessment.certainty === null
+                ? 'none'
+                : assessment.certainty >= 75
+                  ? 'jdi'
+                  : assessment.certainty >= 50
+                    ? 'zvaz'
+                    : 'nejdi'
+            }
             style={{ color: 'var(--tone)', fontWeight: 600, fontSize: 12 }}
           >
-            {assessment.agreement} %
+            {assessment.certainty === null ? 'bez ansámblu' : `${assessment.certainty} %`}
           </span>
         }
       >
-        <div style={{ display: 'flex', gap: 8 }}>
-          {deviations.map((d) => (
-            <div
-              key={d.model}
-              style={{ flexGrow: 1, flexBasis: 0, minWidth: 0 }}
-              data-tone={d.deviation < 0.15 ? 'jdi' : d.deviation < 0.4 ? 'zvaz' : 'nejdi'}
-            >
-              <div className="bar">
-                <span style={{ width: `${Math.round((1 - d.deviation) * 100)}%` }} />
-              </div>
-              <div className="footnote" style={{ marginTop: 5 }}>
-                {modelLabel(d.model)}
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="footnote" style={{ marginTop: 12 }}>
-          teplota ±{num(assessment.spread.temperature, 1)} °C · nárazy ±
-          {num(assessment.spread.windGusts, 0)} km/h · srážky ±{num(assessment.spread.precipitation, 1)} mm
+        <p className="body">
+          {assessment.certainty === null
+            ? 'Ansámbl se nestáhl, takže se skóruje z jednoho modelu bez rezervy na horší scénář. Ber číslo s rezervou.'
+            : `Mezi nejlepší a nepříznivou variantou ansámblu se skóre hýbe o ${Math.round(
+                ((100 - assessment.certainty) / 1.4),
+              )} bodů.`}
+        </p>
+        <p className="footnote" style={{ marginTop: 10 }}>
+          rozptyl p10—p90: teplota {num(assessment.spread.temperature, 1)} °C · nárazy{' '}
+          {num(assessment.spread.windGusts, 0)} km/h · srážky {num(assessment.spread.precipitation, 1)} mm
+          {data.forecast && data.forecast.ensembles.length > 0
+            ? ` · ${data.forecast.ensembles.map(modelLabel).join(' + ')}, ${Math.max(
+                ...samples.map((s) => s.hour.members),
+              )} členů`
+            : ''}
         </p>
       </Section>
 
@@ -279,7 +341,7 @@ export function VerdiktScreen({
 
       <div className="sec">
         <p className="footnote">
-          Bouřka: {stormLabel(Math.max(...assessment.passes.map((p) => p.hour.cape)))}
+          Bouřka: {stormLabel(maxCape)}
           <br />
           Nulová izoterma {h.freezingLevel === null ? '—' : metres(h.freezingLevel)} · Trasa{' '}
           {km(assessment.plan.distanceKm)}
@@ -303,6 +365,14 @@ function stormLabel(cape: number): string {
   if (cape >= 500) return `zvýšené riziko (CAPE ${Math.round(cape)})`
   if (cape >= 300) return `nízké riziko (CAPE ${Math.round(cape)})`
   return `bez rizika (CAPE ${Math.round(cape)})`
+}
+
+/** Co dělá spadlá voda s terénem. */
+function groundLabel(mm24: number): string {
+  if (mm24 >= 20) return 'rozbahněno, brody vysoké'
+  if (mm24 >= 8) return 'mokré kameny a korní'
+  if (mm24 >= 2) return 'vlhko, ale schůdné'
+  return 'suchý terén'
 }
 
 /** Řádek naměřené hodnoty: co, kde, kolik. */

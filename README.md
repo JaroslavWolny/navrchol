@@ -3,6 +3,8 @@
 Plánovač túr, který místo obrázku sluníčka řekne, **jestli jít, kdy vyrazit a co si vzít**.
 Mobilní PWA, česky, bez účtu a bez backendu.
 
+**Živě: [navrchol.vercel.app](https://navrchol.vercel.app)** — na mobilu přidej na plochu.
+
 ## Proč to existuje
 
 Běžné počasí appky odpovídají na otázku „jaké bude v sobotu". Na horách potřebuješ
@@ -10,40 +12,90 @@ odpověď na jinou: „v kolik mám vyrazit a co mě na hřebeni čeká, až tam
 
 ## Jak se počítá přesnost
 
-**Ensemble místo jednoho modelu.** Podle polohy se vybere nejjemnější dostupný model
-plus tři hrubší pro porovnání (`src/lib/openMeteo.ts`):
+**Tvar počasí z nejjemnějšího modelu, rizika z ansámblu.** Tohle jsou dvě různé
+otázky a dřív na obě odpovídala jedna věc. Teplota, oblačnost po vrstvách,
+dohlednost a nulová izoterma se berou z nejjemnějšího modelu, který na dané místo
+dosáhne (`best_match` — v Krkonoších ICON-D2 na 2,2 km, v Alpách ICON-CH1).
+Veličiny, na kterých stojí rozhodnutí, jdou z pravého ansámblu:
 
-| oblast | primární model | rozlišení |
+| oblast | ansámbly | členů |
 |---|---|---|
-| Alpy | ICON-CH1 **a** AROME naráz | 1 km / 1,3 km |
-| Francie, Pyreneje | AROME | 1,3 km |
-| Česko, Německo, Rakousko, Polsko | ICON-D2 | 2,2 km |
-| zbytek světa | ICON, ECMWF, GFS, GEM | globální |
+| Česko, Německo, Rakousko, Polsko, Alpy | ICON-D2-EPS + ICON-EU-EPS + ECMWF-ENS | 111 |
+| zbytek Evropy | ICON-EU-EPS + ECMWF-ENS + GEFS | 122 |
+| zbytek světa | ECMWF-ENS + GEFS + GEM | 103 |
 
-Z modelů se bere **medián**, ne průměr — jeden ujetý model tak nestrhne výsledek.
-Jejich rozptyl se ukazuje jako „shoda modelů": když se rozcházejí, appka to řekne
-rovnou, místo aby předstírala jistotu.
+Jemný ansámbl sahá jen na dva dny, proto se mísí s hrubšími a každý člen váží stejně.
 
-**Nadmořská výška.** Do API jde výška každého bodu zvlášť. Bez toho by předpověď
-pro vrchol ve 1 603 m vycházela z hodnoty pro údolí — a to je rozdíl šesti stupňů.
+**Proč ne „shoda čtyř modelů".** Porovnávat ICON-D2 (2,2 km) s ECMWF (11 km) měří
+rozlišení, ne nejistotu: ICON-D2 dává na Sněžce nárazy 40—106 km/h, ECMWF 6—63.
+Horší je, co ta míra dělala s předstihem — jemné modely po dvou dnech přestanou
+vracet data, zbydou dva globály blízko sebe a „shoda" **roste**. Naměřeno na
+Sněžce starým vzorcem: 61 % na zítřek, 49 % na pozítří, 77 % na příští pátek.
+Ansámbl to má správně, protože jeho rozptyl s předstihem roste (test to hlídá).
+
+**Skóruje se z nepříznivého kvartilu.** Riziková hodnota je horší z dvojice
+„jemný model" a „p75 ansámblu" — ostrý jemný model se nesmí ztratit v ansámblu
+hrubších členů a chvost ansámblu se nesmí ztratit za jedním hezkým scénářem.
+Pravděpodobnost srážek není hodnota z modelu, ale podíl členů, kterým prší.
+
+**Jistota** je to, o kolik bodů se skóre hýbe mezi nejlepší a nepříznivou
+variantou ansámblu. Ne „modely se shodly na čísle", ale „verdikt se v rozptylu
+nehýbe" — což je jediná otázka, která při rozhodování něco znamená.
+
+**Nadmořská výška.** Do obou API jde výška každého bodu zvlášť. Bez toho by
+předpověď pro vrchol ve 1 603 m vycházela z hodnoty pro údolí — a to je rozdíl
+šesti stupňů.
 
 **Skutečná trasa, ne vzdušná čára.** Mezi body se dopočítá cesta po pěšinách
 (BRouter, profil `hiking-beta`). U Sněžky z Pece je rozdíl 5,2 km vzdušnou čarou
 vs. 7,0 km po pěšině. BRouter navíc vrací výšku v každém bodě, takže výškový profil
 je zadarmo a Toblerova funkce se počítá na každém úseku zvlášť.
 
-**Nejhorší místo váží 60 %.** Túra je tak dobrá jako její nejslabší úsek. Průměr by
-zatajil jednu smrtelnou hodinu na hřebeni mezi sedmi hezkými.
+**Skóruje se hodinu po hodině, ne v bodech trasy.** Trasa o dvou bodech na šest
+hodin měla dřív oskórované dvě hodiny ze šesti; bouřka mezi nimi do verdiktu
+nepromluvila vůbec. Teď se pro každou hodinu túry dohledá, kde v tu hodinu podle
+tempa jsi — včetně skutečné výšky trati, takže hřeben mezi dvěma waypointy se
+posoudí jako hřeben.
+
+**Nejhorší hodina váží 60 %.** Túra je tak dobrá jako její nejslabší úsek. Průměr
+by zatajil jednu smrtelnou hodinu na hřebeni mezi sedmi hezkými.
+
+**Srážky bez stropu.** Penalizace za déšť se dřív zastavila na 6,7 mm/h, takže
+liják a průtrž mračen sebraly stejně bodů a 15 mm/h na hřebeni vycházelo jako
+„zvaž". Nová křivka drží první milimetry drahé (mokrý je mokrý) a extrém nechá
+utrhnout se dolů: 2 mm/h trvale je „zvaž", 8 mm/h „nejdi", 15 mm/h nula.
+
+**Podchlazení je součin, ne součet.** Osm stupňů, dva milimetry a nárazy 45 km/h
+vypadají každý zvlášť nevinně — dohromady je to nejčastější důvod zásahu horské
+služby. Mokro s chladem a větrem je proto vlastní penalizace, a nad prahem tvrdý
+zákaz. Promočení se navíc kumuluje po hodinách: pátá hodina v dešti bolí víc než
+první, protože nasáklé vrstvy netopí ani potom, co přestane pršet.
+
+**Sníh není déšť.** Vodní hodnota sněžení se od srážek odečte a sníh má vlastní
+penalizaci — nepromočí, ale zavře značky. Ležící sníh navíc zpomaluje tempo:
+prošlapávání se počítá po úsecích podle výšky sněhu v jejich nadmořské výšce, takže
+v půl metru vyjde návrat o hodiny později.
+
+**Obrat před bouřkou v hodinách, ne ve frázi.** Appka najde první hodinu, kdy CAPE
+přeleze 500 J/kg a aspoň dvě pětiny členů hlásí srážky, a od ní odečte sestup
+z nejvyššího bodu pod hranici lesa (po skutečné trati, kratším z obou směrů). Z toho
+vyjde čas obratu a nejpozdější start.
+
+**Rozpočet světla a stav terénu.** Pod verdiktem je rezerva mezi koncem túry
+a západem slunce a kolik spadlo za 24 a 48 hodin před startem — rozbahněná pěšina,
+klouzavé kameny a vysoká voda v brodech jsou věci, které předpověď na samotný den
+neřekne.
 
 **Tvrdé zákazy přebijí skóre.** Nárazy nad 75 km/h na exponovaném místě, bouřka
-s CAPE nad 1 200, viditelnost pod 300 m nebo pocitově −15 °C ve větru znamenají
-NEJDI bez ohledu na to, jak hezky vyšel zbytek.
+s CAPE nad 1 200, viditelnost pod 300 m, pocitově −15 °C ve větru nebo mokro
+s pocitovými 6 °C a nárazy nad 40 km/h znamenají NEJDI bez ohledu na to, jak hezky
+vyšel zbytek.
 
 **Skóre jde rozporovat.** Verdikt neukáže jen číslo, ale i jeho rozpad: kolik bodů
-sebral chlad, vítr, srážky, bouřka, viditelnost a námraza — a v kterém bodě trasy.
-Nedůvěřivé číslo bez zdůvodnění je k ničemu.
+sebral chlad, vítr, srážky, podchlazení, promočení, sníh, bouřka, viditelnost
+a námraza — a v kterou hodinu a kde na trase.
 
-**Radar přímo u verdiktu.** Když se modely rozcházejí, appka radí ověřit si radar —
+**Radar přímo u verdiktu.** Když je jistota nízká, appka radí ověřit si radar —
 tak ho rovnou ukáže (RainViewer, poslední dvě hodiny, bez klíče).
 
 **Barevnost východu a západu** se počítá z oblačnosti po vrstvách: vysoká chytá
@@ -87,13 +139,16 @@ Open-Meteo i BRouter mají CORS a nechtějí klíč, takže se volají rovnou z 
 nvm use 20
 npm install
 npm run dev
-npm test        # 41 testů včetně živých proti Open-Meteo a BRouteru
+npm test        # 63 testů včetně živých proti Open-Meteo a BRouteru
 npm run build
 ```
 
 ## Data
 
 - [Open-Meteo](https://open-meteo.com) — předpověď, geokódování, výšky (CC-BY 4.0)
+- [Open-Meteo Ensemble](https://open-meteo.com/en/docs/ensemble-api) — ansámbl pro rizika
+  (bez klíče, ale s minutovým limitem; když nedorazí, appka jede dál z jemného modelu
+  a řekne to)
 - [BRouter](https://brouter.de) — routování po pěšinách
 - [RainViewer](https://rainviewer.com) — srážkový radar
 - [OpenTopoMap](https://opentopomap.org) / OpenStreetMap — mapové dlaždice (CC-BY-SA)
