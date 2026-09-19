@@ -128,12 +128,15 @@ function SunDetail({
     const sea = fogSeaAt(summitPoint.hours[hourIndex(summitPoint.hours, at)], summit.elevation)
     return sea ? [{ date: d.date, at, sea }] : []
   })
-  const fogDay = fogDays.reduce<(typeof fogDays)[number] | null>((best, x) => {
-    if (!best) return x
+  const best = fogDays.reduce<(typeof fogDays)[number] | null>((acc, x) => {
+    if (!acc) return x
     // Být nad hladinou je víc než silná inverze, ve které stojíš.
     const rank = (y: typeof x) => (y.sea.above ? 1000 : 0) + y.sea.chance
-    return rank(x) > rank(best) ? x : best
+    return rank(x) > rank(acc) ? x : acc
   }, null)
+  // Slabá stabilní vrstva je skoro pořád. Sekce má smysl, jen když z ní něco
+  // může být — jinak by to byl šum s číslem jedna procento.
+  const fogDay = best && best.sea.chance >= 20 ? best : null
   const fog = fogDay?.sea ?? null
 
   // Zlaté světlo je okno, ne okamžik: nahoře se má stát na jeho začátku.
