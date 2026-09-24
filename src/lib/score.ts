@@ -1,12 +1,23 @@
-import { SNOW_CM_PER_MM } from './openMeteo'
+import { EXPOSED_ABOVE_M, SNOW_CM_PER_MM } from './constants'
 import type { HourPoint, Spread, Waypoint } from './types'
+
+export { EXPOSED_ABOVE_M } from './constants'
 
 export type Verdict = 'jdi' | 'zvaz' | 'nejdi'
 
 export interface Issue {
   key: string
-  text: string
   severity: 'blok' | 'varovani'
+  /** Krátké tvrzení: „Nárazy až 82 km/h". */
+  title: string
+  /** Co z toho plyne. */
+  detail: string
+  /** Kde na trase. */
+  place: string
+  /** Hodina, kdy to nastane (čas z předpovědi). */
+  at?: string
+  /** Síla jevu — při sloučení stejných problémů zůstane ten nejhorší. */
+  magnitude: number
 }
 
 /** Jedna položka rozpadu skóre — kolik bodů který jev sebral a proč. */
@@ -34,13 +45,12 @@ export interface HourContext {
 
 const NO_CONTEXT: HourContext = { soakedMm: 0 }
 
-/**
- * Nad touto výškou bereme bod jako exponovaný: v českých horách zhruba hranice lesa,
- * odkud se před bouřkou ani větrem nemáš kam schovat.
- */
-export const EXPOSED_ABOVE_M = 1200
-
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+const deg = (t: number) => {
+  const r = Math.round(t)
+  return `${r < 0 ? '−' + Math.abs(r) : r} °C`
+}
+const dec = (v: number) => v.toFixed(1).replace('.', ',')
 
 /** Chlad a horko od pocitové teploty. Pohodlné pásmo pro chůzi je 5 až 18 °C. */
 function tempPenalty(apparent: number): number {
@@ -58,10 +68,9 @@ function gustPenalty(gusts: number): number {
 }
 
 /**
- * Kapalná část srážek. Strop nemá schválně: dřív se penalizace zastavila na 6,7 mm/h,
- * takže liják a průtrž mračen sebraly stejně bodů a patnáct milimetrů za hodinu na
- * hřebeni pořád vycházelo jako „zvaž". Odmocnina drží první milimetry drahé
- * (mokrý je mokrý) a lineární člen nechá extrém utrhnout se dolů bez hranice.
+ * Kapalná část srážek. Strop nemá schválně: liják a průtrž mračen nesmí sebrat
+ * stejně bodů. Odmocnina drží první milimetry drahé (mokrý je mokrý) a lineární
+ * člen nechá extrém utrhnout se dolů bez hranice.
  */
 function rainPenalty(mm: number, probability: number): number {
   const wet = mm <= 0 ? 0 : 14 * Math.sqrt(mm) + 3 * mm
@@ -102,9 +111,8 @@ function icingPenalty(hour: HourPoint, elevation: number): number {
 
 /**
  * Podchlazení nedělá chlad, ani déšť, ani vítr samotný — dělá ho jejich součin.
- * Aditivní model to nikdy nezachytí: osm stupňů, dva milimetry a nárazy 45 km/h
- * vypadají každý zvlášť nevinně, dohromady je to nejčastější důvod zásahu
- * horské služby. Mokré šaty ztratí izolaci, vítr odvádí teplo z kůže.
+ * Osm stupňů, dva milimetry a nárazy 45 km/h vypadají každý zvlášť nevinně,
+ * dohromady je to nejčastější důvod zásahu horské služby.
  */
 function hypothermiaPenalty(apparent: number, wet: boolean, gusts: number): number {
   if (!wet || apparent > 12) return 0
@@ -120,15 +128,14 @@ function soakPenalty(soakedMm: number): number {
 
 /**
  * Kapalná část srážek v nepříznivém kvartilu. Sníh má vlastní penalizaci, takže se
- * jeho vodní hodnota odečte. Zbytek pod desetinu milimetru je zaokrouhlovací šum
- * dvou různých kvantilů, ne déšť — a odmocnina by z něj udělala tři body.
+ * jeho vodní hodnota odečte. Zbytek pod desetinu milimetru je šum, ne déšť.
  */
-function rainOf(hour: HourPoint): number {
+export function rainOf(hour: HourPoint): number {
   const mm = hour.precipitationRisk - hour.snowfallRisk / SNOW_CM_PER_MM
   return mm < 0.1 ? 0 : mm
 }
 
-/** Oskóruje jednu hodinu v jednom bodě trasy. 100 = ideál. */
+/** Oskóruje jednu hodinu v jednom místě trasy. 100 = ideál. */
 export function scoreHour(
   hour: HourPoint,
   waypoint: Waypoint,
@@ -136,19 +143,16 @@ export function scoreHour(
 ): HourScore {
   const exposed = waypoint.elevation >= EXPOSED_ABOVE_M
   const issues: Issue[] = []
+  const place = waypoint.name
 
   // Skóruje se z nepříznivého kvartilu ansámblu, ne z nejpravděpodobnější hodnoty.
-  // Túra se plánuje na horší variantu — ta pravděpodobná se o sebe postará sama.
   const rain = rainOf(hour)
-  // Když všechno, co padá, je sníh, nepatří šance na srážky k dešti — tu si už
-  // vybral sníh. Jinak by zasněžená hodina platila penalizaci dvakrát.
+  // Když všechno, co padá, je sníh, nepatří šance na srážky k dešti.
   const rainProbability = rain === 0 && hour.snowfallRisk > 0.1 ? 0 : hour.precipitationProbability
   const gusts = hour.windGustsRisk
   const apparent = hour.apparentTemperatureRisk
   const wet = rain >= 0.4 || context.soakedMm >= 1.5
 
-  // Penalizace se nesčítají naslepo — každá si nese, kolik sebrala a proč,
-  // aby šlo výsledné číslo rozporovat místo slepé důvěry.
   const raw = {
     teplota: tempPenalty(apparent),
     vitr: gustPenalty(gusts) * (exposed ? 1.25 : 1),
@@ -161,44 +165,34 @@ export function scoreHour(
     namraza: icingPenalty(hour, waypoint.elevation),
   }
   const penalty = Object.values(raw).reduce((a, b) => a + b, 0)
+  const g = Math.round(gusts)
 
-  const t = Math.round(apparent)
   const penalties: Penalty[] = [
-    {
-      key: 'teplota',
-      label: apparent < 5 ? 'Chlad' : 'Horko',
-      points: raw.teplota,
-      detail: `pocitově ${t < 0 ? '−' + Math.abs(t) : t} °C`,
-    },
+    { key: 'teplota', label: apparent < 5 ? 'Chlad' : 'Horko', points: raw.teplota, detail: `pocitově ${deg(apparent)}` },
     {
       key: 'vitr',
       label: 'Vítr',
       points: raw.vitr,
-      detail: `nárazy ${Math.round(gusts)} km/h${exposed ? ', exponované místo' : ''}`,
+      detail: `nárazy ${g} km/h${exposed ? ' na hřebeni' : ''}${hour.ridgeWind ? ', dopočteno z volné atmosféry' : ''}`,
     },
     {
       key: 'srazky',
       label: 'Srážky',
       points: raw.srazky,
-      detail: `${rain.toFixed(1)} mm, prší ${Math.round(rainProbability)} % členů ansámblu`,
+      detail: `${dec(rain)} mm/h, prší v ${Math.round(rainProbability)} % scénářů`,
     },
     {
       key: 'podchlazeni',
       label: 'Podchlazení',
       points: raw.podchlazeni,
-      detail: `mokro, pocitově ${t < 0 ? '−' + Math.abs(t) : t} °C a nárazy ${Math.round(gusts)} km/h`,
+      detail: `mokro, pocitově ${deg(apparent)}, nárazy ${g} km/h`,
     },
-    {
-      key: 'mokro',
-      label: 'Promočení',
-      points: raw.mokro,
-      detail: `${context.soakedMm.toFixed(1)} mm nasbíráno cestou sem`,
-    },
+    { key: 'mokro', label: 'Promočení', points: raw.mokro, detail: `${dec(context.soakedMm)} mm nasbíráno cestou` },
     {
       key: 'snih',
       label: 'Sníh',
       points: raw.snih,
-      detail: `padá ${hour.snowfallRisk.toFixed(1)} cm/h, leží ${Math.round(hour.snowDepth * 100)} cm`,
+      detail: `padá ${dec(hour.snowfallRisk)} cm/h, leží ${Math.round(hour.snowDepth * 100)} cm`,
     },
     { key: 'bourka', label: 'Bouřka', points: raw.bourka, detail: `CAPE ${Math.round(hour.capeRisk)} J/kg` },
     {
@@ -207,108 +201,131 @@ export function scoreHour(
       points: raw.mlha,
       detail: hour.visibility === null ? 'model ji nehlásí' : `${Math.round(hour.visibility)} m`,
     },
-    {
-      key: 'namraza',
-      label: 'Námraza',
-      points: raw.namraza,
-      detail: 'nulová izoterma pod vrcholem a prší',
-    },
+    { key: 'namraza', label: 'Námraza', points: raw.namraza, detail: 'nulová izoterma pod trasou a prší' },
   ]
     .filter((x) => x.points >= 0.5)
     .sort((a, b) => b.points - a.points)
 
+  const add = (i: Omit<Issue, 'place' | 'at'>) => issues.push({ ...i, place, at: hour.time })
+
   // Tvrdé zákazy. Ty přebijí skóre bez ohledu na to, jak hezky vyšlo.
   if (gusts >= 75 && exposed) {
-    issues.push({
+    add({
       key: 'vitr',
       severity: 'blok',
-      text: `Nárazy ${Math.round(gusts)} km/h na exponovaném místě — ${waypoint.name}. V takovém větru se neudržíš na nohou.`,
+      title: `Nárazy až ${g} km/h`,
+      detail: 'V takovém větru se na odkrytém hřebeni neudržíš na nohou.',
+      magnitude: gusts,
     })
   }
   if (hour.capeRisk >= 1200 && hour.precipitationRisk > 0.2) {
-    issues.push({
+    add({
       key: 'bourka',
       severity: 'blok',
-      text: `Bouřky na trase (CAPE ${Math.round(hour.capeRisk)}) — ${waypoint.name}. Na hřebeni se nemáš kam schovat.`,
+      title: 'Bouřky na trase',
+      detail: `CAPE ${Math.round(hour.capeRisk)} J/kg a srážky. Nad lesem se nemáš kam schovat.`,
+      magnitude: hour.capeRisk,
     })
   }
   if (hour.visibility !== null && hour.visibility < 300) {
-    issues.push({
+    add({
       key: 'mlha',
       severity: 'blok',
-      text: `Viditelnost ${Math.round(hour.visibility)} m — ${waypoint.name}. Bez GPS se tam ztratíš.`,
+      title: `Viditelnost ${Math.round(hour.visibility)} m`,
+      detail: 'Hustá mlha. Bez navigace se snadno ztratíš.',
+      magnitude: 1000 - hour.visibility,
     })
   }
   if (apparent <= -15 && gusts >= 50) {
-    issues.push({
+    add({
       key: 'omrzliny',
       severity: 'blok',
-      text: `Pocitově ${Math.round(apparent)} °C při nárazech ${Math.round(gusts)} km/h — riziko omrzlin.`,
+      title: `Pocitově ${deg(apparent)}`,
+      detail: `Při nárazech ${g} km/h hrozí omrzliny na odkrytých místech.`,
+      magnitude: -apparent,
     })
   }
   if (wet && apparent <= 6 && gusts >= 40) {
-    issues.push({
+    add({
       key: 'podchlazeni',
       severity: 'blok',
-      text: `Mokro, pocitově ${Math.round(apparent)} °C a nárazy ${Math.round(gusts)} km/h — ${waypoint.name}. Tohle je učebnicové podchlazení, ne nepohoda.`,
+      title: 'Riziko podchlazení',
+      detail: `Mokro, pocitově ${deg(apparent)} a nárazy ${g} km/h.`,
+      magnitude: raw.podchlazeni,
     })
   }
 
   // Měkká varování.
   if (!issues.some((i) => i.key === 'vitr') && gusts >= 50) {
-    issues.push({
+    add({
       key: 'vitr',
       severity: 'varovani',
-      text: `Nárazy ${Math.round(gusts)} km/h — ${waypoint.name}. Vezmi větrovku.`,
+      title: `Nárazy ${g} km/h`,
+      detail: exposed ? 'Na hřebeni počítej s poryvy, vezmi větrovku.' : 'Vezmi větrovku.',
+      magnitude: gusts,
     })
   }
   if (!issues.some((i) => i.key === 'vitr') && hour.windGustsHigh >= 85 && exposed) {
-    issues.push({
+    add({
       key: 'vitr-chvost',
       severity: 'varovani',
-      text: `Desetina členů ansámblu dává na ${waypoint.name} nárazy až ${Math.round(hour.windGustsHigh)} km/h. Nejistota je na špatné straně.`,
+      title: `Nárazy možná až ${Math.round(hour.windGustsHigh)} km/h`,
+      detail: 'Desetina scénářů ansámblu je výrazně větrnější než zbytek.',
+      magnitude: hour.windGustsHigh,
     })
   }
   if (!issues.some((i) => i.key === 'bourka') && hour.capeRisk >= 500) {
-    issues.push({
+    add({
       key: 'bourka',
       severity: 'varovani',
-      text: `Zvýšené riziko bouřek (CAPE ${Math.round(hour.capeRisk)}) — ${waypoint.name}.`,
+      title: 'Možné bouřky',
+      detail: `CAPE ${Math.round(hour.capeRisk)} J/kg. Sleduj oblohu a měj plán, kudy sejít.`,
+      magnitude: hour.capeRisk,
     })
   }
   if (!issues.some((i) => i.key === 'podchlazeni') && raw.podchlazeni >= 12) {
-    issues.push({
+    add({
       key: 'podchlazeni',
       severity: 'varovani',
-      text: `Mokro a vítr při pocitových ${Math.round(apparent)} °C — ${waypoint.name}. Nepromokavá vrstva a náhradní suché vršek, ne jen svetr.`,
+      title: 'Mokro a vítr v chladu',
+      detail: `Pocitově ${deg(apparent)}. Nepromokavá vrstva a suché oblečení do batohu.`,
+      magnitude: raw.podchlazeni,
     })
   }
   if (rain >= 1) {
-    issues.push({
+    add({
       key: 'srazky',
       severity: 'varovani',
-      text: `Srážky ${rain.toFixed(1)} mm/h — ${waypoint.name}.`,
+      title: `Déšť ${dec(rain)} mm/h`,
+      detail: 'Počítej s mokrou cestou.',
+      magnitude: rain,
     })
   }
   if (hour.snowfallRisk >= 0.5) {
-    issues.push({
+    add({
       key: 'snih',
       severity: 'varovani',
-      text: `Sněží ${hour.snowfallRisk.toFixed(1)} cm/h — ${waypoint.name}. Značky zmizí pod sněhem.`,
+      title: `Sněží ${dec(hour.snowfallRisk)} cm/h`,
+      detail: 'Značení může zapadat.',
+      magnitude: hour.snowfallRisk,
     })
   }
   if (hour.snowDepth >= 0.4) {
-    issues.push({
+    add({
       key: 'snih-lezi',
       severity: 'varovani',
-      text: `Leží ${Math.round(hour.snowDepth * 100)} cm sněhu — ${waypoint.name}. Bez prošlapané stopy to bude boj.`,
+      title: `Leží ${Math.round(hour.snowDepth * 100)} cm sněhu`,
+      detail: 'Bez prošlapané stopy půjdeš výrazně pomaleji.',
+      magnitude: hour.snowDepth,
     })
   }
   if (raw.namraza > 0) {
-    issues.push({
+    add({
       key: 'namraza',
       severity: 'varovani',
-      text: `Nulová izoterma je pod vrcholem a prší — počítej s námrazou na kamenech.`,
+      title: 'Námraza',
+      detail: 'Nulová izoterma je pod trasou a prší. Kameny budou kluzké.',
+      magnitude: hour.precipitationRisk,
     })
   }
 
@@ -317,8 +334,7 @@ export function scoreHour(
 
 /**
  * Jak moc se skóre hýbe mezi nejlepším a nepříznivým scénářem, který ansámbl drží.
- * Tohle appka ukazuje jako jistotu — ne „modely se shodly na čísle", ale
- * „verdikt se v rozptylu členů nehýbe". Když se hýbe, je to samo o sobě informace.
+ * Tohle appka ukazuje jako jistotu: „verdikt se v rozptylu členů nehýbe".
  */
 export function certaintyOf(
   hour: HourPoint,
@@ -339,6 +355,11 @@ export function certaintyOf(
   return Math.round(clamp(100 - wobble * 1.4, 0, 100))
 }
 
+export interface ScoredHour {
+  score: number
+  penalties: Penalty[]
+}
+
 export interface RouteScore {
   score: number
   verdict: Verdict
@@ -348,6 +369,8 @@ export interface RouteScore {
   weakest: { waypoint: Waypoint; hour: HourPoint; score: number; penalties: Penalty[] } | null
   /** Kolik deště na tebe za celou túru spadne, v milimetrech. */
   rainMm: number
+  /** Skóre každého vzorku v pořadí, v jakém přišly. */
+  hourly: ScoredHour[]
 }
 
 /**
@@ -357,11 +380,9 @@ export interface RouteScore {
  *
  * Body musí jít v čase po sobě — promočení se mezi nimi kumuluje.
  */
-export function scoreRoute(
-  points: Array<{ waypoint: Waypoint; hour: HourPoint }>,
-): RouteScore {
+export function scoreRoute(points: Array<{ waypoint: Waypoint; hour: HourPoint }>): RouteScore {
   if (points.length === 0) {
-    return { score: 0, verdict: 'nejdi', blockers: [], warnings: [], weakest: null, rainMm: 0 }
+    return { score: 0, verdict: 'nejdi', blockers: [], warnings: [], weakest: null, rainMm: 0, hourly: [] }
   }
 
   let soakedMm = 0
@@ -377,7 +398,9 @@ export function scoreRoute(
 
   const all = scored.flatMap((s) => s.issues)
   const blockers = dedupe(all.filter((i) => i.severity === 'blok'))
-  const warnings = dedupe(all.filter((i) => i.severity === 'varovani'))
+  const warnings = dedupe(all.filter((i) => i.severity === 'varovani')).filter(
+    (w) => !blockers.some((b) => b.key === w.key),
+  )
   const weakest = scored.find((s) => s.score === min) ?? null
 
   return {
@@ -386,13 +409,9 @@ export function scoreRoute(
     blockers,
     warnings,
     rainMm: soakedMm,
+    hourly: scored.map((s) => ({ score: s.score, penalties: s.penalties })),
     weakest: weakest
-      ? {
-          waypoint: weakest.waypoint,
-          hour: weakest.hour,
-          score: weakest.score,
-          penalties: weakest.penalties,
-        }
+      ? { waypoint: weakest.waypoint, hour: weakest.hour, score: weakest.score, penalties: weakest.penalties }
       : null,
   }
 }
@@ -403,8 +422,12 @@ export function verdictOf(score: number): Verdict {
   return 'nejdi'
 }
 
-/** Stejný typ problému na pěti bodech je pořád jeden problém. */
+/** Stejný typ problému na pěti místech je pořád jeden problém — ukáže se ten nejhorší. */
 function dedupe(issues: Issue[]): Issue[] {
-  const seen = new Set<string>()
-  return issues.filter((i) => (seen.has(i.key) ? false : (seen.add(i.key), true)))
+  const best = new Map<string, Issue>()
+  for (const i of issues) {
+    const seen = best.get(i.key)
+    if (!seen || i.magnitude > seen.magnitude) best.set(i.key, i)
+  }
+  return [...best.values()].sort((a, b) => (a.at ?? '').localeCompare(b.at ?? ''))
 }

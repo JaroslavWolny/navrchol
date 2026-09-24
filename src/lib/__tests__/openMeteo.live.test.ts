@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ensembleModelsFor, fetchForecast } from '../openMeteo'
 import { haze, inversionIn } from '../inversion'
 import { scoreHour } from '../score'
-import type { Waypoint } from '../types'
+import type { ForecastSite } from '../types'
 
 /**
  * Open-Meteo má minutový limit a velký dotaz na ansámbl ho umí vyčerpat.
@@ -20,11 +20,12 @@ async function forecastOrSkip(...args: Parameters<typeof fetchForecast>) {
   }
 }
 
-const KRKONOSE: Waypoint[] = [
-  { id: 'a', name: 'Pec pod Sněžkou', lat: 50.6903, lon: 15.7322, elevation: 769 },
-  { id: 'b', name: 'Růžová hora', lat: 50.7253, lon: 15.7397, elevation: 1390 },
-  { id: 'c', name: 'Sněžka', lat: 50.7361, lon: 15.7397, elevation: 1603 },
+const KRKONOSE: ForecastSite[] = [
+  { id: 'pec', lat: 50.695, lon: 15.7392, elevation: 762, trackIndex: 0 },
+  { id: 'ruzohorky', lat: 50.7104, lon: 15.7499, elevation: 1250, trackIndex: 100 },
+  { id: 'snezka', lat: 50.7361, lon: 15.7397, elevation: 1603, trackIndex: 200 },
 ]
+const SNEZKA_WP = { id: 'c', name: 'Sněžka', lat: 50.7361, lon: 15.7397, elevation: 1603 }
 
 describe('výběr ansámblů', () => {
   it('Krkonoše dostanou jemný ICON-D2-EPS', () => {
@@ -69,6 +70,12 @@ describe('živé Open-Meteo', () => {
 
     const h = snezka.hours[i]
 
+    // Na hřebeni se vítr dorovná na volnou atmosféru; v údolí ne.
+    const ridge = snezka.hours.filter((x) => x.ridgeWind).length / snezka.hours.length
+    console.log(`vítr dopočtený z volné atmosféry na Sněžce: ${Math.round(ridge * 100)} % hodin`)
+    expect(ridge).toBeGreaterThan(0.5)
+    expect(pec.hours.some((x) => x.ridgeWind)).toBe(false)
+
     if (f.ensembles.length === 0) {
       console.warn('ansámbl nedorazil (minutový limit API), zbytek testu přeskočen')
       return
@@ -87,7 +94,7 @@ describe('živé Open-Meteo', () => {
     expect(h.precipitationProbability).toBeLessThanOrEqual(100)
 
     // Skórování hodinu z živých dat unese.
-    const s = scoreHour(h, KRKONOSE[2])
+    const s = scoreHour(h, SNEZKA_WP)
     expect(s.score).toBeGreaterThanOrEqual(0)
     expect(s.score).toBeLessThanOrEqual(100)
 

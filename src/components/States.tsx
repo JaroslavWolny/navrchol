@@ -1,48 +1,48 @@
-import { Icon } from './Icon'
+import { Icon, type IconName } from './Icon'
+import { vlna } from '../lib/format'
 
 /**
- * Kostra kopíruje geometrii obrazovky, která se načítá: verdikt, stupnice,
- * dvě věty, čtyři řádky měření. Obecný pulzující obdélník by po dojetí dat
- * nechal obsah poskočit.
+ * Kostra kopíruje geometrii obrazovky, která se načítá: výběr dne, karta
+ * verdiktu, graf. Obecný točící se kolečko by po dojetí dat nechal obsah
+ * poskočit.
  */
 export function Loading({ what }: { what: string }) {
   return (
-    <div className="sec">
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
-        <div className="skel" style={{ width: 128, height: 42 }} />
-        <div className="skel" style={{ width: 54, height: 26 }} />
-      </div>
-      <div className="skel" style={{ height: 8, marginTop: 12 }} />
-      <div className="skel" style={{ height: 12, marginTop: 16, width: '92%' }} />
-      <div className="skel" style={{ height: 12, marginTop: 7, width: '64%' }} />
-      <div className="rows" style={{ marginTop: 26 }}>
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="row">
-            <div className="skel" style={{ height: 11, width: 84 }} />
-            <div style={{ flexGrow: 1 }} />
-            <div className="skel" style={{ height: 15, width: 62 }} />
-          </div>
+    <div aria-busy="true" aria-label={what}>
+      <div className="days" style={{ marginTop: 14 }}>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="skel" style={{ width: 52, height: 62, borderRadius: 13, flexShrink: 0 }} />
         ))}
       </div>
-      <div className="hint mono" style={{ marginTop: 16, letterSpacing: '0.06em' }}>
-        {what}
+      <div className="page mt-12">
+        <div className="card verdict">
+          <div className="between">
+            <div className="skel" style={{ width: 110, height: 38 }} />
+            <div className="skel" style={{ width: 54, height: 38 }} />
+          </div>
+          <div className="skel mt-12" style={{ width: '86%', height: 14 }} />
+          <div className="skel mt-16" style={{ height: 10 }} />
+          <div className="skel mt-12" style={{ width: '60%', height: 12 }} />
+        </div>
+        <div className="card mt-12" style={{ height: 210, padding: 16 }}>
+          <div className="skel" style={{ height: '100%' }} />
+        </div>
       </div>
+      <p className="footer-note">{what}</p>
     </div>
   )
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="sec" style={{ marginTop: 18 }}>
-      <div className="note" data-tone="nejdi">
-        <Icon name="warn" size={16} stroke={2} />
-        <div>
-          <strong>Data nedorazila.</strong>
-          <div style={{ marginTop: 3, color: 'var(--paper-2)' }}>{message}</div>
-        </div>
+    <div className="empty">
+      <div className="empty-icon">
+        <Icon name="cloud" size={44} stroke={1.5} />
       </div>
+      <div className="t-headline">Předpověď nedorazila</div>
+      <p>{vlna(/[.!?]$/.test(message) ? message : `${message}.`)}</p>
       {onRetry && (
-        <button className="btn btn--ghost" style={{ marginTop: 12 }} onClick={onRetry}>
+        <button className="btn btn--gray btn--small" onClick={onRetry}>
           <Icon name="refresh" size={17} stroke={2} />
           Zkusit znovu
         </button>
@@ -52,24 +52,26 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 }
 
 export function Empty({
+  icon = 'mountain',
   title,
   hint,
   action,
 }: {
+  icon?: IconName
   title: string
   hint: string
-  action?: { label: string; onClick: () => void }
+  action?: { label: string; onClick: () => void; icon?: IconName }
 }) {
   return (
-    <div className="state">
-      <Icon name="peak" size={34} stroke={1.5} color="var(--paper-4)" />
-      <div className="state-title">{title}</div>
-      <div className="hint" style={{ maxWidth: 268 }}>
-        {hint}
+    <div className="empty">
+      <div className="empty-icon">
+        <Icon name={icon} size={44} stroke={1.5} />
       </div>
+      <div className="t-headline">{title}</div>
+      <p>{vlna(hint)}</p>
       {action && (
-        <button className="btn" style={{ maxWidth: 240, marginTop: 6 }} onClick={action.onClick}>
-          <Icon name="plus" size={17} stroke={2.2} />
+        <button className="btn btn--small" onClick={action.onClick}>
+          <Icon name={action.icon ?? 'plus'} size={17} stroke={2.2} />
           {action.label}
         </button>
       )}

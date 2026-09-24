@@ -170,7 +170,10 @@ describe('odpočet ke světlu', () => {
   const leave = new Date('2026-09-20T17:02:00')
 
   it('před odchodem odpočítává', () => {
-    expect(countdown(new Date('2026-09-20T15:32:00'), leave, event)).toBe('Do odchodu zbývá 1 h 30 min.')
+    // Číslo a jednotka drží pevnou mezerou, aby se na konci řádku neroztrhly.
+    expect(countdown(new Date('2026-09-20T15:32:00'), leave, event)?.replace(/\u00a0/g, ' ')).toBe(
+      'Do odchodu zbývá 1 h 30 min.',
+    )
   })
 
   it('v čase odchodu pobízí', () => {
@@ -178,7 +181,7 @@ describe('odpočet ke světlu', () => {
   })
 
   it('po odchodu řekne, o kolik jsi pozadu', () => {
-    expect(countdown(new Date('2026-09-20T17:40:00'), leave, event)).toContain('před 38 min')
+    expect(countdown(new Date('2026-09-20T17:40:00'), leave, event)?.replace(/\u00a0/g, ' ')).toContain('38 min pozadu')
   })
 
   it('jiný den ani po události mlčí', () => {

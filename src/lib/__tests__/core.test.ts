@@ -44,9 +44,11 @@ const calm: HourPoint = {
   snowfall: 0,
   snowfallRisk: 0,
   windSpeed: 8,
+  windDirection: 270,
   windGusts: 14,
   windGustsRisk: 14,
   windGustsHigh: 14,
+  ridgeWind: false,
   cape: 0,
   capeRisk: 0,
   cloudCover: 20,
@@ -213,7 +215,7 @@ describe('skóre podmínek', () => {
   it('rozpad je seřazený od nejhoršího a nese důvod', () => {
     const r = scoreHour(hour({ windGusts: 68, precipitation: 0.3 }), SNEZKA)
     expect(r.penalties[0].label).toBe('Vítr')
-    expect(r.penalties[0].detail).toContain('exponované místo')
+    expect(r.penalties[0].detail).toContain('na hřebeni')
     for (let i = 1; i < r.penalties.length; i++) {
       expect(r.penalties[i - 1].points).toBeGreaterThanOrEqual(r.penalties[i].points)
     }
@@ -561,7 +563,9 @@ function fakeForecast(
   patchAt: (hourOfDay: number, w: Waypoint, dayIndex: number) => Partial<HourPoint> = () => ({}),
 ): Forecast {
   const days = ['2026-09-19', '2026-09-20', '2026-09-21']
-  const points = waypoints.map((w) => {
+  // Místa předpovědi leží v bodech trasy — fakeTrack je dává po dvaceti bodech trati.
+  const sites = waypoints.map((w, i) => ({ id: `s${i}`, lat: w.lat, lon: w.lon, elevation: w.elevation, trackIndex: i * 20 }))
+  const points = waypoints.map((w, k) => {
     const hours: HourPoint[] = []
     const spread: Spread[] = []
     for (let d = 0; d < days.length; d++) {
@@ -570,12 +574,13 @@ function fakeForecast(
         spread.push(noSpread)
       }
     }
-    return { waypointId: w.id, hours, spread }
+    return { siteId: sites[k].id, hours, spread }
   })
   return {
+    sites,
     points,
     days: days.map((date) => ({ date, sunrise: `${date}T06:30`, sunset: `${date}T19:00` })),
-    fetchedAt: new Date(),
+    fetchedAt: Date.now(),
     ensembles: ['icon_d2_eps'],
   }
 }

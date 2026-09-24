@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Icon } from '../components/Icon'
-import { Scroll } from '../components/Scroll'
-import { Section } from '../components/Section'
-import { Empty, ErrorState, Loading } from '../components/States'
-import { clock, dayLabel } from '../lib/format'
+import { Screen } from '../components/Screen'
+import { Section } from '../components/ui'
+import { Empty, ErrorState } from '../components/States'
+import { capital, clock, dayLabel } from '../lib/format'
 import { newId, type BaseGearItem, type StoredState } from '../state/store'
 import type { Assessment } from '../lib/plan'
 import type { RouteData } from '../state/useRouteData'
@@ -15,17 +15,28 @@ interface Props {
   assessment: Assessment | null
   state: StoredState
   onToggle: (name: string) => void
+  onReset: () => void
   onBaseGearChange: (items: BaseGearItem[]) => void
 }
 
-export function VybavaScreen({ route, data, assessment, state, onToggle, onBaseGearChange }: Props) {
+export function VybavaScreen({ route, data, assessment, state, onToggle, onReset, onBaseGearChange }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
 
   if (!route) {
-    return <div className="scroll"><Empty title="Žádná trasa" hint="Vyber trasu a poskládám ti k ní výbavu." /></div>
+    return (
+      <Screen title="Výbava">
+        <Empty icon="vybava" title="Žádná trasa" hint="Vyber trasu a appka ti k ní poskládá výbavu podle počasí." />
+      </Screen>
+    )
   }
-  if (data.error) return <div className="scroll"><ErrorState message={data.error} onRetry={data.reload} /></div>
+  if (data.error && !assessment) {
+    return (
+      <Screen title="Výbava">
+        <ErrorState message={data.error} onRetry={data.reload} />
+      </Screen>
+    )
+  }
 
   const packed = new Set(state.packed[route.id] ?? [])
   const auto = assessment?.gear ?? []
@@ -40,84 +51,101 @@ export function VybavaScreen({ route, data, assessment, state, onToggle, onBaseG
   }
 
   return (
-    <Scroll onRefresh={data.reload} refreshing={data.loading}>
-      <header className="masthead">
-        <div className="between" style={{ alignItems: 'baseline' }}>
-          <h1>Výbava</h1>
-          <span className="mono" style={{ fontSize: 15, fontWeight: 600 }}>
-            {done}<span style={{ color: 'var(--paper-4)' }}>/{names.length}</span>
-          </span>
-        </div>
-        {/* Jeden zářez = jedna věc. Spojitý pruh by zatajil, kolik toho zbývá. */}
-        <div className="ticks" style={{ marginTop: 14, marginBottom: 12 }}>
+    <Screen
+      title="Výbava"
+      subtitle={`${route.name}${assessment ? ` · ${dayLabel(assessment.start)} ${clock(assessment.start)}` : ''}`}
+      titleAside={
+        <span className="t-headline num" style={{ paddingBottom: 4 }}>
+          {done}
+          <span className="faint">/{names.length}</span>
+        </span>
+      }
+    >
+      <div className="page mt-12">
+        {/* Jeden dílek = jedna věc. Spojitý pruh by zatajil, kolik toho zbývá. */}
+        <div className="progress" aria-hidden="true">
           {names.map((name) => (
-            <span key={name} data-on={packed.has(name)} />
+            <i key={name} data-on={packed.has(name)} />
           ))}
         </div>
-        <div className="meta">
-          {route.name}
-          {assessment ? ` · ${dayLabel(assessment.start)} · ${clock(assessment.start)}` : ''}
-        </div>
-      </header>
+      </div>
 
-      <Section label="Přidáno podle počasí" meta={auto.length > 0 ? `${auto.length}` : undefined}>
-        {!assessment ? (
-          <Loading what="skládám výbavu podle předpovědi" />
-        ) : auto.length === 0 ? (
-          <p className="body">Podmínky si nic navíc nevynutily. Stačí tvůj základ.</p>
-        ) : (
-          <div className="rows">
-            {auto.map((item) => (
-              <GearRow
-                key={item.name}
-                name={item.name}
-                why={item.why}
-                checked={packed.has(item.name)}
-                onToggle={() => onToggle(item.name)}
-              />
-            ))}
-          </div>
-        )}
+      <Section
+        title="Kvůli počasí"
+        aside={auto.length > 0 ? <span className="aside">{auto.length}</span> : undefined}
+        footer={
+          assessment && auto.length > 0
+            ? `Podle předpovědi na ${dayLabel(assessment.start)} od ${clock(assessment.start)} do ${clock(assessment.end)}.`
+            : undefined
+        }
+      >
+        <div className="list">
+          {!assessment ? (
+            <div className="cell">
+              <div className="skel grow" style={{ height: 18 }} />
+            </div>
+          ) : auto.length === 0 ? (
+            <div className="cell">
+              <span className="cell-icon" data-tone="jdi">
+                <Icon name="check" size={18} stroke={2.2} />
+              </span>
+              <div className="cell-main">
+                <div className="cell-title">Nic navíc</div>
+                <div className="cell-sub">Počasí si nic nevynutilo, stačí základ.</div>
+              </div>
+            </div>
+          ) : (
+            auto.map((item) => (
+              <GearRow key={item.name} name={item.name} why={capital(item.why)} checked={packed.has(item.name)} onToggle={() => onToggle(item.name)} />
+            ))
+          )}
+        </div>
       </Section>
 
       <Section
-        label="Můj základ"
-        meta={
-          <button className="mono" style={{ fontSize: 11, color: 'var(--paper)', textDecoration: 'underline' }} onClick={() => setEditing((v) => !v)}>
-            {editing ? 'hotovo' : 'upravit'}
+        title="Vždycky"
+        aside={
+          <button className="aside" onClick={() => setEditing((v) => !v)}>
+            {editing ? 'Hotovo' : 'Upravit'}
           </button>
         }
       >
-        <div className="rows">
+        <div className="list">
           {state.baseGear.map((item) => (
             <GearRow
               key={item.id}
               name={item.name}
               checked={packed.has(item.name)}
               onToggle={() => onToggle(item.name)}
-              onRemove={
-                editing ? () => onBaseGearChange(state.baseGear.filter((g) => g.id !== item.id)) : undefined
-              }
+              onRemove={editing ? () => onBaseGearChange(state.baseGear.filter((g) => g.id !== item.id)) : undefined}
             />
           ))}
+          {editing && (
+            <div className="cell" style={{ gap: 8 }}>
+              <input
+                className="field grow"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addItem()}
+                placeholder="Přidat věc"
+                enterKeyHint="done"
+              />
+              <button className="icon-btn icon-btn--filled" onClick={addItem} aria-label="Přidat položku" style={{ margin: 0, width: 40, height: 40 }}>
+                <Icon name="plus" size={20} stroke={2.2} />
+              </button>
+            </div>
+          )}
         </div>
-
-        {editing && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <input
-              className="field"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addItem()}
-              placeholder="Přidat do základu"
-            />
-            <button className="btn-icon btn-icon--solid" onClick={addItem} aria-label="Přidat položku">
-              <Icon name="plus" size={19} stroke={2.2} />
-            </button>
-          </div>
-        )}
       </Section>
-    </Scroll>
+
+      {done > 0 && (
+        <div className="page mt-24">
+          <button className="btn btn--gray" onClick={onReset}>
+            Odškrtnout všechno
+          </button>
+        </div>
+      )}
+    </Screen>
   )
 }
 
@@ -135,35 +163,28 @@ function GearRow({
   onRemove?: () => void
 }) {
   return (
-    <div className="row">
+    <div className="cell" style={{ ['--inset' as string]: '52px', paddingRight: onRemove ? 6 : 16 }}>
       <button
-        className="chk"
         onClick={onToggle}
+        className="row grow"
+        style={{ gap: 14, textAlign: 'left' }}
         aria-pressed={checked}
-        aria-label={checked ? `${name} sbaleno` : `Označit ${name} jako sbalené`}
+        aria-label={checked ? `${name}, sbaleno` : `${name}, nesbaleno`}
       >
-        <Icon name="check" size={13} stroke={3} />
+        <span className="check" data-on={checked}>
+          <Icon name="check" size={14} stroke={3} />
+        </span>
+        <span className="grow">
+          <span className="cell-title" style={{ display: 'block', color: checked ? 'var(--ink-3)' : undefined }}>
+            {name}
+          </span>
+          {/* Důvod je u položky pořád — jinak se nedá zpochybnit, proč ji appka přidala. */}
+          {why && <span className="cell-sub" style={{ display: 'block' }}>{why}</span>}
+        </span>
       </button>
-
-      <button onClick={onToggle} style={{ flexGrow: 1, textAlign: 'left', minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 14.5,
-            fontWeight: 500,
-            color: checked ? 'var(--paper-4)' : 'var(--paper)',
-            textDecoration: checked ? 'line-through' : 'none',
-          }}
-        >
-          {name}
-        </div>
-        {/* Důvod je u položky pořád, ne jen při prvním zobrazení — jinak se
-            nedá zpochybnit, proč to appka do batohu přidala. */}
-        {why && <div className="footnote" style={{ marginTop: 2 }}>{why}</div>}
-      </button>
-
       {onRemove && (
-        <button className="btn-icon" onClick={onRemove} aria-label={`Smazat ${name}`} style={{ width: 34, height: 34 }}>
-          <Icon name="trash" size={15} />
+        <button className="icon-btn" onClick={onRemove} aria-label={`Smazat ${name}`} style={{ color: 'var(--stop)' }}>
+          <Icon name="trash" size={18} stroke={2} />
         </button>
       )}
     </div>

@@ -1,77 +1,68 @@
 import { Icon } from '../components/Icon'
-
-const CLAIMS: Array<{ title: string; text: string }> = [
-  {
-    title: 'Řekne rozhodnutí, ne počasí',
-    text: 'Skóre 0 až 100 a jedno slovo: jdi, zvaž, nejdi. A hned pod tím rozpad, co přesně ti body sebralo — ať to jde rozporovat.',
-  },
-  {
-    title: 'Počítá pro tvůj vrchol, ne pro nejbližší město',
-    text: 'Do předpovědi jde nadmořská výška každého bodu a rizika se berou z ansámblu desítek členů. Když se rozejdou, appka to řekne rovnou, místo aby předstírala jistotu.',
-  },
-  {
-    title: 'Poradí, v kolik vyrazit',
-    text: 'Projde všechny hodiny sedmi dní a najde okno, kdy se trasa dá projít nejlíp. Spočítá i obrat před bouřkou, rezervu do tmy a výbavu, kterou si vynutilo počasí.',
-  },
-]
+import { Mark } from '../components/ui'
 
 interface Props {
   onDemo: () => void
   onOwn: () => void
 }
 
+const POINTS = [
+  {
+    icon: 'verdikt' as const,
+    title: 'Verdikt pro celou trasu',
+    text: 'Počasí v každém místě trati, v hodinu, kdy tam podle tvého tempa budeš.',
+  },
+  {
+    icon: 'kdy' as const,
+    title: 'Kdy vyrazit',
+    text: 'Projde každou hodinu startu na týden dopředu a najde nejlepší okno.',
+  },
+  {
+    icon: 'file' as const,
+    title: 'Tvoje trasy',
+    text: 'Naklikej body na mapě, nebo nahraj GPX z Mapy.cz, Komootu či hodinek.',
+  },
+]
+
 export function UvodScreen({ onDemo, onOwn }: Props) {
   return (
     <div className="app">
-      <div className="scroll">
-        <div className="sec" style={{ marginTop: 36 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 9, paddingBottom: 12, borderBottom: '1px solid var(--rule)' }}>
-            <Icon name="peak" size={18} stroke={2} />
-            <span className="wordmark">NAVRCHOL</span>
-          </div>
-
-          <h1 className="cond" style={{ fontSize: 46, fontWeight: 700, lineHeight: 0.98, marginTop: 24 }}>
-            Jít,
-            <br />
-            nebo nejít?
+      <div className="scroll" style={{ display: 'flex', flexDirection: 'column', paddingBottom: 20 }}>
+        <div className="page" style={{ marginTop: 'max(40px, 9vh)' }}>
+          <Mark size={64} />
+          <h1 className="t-large" style={{ marginTop: 22, fontSize: 36 }}>
+            NaVrchol
           </h1>
-
-          <p className="body" style={{ fontSize: 15, marginTop: 14, maxWidth: 300 }}>
-            Počasí na túru, které ti dá odpověď místo obrázku sluníčka.
+          <p className="t-callout muted mt-8" style={{ fontSize: 17, maxWidth: 320 }}>
+            Počasí na túru, které řekne, jestli jít, kdy vyrazit a&nbsp;co si vzít.
           </p>
         </div>
 
-        <div className="sec" style={{ marginTop: 32 }}>
-          <div className="rows">
-            {CLAIMS.map((c, i) => (
-              <div className="row" key={c.title} style={{ alignItems: 'flex-start', paddingTop: 14, paddingBottom: 14 }}>
-                <span className="mono" style={{ width: 26, flexShrink: 0, fontSize: 12, color: 'var(--paper-4)' }}>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.005em' }}>{c.title}</div>
-                  <div className="hint" style={{ marginTop: 5 }}>
-                    {c.text}
-                  </div>
-                </div>
+        <div className="page stack" style={{ gap: 22, marginTop: 36 }}>
+          {POINTS.map((p) => (
+            <div key={p.title} className="row" style={{ alignItems: 'flex-start', gap: 16 }}>
+              <span style={{ color: 'var(--accent)', marginTop: 2 }}>
+                <Icon name={p.icon} size={30} stroke={1.7} />
+              </span>
+              <div>
+                <div className="t-headline">{p.title}</div>
+                <div className="t-sub muted mt-4">{p.text}</div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
 
-        <div className="sec" style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div style={{ flex: 1, minHeight: 32 }} />
+
+        <div className="page stack" style={{ gap: 10 }}>
           <button className="btn" onClick={onDemo}>
-            <Icon name="peak" size={17} stroke={2} />
-            Ukázat to na Sněžce
+            Vyzkoušet na Sněžce
           </button>
-          <button className="btn btn--ghost" onClick={onOwn}>
-            <Icon name="plus" size={16} stroke={2} />
-            Rovnou si zadat vlastní trasu
+          <button className="btn btn--gray" onClick={onOwn}>
+            Zadat vlastní trasu
           </button>
-          <p className="footnote" style={{ textAlign: 'center', marginTop: 6 }}>
-            Nic se nikam neposílá a nechce to žádný účet.
-            <br />
-            Trasy zůstávají v tomhle telefonu.
+          <p className="footer-note" style={{ paddingTop: 10 }}>
+            Bez účtu a bez sledování. Trasy zůstávají v&nbsp;tomhle telefonu.
           </p>
         </div>
       </div>

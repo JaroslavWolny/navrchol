@@ -42,14 +42,43 @@ Pravděpodobnost srážek není hodnota z modelu, ale podíl členů, kterým pr
 variantou ansámblu. Ne „modely se shodly na čísle", ale „verdikt se v rozptylu
 nehýbe" — což je jediná otázka, která při rozhodování něco znamená.
 
-**Nadmořská výška.** Do obou API jde výška každého bodu zvlášť. Bez toho by
-předpověď pro vrchol ve 1 603 m vycházela z hodnoty pro údolí — a to je rozdíl
-šesti stupňů.
+**Předpověď podél celé trati, ne jen v naklikaných bodech.** Trasa „parkoviště →
+vrchol" měla dřív předpověď jen na parkovišti a na vrcholu; hřeben mezi nimi neměl
+vlastní počasí vůbec. Teď se trať vzorkuje (`src/lib/sites.ts`): nejvyšší a nejnižší
+místo, výrazné vrcholy po cestě (vyčnívají o 60 m nad okolí ±1,5 km) a pak
+rovnoměrně po délce, nejvýš osm míst. Dvě místa blízko u sebe a ve stejné výšce se
+sloučí. Každé jde do API se svou nadmořskou výškou, a pro každou hodinu túry se
+teplota ještě přepočítá na výšku bodu trati, kde podle tempa jsi (6,5 °C/km).
+
+**Ansámbl jen ve dvou výškách.** Ansámbl je velká odpověď a Open-Meteo ho počítá do
+minutového limitu, takže se stahuje jen v nejnižším a nejvyšším místě a mezi nimi
+se kvantily dopočítají lineárně podle výšky. Tlakové hladiny (vítr, teplotní
+profil) se stahují zvlášť a jen pro místa nad hranicí lesa a pro vrchol.
+
+**Vítr na hřebenech se dopočítává z volné atmosféry.** Model počítá vítr v 10 m
+nad vyhlazeným terénem, takže na vrcholu, který nad okolí vyčnívá, fouká víc, než
+ukazuje. Ověřeno proti hodinovým měřením IMGW (leden–srpen 2026, 5 832 hodin):
+
+| | Sněžka (model) | Sněžka (měřeno) | Kasprowy Wierch (model) | Kasprowy (měřeno) |
+|---|---|---|---|---|
+| průměrný vítr, 10 m | 4,4 m/s | **10,2 m/s** | 4,5 m/s | 5,6 m/s |
+| `max(10 m, volná atmosféra)` | 7,6 m/s, chyba 7,3 → 4,3 | | 5,1 m/s, chyba 2,4 → 2,4 | |
+
+Nad hranicí lesa (1 200 m) je proto vítr `max(model, vítr v tlakové hladině ve výšce
+místa)` a nárazy `max(model, 1,5 × ten vítr)` — 1,5 je naměřený medián poměru náraz
+/ průměr na Sněžce. Hodin s nárazy nad 75 km/h (práh pro tvrdé NEJDI) appka
+zachytí 76 % místo 64 %, na chráněném Kasprowém se nic nezhorší. V rozpadu skóre
+je u takové hodiny poznámka „dopočteno z volné atmosféry".
+
+**Stoupání s hysterezí.** Prostý součet kladných rozdílů výšky započítá každý schod
+šumu; u GPX z hodinek to jsou stovky metrů navíc. Počítá se s hysterezí 5 m, což
+sedí na BRouter („filtered ascend" 871 m vs. 868 m u Sněžky). Výšky z GPX se před
+výpočtem tempa vyhladí klouzavým průměrem přes ±40 m.
 
 **Skutečná trasa, ne vzdušná čára.** Mezi body se dopočítá cesta po pěšinách
 (BRouter, profil `hiking-beta`). U Sněžky z Pece je rozdíl 5,2 km vzdušnou čarou
 vs. 7,0 km po pěšině. BRouter navíc vrací výšku v každém bodě, takže výškový profil
-je zadarmo a Toblerova funkce se počítá na každém úseku zvlášť.
+je zadarmo a Toblerova funkce se počítá na každém úseku zvlášť. Když BRouter nepojede, spadne se na vzdušnou čáru — ale s výškami terénu každých 150 m, ne jen s výškami koncových bodů.
 
 **Skóruje se hodinu po hodině, ne v bodech trasy.** Trasa o dvou bodech na šest
 hodin měla dřív oskórované dvě hodiny ze šesti; bouřka mezi nimi do verdiktu
@@ -62,6 +91,14 @@ jako další body, tomu se počítala půlka — délka, rezerva do tmy, výbava
 hodiny se vůbec oskórovaly. Přitom odpoledne na sestupu přicházejí bouřky. Přepínač
 v editoru trať zrcadlí (obrátka se neopakuje) a Tobler počítá klesání vlastní
 rychlostí, takže návrat čas nezdvojnásobí, jen prodlouží.
+
+**Pauza nahoře patří do plánu.** Dvacet minut na vrcholu posune návrat, rezervu do
+tmy i nejpozdější start před bouřkou — a skóruje se, protože nahoře sedíš
+v největším větru. U tam a zpět je pauza na obrátce, jinak na nejvyšším bodě.
+
+**Tempo se dá zkalibrovat na sebe.** Rozdíl mezi lidmi je větší než rozdíl mezi
+vzorci pro čas chůze (±30 %). V nastavení se zadá, za jak dlouho člověk opravdu
+ušel některou z uložených tras, a všechny odhady se přepočítají jeho tempem.
 
 **Nejhorší hodina váží 60 %.** Túra je tak dobrá jako její nejslabší úsek. Průměr
 by zatajil jednu smrtelnou hodinu na hřebeni mezi sedmi hezkými.
@@ -131,33 +168,33 @@ a západ pro rovný obzor, takže zbytek si appka spočítá sama (`src/lib/sun.
 
 ## Jak to vypadá a proč
 
-Appka není počasí, je to měřicí přístroj a horský bulletin. Vzhled drží tři pravidla
-(`src/styles.css`):
+Appka se má na telefonu chovat jako appka, ne jako web (`src/styles.css`):
 
-**Barva je údaj.** Sytá barva se smí objevit jen tam, kde nese naměřenou hodnotu —
-verdikt, skóre, srážky, barevnost oblohy. Ovládací prvky jsou proto křídově bílé.
-Barevné tlačítko nic neměří, takže barvu nemá.
+**Systémové písmo a systémové vzory.** SF Pro na iPhonu, velké titulky, které při
+rolování zajedou do průsvitné lišty, seskupené seznamy, přepínače a segmentové
+volby jako v Nastavení. Světlý i tmavý režim podle telefonu. Přechody mezi
+obrazovkami přes View Transitions (podřízená obrazovka přijede zprava).
 
-**Plochy dělají linky, ne karty.** Sekce odděluje vlasová linka a popiska veličiny,
-ne zaoblený box. Vlastní podklad dostane jen to, co se dá zmáčknout. Poloměr je 4 px,
-ne 16 — datový list, ne nástěnka s lístečky.
+**Barva nese data.** Zelená, oranžová a červená jsou jen verdikt a skóre, žlutá
+slunce, azurová déšť. Modrá je akce — tlačítka, odkazy, aktivní záložka.
 
-**Jeden přístroj na skóre.** Číslo samo neřekne, jak daleko je k hranici verdiktu,
-proto se skóre nikdy neukazuje bez stupnice 0—100 se zářezy v 35 a 65
-(`src/components/Gauge.tsx`). Stejná stupnice je u verdiktu i v seznamu tras.
+**Vlastní je to, co ukazuje data.** Pás hodin ve verdiktu (každý díl je jedna hodina
+túry v barvě jejího skóre), průběh túry (výškový profil v čase: pauza je rovinka,
+nad každou hodinou počasí tam, kde v ní budeš), teplotní mapa startů na týden
+a trasa na mapě obarvená podle toho, kde to ten den zlobí.
 
-Písmo je jedna nadrodina ve třech hlasech: IBM Plex Sans na text, Plex Sans Condensed
-na verdikt a nadpisy, Plex Mono na naměřené hodnoty s tabulkovými číslicemi. Ikony jsou
-vlastní, s hranatými konci a ostrými rohy — kreslí se jako technický výkres, ne jako
-zaoblená sada z balíčku.
+**Ikona je turistická značka.** Značka KČT „odbočka k vrcholu" — barevný
+rovnostranný trojúhelník v bílém čtverci. Na vrchol, NaVrchol.
 
-Táhnutím dolů se stáhne nová předpověď (`src/components/Scroll.tsx`); pod verdiktem
-je vidět, v kolik data dorazila. Bez toho vypadá půl hodiny stará předpověď stejně
-jako čerstvá.
+Texty jsou krátké a česky sázené: pevné mezery za jednopísmennými předložkami
+(`vlna()` ve `format.ts`), čas bez úvodní nuly, typografické minus.
+
+Táhnutím dolů se stáhne nová předpověď; poslední předpověď každé trasy zůstává
+v IndexedDB, takže bez signálu appka ukáže plán a řekne, jak je starý.
 
 ## Stack
 
-Vite + React + TypeScript, Leaflet nad OpenTopoMap, Vitest. **Žádný backend** —
+Vite + React + TypeScript, Leaflet nad OpenTopoMap, Vitest. Trasy jde naklikat, najít podle jména, nebo nahrát jako GPX (Mapy.cz, Komoot, hodinky). **Žádný backend** —
 Open-Meteo i BRouter mají CORS a nechtějí klíč, takže se volají rovnou z prohlížeče.
 
 ## Vývoj
@@ -178,9 +215,11 @@ npm run build
   (bez klíče, ale s minutovým limitem; když nedorazí, appka jede dál z jemného modelu
   a řekne to)
 - [BRouter](https://brouter.de) — routování po pěšinách
+- [Waymarked Trails](https://hiking.waymarkedtrails.org) — značené turistické trasy nad mapou v editoru
+- [IMGW](https://danepubliczne.imgw.pl) — hodinová měření ze Sněžky a Kasprowého vrchu, jen na ověření větru (appka je nestahuje)
 - [RainViewer](https://rainviewer.com) — srážkový radar
 - [OpenTopoMap](https://opentopomap.org) / OpenStreetMap — mapové dlaždice (CC-BY-SA)
-- Esri Dark Gray Canvas — tmavý podklad pod radar
+- Esri Light/Dark Gray Canvas — neutrální podklad pod radar
 
 ## Testování iOS geometrie bez telefonu
 

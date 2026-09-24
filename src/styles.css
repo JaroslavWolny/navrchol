@@ -1,100 +1,147 @@
 /* ==========================================================================
-   NaVrchol — designový systém „bulletin"
+   NaVrchol
 
-   Východisko: appka není počasí, je to měřicí přístroj a horský bulletin.
-   Z toho plynou tři pravidla, která drží celý vzhled pohromadě:
-
-   1. BARVA JE ÚDAJ. Sytá barva se smí objevit jen tam, kde nese naměřenou
-      hodnotu (verdikt, skóre, srážky, barevnost oblohy). Ovládací prvky jsou
-      proto křídově bílé, ne barevné — barva tlačítka nic neměří.
-   2. PLOCHY DĚLAJÍ LINKY, NE KARTY. Sekce odděluje vlasová linka a mřížka,
-      ne zaoblený box. Vlastní podklad dostane jen to, co se dá zmáčknout.
-   3. ČÍSLA JSOU V TABULCE. Každá měřená hodnota je v monospace s tabulkovými
-      číslicemi, aby se pod sebou nehýbala při přepočtu.
+   Appka se má na telefonu chovat jako appka, ne jako web: systémové písmo,
+   světlý i tmavý režim podle telefonu, velké titulky, seskupené seznamy.
+   Vlastní je to, co ukazuje data — průběh túry, pás hodin, teplotní mapa
+   startů. Tam je taky všechna barva: zelená / oranžová / červená nesou
+   verdikt, modrá je akce, žlutá slunce a azurová déšť.
    ========================================================================== */
 
 :root {
-  /* Podklad: grafit s náznakem zeleně (mokrá břidlice), ne modrý „tech dark". */
-  --ground: oklch(0.17 0.006 160);
-  --sunken: oklch(0.132 0.005 160);
-  --surface: oklch(0.213 0.007 160);
-  --track: oklch(0.285 0.008 160);
+  color-scheme: light dark;
 
-  --rule: oklch(0.315 0.008 160);
-  --rule-soft: oklch(0.245 0.007 160);
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-rounded: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  /* Text: teplá křída. Čistá bílá na OLEDu pálí a nemá charakter. */
-  --paper: oklch(0.955 0.008 95);
-  --paper-2: oklch(0.775 0.008 95);
-  --paper-3: oklch(0.615 0.008 95);
-  --paper-4: oklch(0.465 0.008 95);
+  --bg: #f2f2ef;
+  --card: #ffffff;
+  --card-2: #f7f7f4;
+  --raised: #ffffff;
+  --fill: rgba(120, 120, 116, 0.14);
+  --fill-2: rgba(120, 120, 116, 0.09);
+  --line: rgba(60, 60, 56, 0.14);
+  --line-strong: rgba(60, 60, 56, 0.24);
+  --ink: #18191b;
+  --ink-2: #5d6064;
+  --ink-3: #8b8e93;
+  --ink-4: #b8babe;
+  --on-accent: #ffffff;
 
-  /* Signální barvy — výhradně pro měřené hodnoty. */
-  --go: oklch(0.76 0.15 148);
-  --mid: oklch(0.80 0.145 78);
-  --stop: oklch(0.66 0.19 28);
-  --sun: oklch(0.81 0.13 62);
-  --cold: oklch(0.74 0.10 235);
+  --accent: #1f57c9;
+  --accent-soft: rgba(31, 87, 201, 0.1);
 
-  --go-wash: oklch(0.255 0.045 148);
-  --mid-wash: oklch(0.255 0.045 78);
-  --stop-wash: oklch(0.26 0.055 28);
-  --sun-wash: oklch(0.25 0.04 62);
+  --go: #1d9a4e;
+  --go-soft: rgba(29, 154, 78, 0.12);
+  --mid: #c77700;
+  --mid-fill: #f2a100;
+  --mid-soft: rgba(242, 161, 0, 0.16);
+  --stop: #d33228;
+  --stop-soft: rgba(211, 50, 40, 0.1);
 
-  --sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --cond: 'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --sun: #e89400;
+  --sun-soft: rgba(232, 148, 0, 0.14);
+  --rain: #2b9be0;
+  --cold: #4a86d8;
+  --terrain: #b9bdb6;
+  --terrain-line: #6f746c;
 
-  /* Jediná vodorovná míra v appce. Vše ostatní je její násobek nebo půlka. */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 1px rgba(0, 0, 0, 0.03);
+  --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --material: rgba(242, 242, 239, 0.8);
+
   --g: 16px;
-  color-scheme: dark;
+  --r-card: 16px;
+  --r-ctl: 11px;
 }
 
-/* Tón nese rodič, potomci si barvu berou z proměnné. Díky tomu není v JSX
-   jediná natvrdo napsaná barva verdiktu. */
-[data-tone='jdi'] { --tone: var(--go); --tone-wash: var(--go-wash); }
-[data-tone='zvaz'] { --tone: var(--mid); --tone-wash: var(--mid-wash); }
-[data-tone='nejdi'] { --tone: var(--stop); --tone-wash: var(--stop-wash); }
-[data-tone='none'] { --tone: var(--paper-4); --tone-wash: var(--surface); }
-[data-tone='sun'] { --tone: var(--sun); --tone-wash: var(--sun-wash); }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0c0d;
+    --card: #1a1b1d;
+    --card-2: #222325;
+    --raised: #2a2b2e;
+    --fill: rgba(130, 132, 138, 0.26);
+    --fill-2: rgba(130, 132, 138, 0.16);
+    --line: rgba(255, 255, 255, 0.09);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --ink: #f2f2f0;
+    --ink-2: #a6a8ac;
+    --ink-3: #77797e;
+    --ink-4: #4c4e52;
+    --on-accent: #ffffff;
+
+    --accent: #5d93ff;
+    --accent-soft: rgba(93, 147, 255, 0.16);
+
+    --go: #3ac470;
+    --go-soft: rgba(58, 196, 112, 0.16);
+    --mid: #ffb52e;
+    --mid-fill: #ffb52e;
+    --mid-soft: rgba(255, 181, 46, 0.16);
+    --stop: #ff5e52;
+    --stop-soft: rgba(255, 94, 82, 0.16);
+
+    --sun: #ffb13b;
+    --sun-soft: rgba(255, 177, 59, 0.16);
+    --rain: #4cb2f5;
+    --cold: #7aa8f0;
+    --terrain: #3a3d40;
+    --terrain-line: #9a9ea3;
+
+    --shadow-1: none;
+    --shadow-2: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --material: rgba(11, 12, 13, 0.78);
+  }
+}
+
+/* Barvu verdiktu nese rodič, potomci si ji berou z proměnné. */
+[data-tone='jdi'] { --tone: var(--go); --tone-fill: var(--go); --tone-soft: var(--go-soft); }
+[data-tone='zvaz'] { --tone: var(--mid); --tone-fill: var(--mid-fill); --tone-soft: var(--mid-soft); }
+[data-tone='nejdi'] { --tone: var(--stop); --tone-fill: var(--stop); --tone-soft: var(--stop-soft); }
+[data-tone='none'] { --tone: var(--ink-3); --tone-fill: var(--ink-4); --tone-soft: var(--fill-2); }
+[data-tone='sun'] { --tone: var(--sun); --tone-fill: var(--sun); --tone-soft: var(--sun-soft); }
 
 * { box-sizing: border-box; }
-h1, h2, h3, p { margin: 0; }
+h1, h2, h3, h4, p { margin: 0; }
 html, body, #root { height: 100%; }
 
 /* Stránka samotná se nikdy neroluje — roluje jen .scroll uvnitř rámu.
    Bez toho iOS gumovým odskokem posouvá celou appku. */
-html, body {
-  overflow: hidden;
-  overscroll-behavior: none;
-}
+html, body { overflow: hidden; overscroll-behavior: none; }
 
 body {
   margin: 0;
   -webkit-text-size-adjust: 100%;
-  background: var(--ground);
-  color: var(--paper);
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.45;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.38;
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
 button {
   font: inherit;
+  letter-spacing: inherit;
   color: inherit;
   background: none;
   border: none;
   padding: 0;
+  margin: 0;
   cursor: pointer;
+  text-align: inherit;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-/* Šestnáct pixelů není estetika, ale nutnost: nad menším písmem si iOS při
-   ťuknutí do políčka stránku sám přiblíží, hlavička s tlačítky Zpět a Uložit
-   vyjede mimo obrazovku a zpátky se k ní nedostaneš. Platí pro všechna
-   políčka včetně těch neviditelných pod výběrem data. */
+/* Pod šestnáct pixelů si iOS při ťuknutí do políčka stránku sám přiblíží
+   a hlavička s tlačítky vyjede mimo obrazovku. */
 input, textarea, select {
   font: inherit;
   font-size: 16px;
@@ -102,57 +149,34 @@ input, textarea, select {
   -webkit-tap-highlight-color: transparent;
 }
 
-a { color: var(--paper); text-underline-offset: 2px; }
+a { color: var(--accent); text-decoration: none; }
+::selection { background: var(--accent-soft); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+svg { flex-shrink: 0; }
 
-::selection { background: var(--paper); color: var(--ground); }
+.num { font-variant-numeric: tabular-nums; }
+.rounded { font-family: var(--font-rounded); }
+.muted { color: var(--ink-2); }
+.faint { color: var(--ink-3); }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.nowrap { white-space: nowrap; }
 
-:focus-visible {
-  outline: 2px solid var(--paper);
-  outline-offset: 2px;
-}
+/* ---------- typografie ---------- */
 
-/* ---------- typografické třídy ---------- */
-
-.mono {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: 'zero' 1;
-}
-
-.cond {
-  font-family: var(--cond);
-  letter-spacing: -0.005em;
-}
-
-/* Popiska měřené veličiny. Verzálky s mezerou, jako na štítku přístroje. */
-.label {
-  font-family: var(--sans);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--paper-3);
-}
-
-.hint {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--paper-3);
-  text-wrap: pretty;
-}
-
-.body {
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--paper-2);
-  text-wrap: pretty;
-}
+.t-large { font-size: 32px; line-height: 1.12; font-weight: 700; letter-spacing: -0.022em; }
+.t-title { font-size: 22px; line-height: 1.2; font-weight: 700; letter-spacing: -0.018em; }
+.t-headline { font-size: 17px; line-height: 1.3; font-weight: 600; letter-spacing: -0.012em; }
+.t-body { font-size: 16px; line-height: 1.4; }
+.t-callout { font-size: 15px; line-height: 1.38; }
+.t-sub { font-size: 14px; line-height: 1.36; }
+.t-foot { font-size: 13px; line-height: 1.36; letter-spacing: 0; }
+.t-cap { font-size: 12px; line-height: 1.3; letter-spacing: 0.005em; }
+.t-mini { font-size: 11px; line-height: 1.25; letter-spacing: 0.01em; font-weight: 500; }
 
 /* ---------- rám ---------- */
 /*
   Rám je přibitý na viewport, ne na 100dvh. iOS si výšku po startu přepočítává
-  a appka kvůli tomu poskakovala — jednou byla useknutá nahoře, podruhé zbyl
-  pruh dole. position: fixed na tom nezávisí.
+  a appka kvůli tomu poskakovala. position: fixed na tom nezávisí.
 */
 .app {
   position: fixed;
@@ -160,23 +184,28 @@ a { color: var(--paper); text-underline-offset: 2px; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--ground);
+  background: var(--bg);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
 }
 
 /*
-  Horní bezpečná zóna jako rozpěrka, ne jako padding.
-  iOS u napevno přibitého rámu započítá svislé odsazení dvakrát: obsah posune
-  dolů a zároveň rámu o stejnou hodnotu zkrátí výšku. Pod spodní lištou pak
-  zbyde díra přesně velikosti té zóny (naměřeno 59 px na iPhonu 14 Pro).
-  Flexový prvek s pevnou výškou je jednoznačný.
+  Horní bezpečná zóna jako rozpěrka, ne jako padding. iOS u napevno přibitého
+  rámu započítá svislé odsazení dvakrát a pod spodní lištou pak zbyde díra.
 */
 .app::before {
   content: '';
   flex-shrink: 0;
   height: env(safe-area-inset-top, 0px);
-  background: var(--ground);
+  background: var(--bg);
+}
+
+.screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .scroll {
@@ -186,619 +215,293 @@ a { color: var(--paper); text-underline-offset: 2px; }
   overflow-x: hidden;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 28px;
+  padding-bottom: 32px;
 }
 
-/* ---------- spodní navigace ---------- */
+.page { padding: 0 var(--g); }
 
-.nav {
+/* ---------- navigační lišta ---------- */
+
+.bar {
   position: relative;
+  z-index: 20;
+  flex-shrink: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  /*
-    Z bezpečné zóny se ubere 12px. Celá by pod popisky nechala pruh skoro 35px,
-    což je víc, než má systémová lišta iOS — a čte se to jako chybějící kus
-    obrazovky. Zbytek pořád nechává čáru pro zavření appky volnou.
-  */
-  padding: 0 2px max(8px, calc(env(safe-area-inset-bottom, 8px) - 12px));
-  border-top: 1px solid var(--rule);
-  background: var(--ground);
-  flex-shrink: 0;
-}
-
-/* Náznak, že obsah pod lištou pokračuje. Bez něj vypadá useknutý řádek textu
-   jako chyba sazby. */
-.nav::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: 20px;
-  background: linear-gradient(to top, var(--ground), transparent);
-  pointer-events: none;
-}
-
-.nav button {
-  position: relative;
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: minmax(64px, 1fr) auto minmax(64px, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 52px;
-  padding-top: 9px;
-  color: var(--paper-4);
-  font-size: 10px;
+  height: 46px;
+  padding: 0 8px;
+  background: var(--bg);
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.bar[data-scrolled='true'] {
+  background: var(--material);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 0.5px 0 var(--line-strong);
+}
+
+.bar-title {
+  grid-column: 2;
+  max-width: 62vw;
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  transition: color 120ms ease;
-}
-
-/* Aktivní záložka je zaražená pod horní hranu jako jazýček v pořadači.
-   Barvu si nebere — barva v téhle appce znamená naměřenou hodnotu. */
-.nav button[aria-current='page'] { color: var(--paper); }
-
-.nav button[aria-current='page']::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 50%;
-  width: 26px;
-  height: 2px;
-  margin-left: -13px;
-  background: var(--paper);
-}
-
-.nav button:active { color: var(--paper-2); }
-
-/* ---------- hlavička obrazovky ---------- */
-
-.masthead {
-  padding: 18px var(--g) 14px;
-  border-bottom: 1px solid var(--rule);
-}
-
-.masthead h1 {
-  font-family: var(--cond);
-  font-size: 27px;
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-
-.masthead .meta {
-  margin-top: 5px;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  color: var(--paper-3);
-}
-
-/* Hlavička podřízené obrazovky: zpět + název na jednom řádku. */
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  padding: 10px var(--g) 10px 8px;
-  border-bottom: 1px solid var(--rule);
-}
-
-.topbar h1 {
-  font-family: var(--cond);
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.005em;
-  min-width: 0;
-  flex-grow: 1;
-}
-
-/* ---------- sekce ---------- */
-
-.sec { padding: 0 var(--g); margin-top: 22px; }
-.sec--tight { margin-top: 14px; }
-
-.sec-hd {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 7px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--rule);
-}
-
-.sec-hd .meta {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 10.5px;
-  color: var(--paper-4);
-  flex-shrink: 0;
-}
-
-/* ---------- řádky ---------- */
-
-.rows { display: flex; flex-direction: column; }
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 46px;
-  padding: 9px 0;
-  text-align: left;
-  border-bottom: 1px solid var(--rule-soft);
-}
-
-.rows > .row:last-child { border-bottom: none; }
-
-/* Zmáčknutelný řádek se rozsvítí přes celou šířku obrazovky, ne jen v sazebním
-   zrcadle — jinak to vypadá, že tap minul. */
-.row--tap {
-  margin-inline: calc(var(--g) * -1);
-  padding-inline: var(--g);
-  transition: background-color 90ms ease;
-}
-
-.row--tap:active { background: var(--surface); }
-
-.row-name {
-  flex-grow: 1;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.row-value {
-  flex-shrink: 0;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.truncate {
+  letter-spacing: -0.012em;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 
-/* ---------- měřidlo skóre ----------
-   Jeden přístroj pro celou appku: hodnota na stupnici 0—100 se zářezy
-   v místech, kde se láme verdikt. Číslo samo o sobě neřekne, jak daleko
-   je k hranici — stupnice ano. */
+.bar[data-scrolled='true'] .bar-title,
+.bar[data-static='true'] .bar-title { opacity: 1; transform: none; }
 
-.gauge { position: relative; }
+.bar-side { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.bar-side--end { justify-content: flex-end; grid-column: 3; }
+.bar-side--start { grid-column: 1; }
 
-.gauge-track {
-  position: relative;
-  height: 8px;
-  background: var(--track);
-  overflow: hidden;
+/* Textové tlačítko v liště: Zrušit, Uložit. */
+.bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 8px;
+  color: var(--accent);
+  font-size: 16px;
+  white-space: nowrap;
 }
+.bar-btn:active { opacity: 0.45; }
+.bar-btn[disabled] { color: var(--ink-4); pointer-events: none; }
+.bar-btn--strong { font-weight: 600; }
 
-.gauge-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--tone);
-  transition: width 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-/* Zářez prahu: skutečně proříznutý přes celou výšku, ne čárka nakreslená
-   navrch. Na pásu je tak vidět, na které straně hranice hodnota leží. */
-.gauge-notch {
-  position: absolute;
-  top: -1px;
-  bottom: -1px;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--ground);
-}
-
-.gauge-scale {
-  position: relative;
-  height: 13px;
-  margin-top: 4px;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 9.5px;
-  color: var(--paper-4);
-}
-
-.gauge-scale > span { position: absolute; top: 0; transform: translateX(-50%); }
-.gauge-scale > span:first-child { transform: none; }
-.gauge-scale > span:last-child { transform: translateX(-100%); }
-
-.gauge--sm .gauge-track { height: 5px; }
-
-/* ---------- verdikt ---------- */
-
-.verdict {
-  border-left: 3px solid var(--tone);
-  padding-left: 13px;
-}
-
-.verdict-head {
+.large-title {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  padding: 2px var(--g) 0;
 }
 
-.verdict-word {
-  font-family: var(--cond);
-  font-size: 46px;
-  font-weight: 700;
-  line-height: 0.92;
-  letter-spacing: 0.005em;
-  color: var(--tone);
-}
+.large-title h1 { min-width: 0; overflow-wrap: anywhere; }
 
-.verdict-score {
-  display: flex;
-  align-items: baseline;
-  gap: 1px;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-
-.verdict-score b { font-size: 30px; font-weight: 600; line-height: 1; }
-.verdict-score span { font-size: 12px; color: var(--paper-4); }
-
-.verdict-why {
-  margin-top: 11px;
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--paper-2);
-  text-wrap: pretty;
+.subtitle {
+  margin-top: 4px;
+  padding: 0 var(--g);
+  color: var(--ink-2);
+  font-size: 15px;
 }
 
 /* ---------- tlačítka ---------- */
 
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: var(--accent);
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.icon-btn:active { opacity: 0.45; }
+.icon-btn--filled { width: 34px; height: 34px; margin: 5px; background: var(--fill-2); }
+.icon-btn--filled:active { background: var(--fill); opacity: 1; }
+
 .btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   width: 100%;
-  min-height: 48px;
-  padding: 0 16px;
-  border-radius: 4px;
-  background: var(--paper);
-  color: var(--ground);
-  font-size: 14.5px;
+  min-height: 50px;
+  padding: 0 18px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: 0.005em;
-  transition: transform 80ms ease, background-color 120ms ease;
+  letter-spacing: -0.01em;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.btn:active { opacity: 0.8; transform: scale(0.985); }
+.btn[disabled] { background: var(--fill); color: var(--ink-3); pointer-events: none; }
+.btn--gray { background: var(--fill-2); color: var(--accent); }
+.btn--gray:active { background: var(--fill); opacity: 1; }
+.btn--danger { background: var(--stop-soft); color: var(--stop); }
+.btn--small { width: auto; min-height: 34px; padding: 0 14px; border-radius: 999px; font-size: 15px; }
+
+.link { color: var(--accent); font-weight: 500; }
+.link:active { opacity: 0.45; }
+
+/* ---------- karty a seznamy ---------- */
+
+.card {
+  background: var(--card);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
 }
 
-.btn:active { transform: translateY(1px); background: var(--paper-2); }
+.card-pad { padding: 14px 16px; }
 
-.btn:disabled {
-  background: var(--surface);
-  color: var(--paper-4);
-  transform: none;
-  cursor: default;
+.section { margin-top: 28px; }
+.section:first-child { margin-top: 12px; }
+
+.section-hd {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 calc(var(--g) + 4px) 8px;
 }
 
-.btn--ghost {
-  background: none;
-  border: 1px solid var(--rule);
-  color: var(--paper-2);
+.section-hd h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.018em; }
+.section-hd .aside { color: var(--ink-3); font-size: 14px; white-space: nowrap; }
+.section-hd button.aside { color: var(--accent); }
+
+.section-ft {
+  padding: 8px calc(var(--g) + 4px) 0;
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 
-.btn--ghost:active { background: var(--surface); color: var(--paper); }
+/* Seskupený seznam: řádky s linkou odsazenou od kraje, jako v Nastavení. */
+.list {
+  margin: 0 var(--g);
+  background: var(--card);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-1);
+  overflow: hidden;
+}
 
-.btn--danger { border-color: oklch(0.38 0.08 28); color: var(--stop); }
-
-/* Kruh je tu jediná kulatá věc v celé appce — a jen proto, že terč o 44 px
-   se na dotykové ploše hledá líp než čtverec stejné velikosti. */
-.btn-icon {
+.cell {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  flex-shrink: 0;
-  border-radius: 4px;
-  color: var(--paper-2);
-  transition: background-color 90ms ease, color 90ms ease;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 16px;
+  text-align: left;
 }
 
-.btn-icon:active { background: var(--surface); color: var(--paper); }
+.cell + .cell::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: var(--inset, 16px);
+  right: 0;
+  height: 0.5px;
+  background: var(--line-strong);
+}
 
-.btn-icon--solid { background: var(--paper); color: var(--ground); }
-.btn-icon--solid:active { background: var(--paper-2); }
+.cell--tap { transition: background-color 90ms ease; }
+.cell--tap:active { background: var(--fill-2); }
+
+.cell-main { flex: 1; min-width: 0; }
+.cell-title { font-size: 16px; letter-spacing: -0.01em; }
+.cell-sub { margin-top: 2px; color: var(--ink-2); font-size: 13px; line-height: 1.35; }
+.cell-value { flex-shrink: 0; color: var(--ink-2); font-size: 16px; font-variant-numeric: tabular-nums; text-align: right; }
+.cell-chev { color: var(--ink-4); }
+
+.cell-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--tone-soft, var(--fill-2));
+  color: var(--tone, var(--ink-2));
+}
 
 /* ---------- ovládací prvky ---------- */
 
 .seg {
+  position: relative;
   display: flex;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  overflow: hidden;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--fill-2);
 }
 
 .seg button {
   flex: 1;
-  min-height: 40px;
-  font-size: 13px;
+  min-height: 32px;
+  padding: 0 6px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 14px;
   font-weight: 500;
-  color: var(--paper-3);
-  border-right: 1px solid var(--rule);
-  transition: background-color 110ms ease, color 110ms ease;
-}
-
-.seg button:last-child { border-right: none; }
-.seg button:active { background: var(--surface); }
-.seg button[aria-pressed='true'] { background: var(--paper); color: var(--ground); font-weight: 600; }
-
-.field {
-  width: 100%;
-  min-height: 46px;
-  padding: 0 12px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  background: var(--sunken);
-  color: var(--paper);
-  font-size: 16px;
-  font-family: var(--sans);
-}
-
-.field::placeholder { color: var(--paper-4); }
-.field:focus { outline: none; border-color: var(--paper-3); }
-
-/* Zaškrtávátko: čtverec, protože sbalená položka je odškrtnutá kolonka
-   v seznamu, ne zapnutý přepínač. */
-.chk {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  border: 1.5px solid var(--paper-4);
-  border-radius: 3px;
-  color: transparent;
-  transition: background-color 130ms ease, border-color 130ms ease;
-}
-
-.chk[aria-pressed='true'] {
-  background: var(--paper);
-  border-color: var(--paper);
-  color: var(--ground);
-}
-
-.chk:active { border-color: var(--paper-2); }
-
-/* Fajfka se dokreslí, místo aby problikla. */
-.chk svg path { stroke-dasharray: 24; stroke-dashoffset: 24; }
-.chk[aria-pressed='true'] svg path {
-  stroke-dashoffset: 0;
-  transition: stroke-dashoffset 180ms cubic-bezier(0.3, 0.8, 0.4, 1) 40ms;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-  padding: 2px 6px;
-  border: 1px solid var(--rule);
-  border-radius: 3px;
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--paper-3);
-}
-
-/* ---------- upozornění ---------- */
-/* Tónovaný pruh s levým pravítkem, ne bublina. Varování je poznámka na okraji
-   bulletinu — proto vypadá jako poznámka na okraji. */
-
-.note {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-left: 2px solid var(--tone, var(--rule));
-  background: var(--tone-wash, var(--surface));
-  font-size: 13px;
-  line-height: 1.45;
-  text-wrap: pretty;
-}
-
-.note svg { color: var(--tone, var(--paper-3)); margin-top: 1px; }
-
-/* ---------- stavy ---------- */
-
-.state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 72px var(--g) 40px;
   text-align: center;
+  white-space: nowrap;
+  transition: background-color 150ms ease, box-shadow 150ms ease;
 }
 
-.state-title {
-  font-family: var(--cond);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--paper);
-}
-
-@keyframes sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(240%); }
-}
-
-/* Kostra kopíruje geometrii skutečného obsahu, ne obecný blok. Když data
-   dorazí, nic neposkočí. */
-.skel {
-  position: relative;
-  background: var(--surface);
-  overflow: hidden;
-}
-
-.skel::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: 42%;
-  background: linear-gradient(90deg, transparent, oklch(0.30 0.008 160), transparent);
-  animation: sweep 1.25s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .skel::after { animation: none; }
-  .gauge-fill { transition: none; }
-}
-
-/* ---------- táhnutím obnovit ---------- */
-
-.pull {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  overflow: hidden;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--paper-4);
-}
-
-.pull svg { transition: transform 160ms ease; }
-.pull[data-armed='true'] { color: var(--paper-2); }
-.pull[data-armed='true'] svg { transform: rotate(180deg); }
-
-@keyframes spin { to { transform: rotate(360deg); } }
-.pull[data-busy='true'] svg { animation: spin 900ms linear infinite; transform: none; }
-
-/* ---------- mapa ---------- */
-
-.frame {
-  position: relative;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--sunken);
-}
-
-/* Štítek nad mapou: sazba přístroje, ne bublina nápovědy. */
-.frame-tag {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 500;
-  padding: 4px 8px;
-  background: var(--ground);
-  border-right: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-  font-family: var(--mono);
-  font-size: 9.5px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--paper-2);
-  pointer-events: none;
-}
-
-.leaflet-container { background: var(--sunken); font-family: var(--sans); }
-
-.leaflet-control-attribution {
-  background: color-mix(in oklab, var(--ground) 82%, transparent) !important;
-  color: var(--paper-4) !important;
-  font-size: 9px !important;
-}
-
-.leaflet-control-attribution a { color: var(--paper-3) !important; }
-
-.leaflet-bar a {
-  background: var(--ground) !important;
-  color: var(--paper-2) !important;
-  border-color: var(--rule) !important;
-}
-
-.wp-pin {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 3px;
-  background: var(--ground);
-  border: 1.5px solid var(--paper);
-  color: var(--paper);
-  font-family: var(--mono);
-  font-size: 11px;
+.seg button[aria-pressed='true'] {
+  background: var(--raised);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   font-weight: 600;
 }
 
-/* Nejvyšší bod je obrácený. Tmavý rámeček, aby bílý čtverec nesplynul se světlou topo mapou. */
-.wp-pin.is-top { background: var(--paper); color: var(--ground); border-color: var(--ground); }
-
-/* ==========================================================================
-   Stavební prvky obrazovek
-   ========================================================================== */
-
-/* Popiska měřené veličiny v řádku. Pevná šířka, aby hodnoty vpravo stály
-   pod sebou i mezi řádky s různě dlouhými názvy. */
-.row-key {
-  width: 96px;
+.switch {
+  position: relative;
+  width: 51px;
+  height: 31px;
   flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  transition: background-color 180ms ease;
 }
 
-/* Vodorovný sloupec grafu. Barvu si bere z tónu rodiče. */
-.bar {
-  height: 4px;
-  background: var(--track);
-  overflow: hidden;
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15), 0 1px 1px rgba(0, 0, 0, 0.16);
+  transition: transform 200ms cubic-bezier(0.3, 0.7, 0.4, 1);
 }
 
-.bar > span {
-  display: block;
-  height: 100%;
-  background: var(--tone, var(--paper-3));
-}
+.switch[aria-checked='true'] { background: var(--go); }
+.switch[aria-checked='true']::after { transform: translateX(20px); }
 
-/* Ovladač času startu. Jeden terč, který sám říká, co změní. */
-.masthead-time {
+.field {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--r-ctl);
+  background: var(--fill-2);
+  color: var(--ink);
+  font-size: 16px;
+  outline: none;
+}
+.field::placeholder { color: var(--ink-3); }
+.field:focus { background: var(--fill); }
+
+.search {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 42px;
-  margin-top: 11px;
-  padding: 0 10px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  color: var(--paper-2);
-  cursor: pointer;
-  transition: background-color 90ms ease, border-color 90ms ease;
 }
+.search svg { position: absolute; left: 10px; color: var(--ink-3); pointer-events: none; }
+.search .field { padding-left: 36px; }
 
-.masthead-time:active { background: var(--surface); border-color: var(--paper-4); }
-.masthead-time svg { color: var(--paper-4); margin-left: auto; }
-
-/* Nativní výběr data leží neviditelně přes celý terč — vlastní dialog by
-   na iOS byl horší než systémový. */
-.masthead-time input {
+/* Nativní výběr času leží neviditelně přes celý terč. */
+.time-pick { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.time-pick input {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -809,190 +512,475 @@ a { color: var(--paper); text-underline-offset: 2px; }
   cursor: pointer;
 }
 
-/* Vybraná varianta: tónovaný blok s pravítkem vlevo, sazba jako u verdiktu.
-   Používá se tam, kde appka sama něco doporučí. */
-.pick {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border-left: 3px solid var(--tone);
-  background: var(--tone-wash);
-  padding: 11px 13px;
-  transition: filter 90ms ease;
-}
-
-.pick:active { filter: brightness(1.12); }
-
-.pick-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pick-when {
-  font-family: var(--cond);
-  font-size: 21px;
-  font-weight: 700;
-  line-height: 1.1;
-  margin-top: 2px;
-}
-
-.pick-score {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 30px;
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--fill-2);
+  color: var(--ink);
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 120ms ease;
+}
+.pill:active { background: var(--fill); }
+.pill svg { color: var(--ink-3); }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--fill-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 7px;
+  background: var(--tone-soft);
   color: var(--tone);
-  flex-shrink: 0;
-}
-
-/* Sloupcový graf hodin jednoho dne. */
-.day-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 1.5px;
-  flex-grow: 1;
-  height: 26px;
-  min-width: 0;
-}
-
-.day-bars > span { flex: 1 1 0; min-width: 0; }
-
-/* Průběh balení po položkách: jeden zářez = jedna věc v batohu. Spojitý pruh
-   by zatajil, kolik toho ještě zbývá. */
-.ticks { display: flex; gap: 2px; }
-
-.ticks > span {
-  flex: 1 1 0;
-  height: 6px;
-  background: var(--track);
-  transition: background-color 160ms ease;
-}
-
-.ticks > span[data-on='true'] { background: var(--paper); }
-
-/* Tři údaje vedle sebe oddělené svislicí — jako záhlaví mapového listu. */
-.stats { display: flex; border: 1px solid var(--rule); border-radius: 4px; }
-
-.stats > div {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 8px 10px;
-  border-right: 1px solid var(--rule);
-}
-
-.stats > div:last-child { border-right: none; }
-
-.stats b {
-  display: block;
-  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  font-size: 16px;
-  font-weight: 600;
+  white-space: nowrap;
 }
 
-/* Pořadové číslo bodu trasy. Čtverec, protože je to buňka tabulky, ne odznak. */
-.wp-num {
+.dot { width: 8px; height: 8px; border-radius: 999px; background: var(--tone-fill, var(--ink-4)); flex-shrink: 0; }
+
+/* ---------- spodní lišta ---------- */
+
+.tabbar {
+  position: relative;
+  z-index: 30;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /*
+    Z bezpečné zóny se ubere 12px. Celá by pod popisky nechala pruh skoro 35px,
+    víc, než má systémová lišta iOS — a čte se to jako chybějící kus obrazovky.
+  */
+  padding: 0 4px max(6px, calc(env(safe-area-inset-bottom, 8px) - 12px));
+  background: var(--material);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 -0.5px 0 var(--line-strong);
+}
+
+.tabbar button {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
-  border: 1px solid var(--paper-4);
-  border-radius: 2px;
-  font-family: var(--mono);
-  font-size: 11px;
+  gap: 3px;
+  min-height: 50px;
+  padding-top: 6px;
+  color: var(--ink-3);
+  font-size: 10.5px;
   font-weight: 500;
-  color: var(--paper-3);
+  letter-spacing: 0.01em;
 }
 
-.wp-num[data-top='true'] { border-color: var(--paper); color: var(--paper); }
+.tabbar button[aria-current='page'] { color: var(--accent); }
+.tabbar { --icon-cut: var(--bg); }
+.tabbar button:active svg { transform: scale(0.92); }
+.tabbar svg { transition: transform 120ms ease; }
 
-/* Sloupec hodiny v pásu podél trasy. */
-.hour-col {
-  /* Vejde se jich do šířky kolik chce; delší túra pás vodorovně posouvá,
-     místo aby hodiny osekala. */
-  flex: 1 0 auto;
-  min-width: 38px;
+/* ---------- výběr dne ---------- */
+
+.days {
+  display: flex;
+  gap: 6px;
+  padding: 0 var(--g);
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--g);
+}
+.days::-webkit-scrollbar { display: none; }
+
+.day {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
+  flex: 0 0 auto;
+  min-width: 52px;
+  padding: 7px 6px 8px;
+  border-radius: 13px;
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+  scroll-snap-align: start;
+  transition: background-color 150ms ease, transform 120ms ease;
+}
+.day:active { transform: scale(0.96); }
+.day-name { color: var(--ink-2); font-size: 12px; font-weight: 500; }
+.day-num { font-size: 17px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.day .dot { margin-top: 1px; }
+.day[aria-pressed='true'] { background: var(--ink); box-shadow: none; }
+.day[aria-pressed='true'] .day-name,
+.day[aria-pressed='true'] .day-num { color: var(--bg); }
+.day[data-empty='true'] .day-num { color: var(--ink-3); }
+
+/* ---------- verdikt ---------- */
+
+.verdict { padding: 16px 16px 14px; }
+
+.verdict-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+.verdict-word {
+  font-family: var(--font-rounded);
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--tone);
 }
 
-.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.verdict-why { margin-top: 8px; color: var(--ink-2); font-size: 15px; line-height: 1.4; text-wrap: pretty; }
 
-.legend span {
+.score {
   display: flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--paper-3);
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
 }
-
-.legend i { width: 9px; height: 9px; }
-
-/* Provenience a poznámky pod čarou. Malé, ale nikdy schované — appka stojí
-   na tom, že jde zkontrolovat, odkud čísla jsou. */
-.footnote {
-  font-family: var(--mono);
+.score b {
+  font-family: var(--font-rounded);
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-  font-size: 10.5px;
-  line-height: 1.6;
-  color: var(--paper-4);
 }
+.score span { margin-top: 3px; color: var(--ink-3); font-size: 12px; font-weight: 500; }
 
-/* Dva bloky na koncích řádku. Jediná rozvržená utilita v celém systému —
-   všechno ostatní má vlastní jméno podle toho, co to je. */
-.between {
+/* Pás hodin: jeden díl = jedna hodina túry, barva = skóre té hodiny. */
+.strip { display: flex; gap: 2px; height: 10px; margin-top: 16px; }
+.strip > i { display: block; height: 100%; border-radius: 3px; background: var(--tone-fill); min-width: 3px; }
+.strip > i:first-child { border-top-left-radius: 5px; border-bottom-left-radius: 5px; }
+.strip > i:last-child { border-top-right-radius: 5px; border-bottom-right-radius: 5px; }
+
+.strip-labels { position: relative; height: 30px; margin-top: 6px; color: var(--ink-2); font-size: 12px; }
+.strip-labels > span {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.strip-labels b { color: var(--ink); font-size: 13px; font-weight: 600; }
+
+.verdict-foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--line-strong);
 }
 
-/* Pás hodin podél trasy: jeden sloupec = jedna hodina, svislice mezi nimi.
-   Čte se to jako jízdní řád, ne jako pět grafů nad sebou. */
-.hours {
+/* ---------- měřidlo skóre ---------- */
+
+.meter { position: relative; height: 6px; border-radius: 999px; background: var(--fill-2); overflow: hidden; }
+.meter > i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--tone-fill); }
+
+/* ---------- dlaždice ---------- */
+
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 var(--g); }
+
+.tile { padding: 12px 14px 13px; min-width: 0; }
+.tile-label { display: flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 13px; font-weight: 500; }
+.tile-label svg { color: var(--tone, var(--ink-3)); }
+.tile-value {
+  margin-top: 8px;
+  font-family: var(--font-rounded);
+  font-size: 26px;
+  line-height: 1.05;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--tone, var(--ink));
+}
+.tile-value small { margin-left: 2px; font-size: 15px; font-weight: 600; color: var(--ink-2); letter-spacing: 0; }
+.tile-note { margin-top: 5px; color: var(--ink-3); font-size: 12.5px; line-height: 1.3; }
+
+/* ---------- upozornění ---------- */
+
+.issue { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+.issue + .issue { border-top: 0.5px solid var(--line-strong); }
+.issue .cell-icon { margin-top: 1px; }
+.issue-title { font-size: 15.5px; font-weight: 600; letter-spacing: -0.01em; }
+.issue-meta { margin-top: 2px; color: var(--ink-2); font-size: 13.5px; line-height: 1.35; text-wrap: pretty; }
+
+.banner {
   display: flex;
-  border-block: 1px solid var(--rule);
-  padding: 10px 0;
-  overflow-x: auto;
-  scrollbar-width: none;
+  align-items: center;
+  gap: 10px;
+  margin: 0 var(--g);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--tone-soft, var(--fill-2));
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.banner svg { color: var(--tone, var(--ink-2)); }
+
+/* ---------- grafy ---------- */
+
+.chart { display: block; width: 100%; overflow: visible; }
+.chart text { font-family: var(--font); font-variant-numeric: tabular-nums; }
+.chart .axis { fill: var(--ink-3); font-size: 11px; }
+.chart .val { fill: var(--ink); font-size: 12.5px; font-weight: 600; }
+.chart .val-2 { fill: var(--ink-2); font-size: 11px; font-weight: 500; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--ink-2); font-size: 12.5px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--tone-fill, var(--ink-4)); }
+
+/* Teplotní mapa startů: dny × hodiny. */
+.heat { display: grid; gap: 3px; align-items: center; }
+.heat-cell {
+  height: 30px;
+  border-radius: 6px;
+  background: var(--tone-fill);
+  transition: transform 100ms ease;
+}
+.heat-cell[data-empty='true'] { background: var(--fill-2); }
+.heat-cell:active { transform: scale(0.9); }
+.heat-cell[data-best='true'] { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--ink); }
+.heat-cell[data-picked='true'] { box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px var(--accent); }
+.heat-hd { color: var(--ink-3); font-size: 11px; text-align: center; font-variant-numeric: tabular-nums; }
+.heat-day { color: var(--ink-2); font-size: 13px; font-weight: 500; white-space: nowrap; }
+
+/* ---------- mapa ---------- */
+
+.map { position: relative; overflow: hidden; background: var(--card-2); isolation: isolate; }
+.map .leaflet-container { width: 100%; height: 100%; background: var(--card-2); font-family: var(--font); }
+
+@media (prefers-color-scheme: dark) {
+  .map .leaflet-tile-pane { filter: brightness(0.82) contrast(1.06) saturate(0.9); }
 }
 
-.hours::-webkit-scrollbar { display: none; }
+.leaflet-control-attribution {
+  background: color-mix(in oklab, var(--card) 80%, transparent) !important;
+  color: var(--ink-3) !important;
+  font-size: 9px !important;
+  border-top-left-radius: 6px;
+}
+.leaflet-control-attribution a { color: var(--ink-2) !important; }
+.leaflet-control-zoom { border: none !important; box-shadow: var(--shadow-2) !important; border-radius: 10px !important; overflow: hidden; }
+.leaflet-control-zoom a {
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 34px !important;
+  background: var(--raised) !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+  font-weight: 400 !important;
+}
 
-.hour-col + .hour-col { border-left: 1px solid var(--rule-soft); }
+.map-fab {
+  position: absolute;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--raised);
+  box-shadow: var(--shadow-2);
+  color: var(--accent);
+}
+.map-fab:active { transform: scale(0.95); }
 
-/* Značka. Prostrkaná verzálka v mono — jako ražba na přístroji, ne logo.
-   Barvu nemá schválně: v téhle appce barva znamená naměřenou hodnotu. */
-.wordmark {
-  font-family: var(--mono);
+.map-hint {
+  position: absolute;
+  z-index: 500;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--material);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: var(--shadow-1);
+  pointer-events: none;
+}
+
+.pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  color: #fff;
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.24em;
-  color: var(--paper);
+  font-weight: 700;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+}
+.pin--top { background: #fff; color: #18191b; border-color: #18191b; }
+.pin--small { width: 14px; height: 14px; border-width: 2px; }
+
+/* ---------- list sheet ---------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.32);
+  animation: fade-in 180ms ease;
 }
 
-/* Vybraná trasa: pravítko u kraje obrazovky, jako značka na okraji seznamu.
-   Odznak uvnitř řádku by ukrojil místo názvu trasy. */
-.row[data-active='true'] { box-shadow: inset 2px 0 0 var(--paper); }
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1001;
+  max-height: 86%;
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto;
+  max-width: 440px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  border-radius: 20px 20px 0 0;
+  background: var(--bg);
+  box-shadow: var(--shadow-2);
+  animation: sheet-in 320ms cubic-bezier(0.2, 0.9, 0.25, 1);
+}
 
-/* Obtažená varianta kruhového terče pro druhořadou akci vedle hlavní. */
-.btn-icon--outline { border: 1px solid var(--rule); }
+.sheet-grab { width: 36px; height: 5px; margin: 7px auto 2px; border-radius: 999px; background: var(--ink-4); }
+.sheet-hd { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 20px; }
+.sheet-body { overflow-y: auto; overscroll-behavior: contain; padding-bottom: 8px; }
 
-/* Appka je dělaná na telefon. Na širokém okně se ale otevře taky — roztažená
-   na 1 800 px vypadá rozbitě, tak se srazí do sloupce v šířce telefonu.
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes sheet-in { from { transform: translateY(100%); } }
+
+/* ---------- stavy ---------- */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 64px 32px 32px;
+  text-align: center;
+}
+.empty-icon { color: var(--ink-4); margin-bottom: 6px; }
+.empty p { color: var(--ink-2); font-size: 15px; max-width: 290px; text-wrap: pretty; }
+.empty .btn { width: auto; margin-top: 14px; }
+
+@keyframes shimmer { 0% { opacity: 0.55; } 50% { opacity: 1; } 100% { opacity: 0.55; } }
+.skel { border-radius: 8px; background: var(--fill-2); animation: shimmer 1.3s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}
+
+/* ---------- táhnutím obnovit ---------- */
+
+.pull {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.pull svg { transition: transform 160ms ease; }
+.pull[data-armed='true'] { color: var(--ink-2); }
+.pull[data-armed='true'] svg { transform: rotate(180deg); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 800ms linear infinite; }
+
+/* ---------- drobnosti ---------- */
+
+.row { display: flex; align-items: center; gap: 8px; }
+.between { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stack { display: flex; flex-direction: column; }
+.gap-8 { gap: 8px; }
+.grow { flex: 1; min-width: 0; }
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+
+.kv { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.kv span { color: var(--ink-3); font-size: 12px; }
+.kv b { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.progress { display: flex; gap: 3px; }
+.progress > i { flex: 1; height: 5px; border-radius: 999px; background: var(--fill); transition: background-color 180ms ease; }
+.progress > i[data-on='true'] { background: var(--go); }
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink-4);
+  color: transparent;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+.check[data-on='true'] { background: var(--go); border-color: var(--go); color: #fff; }
+
+.mark { flex-shrink: 0; display: block; }
+
+.footer-note {
+  padding: 24px calc(var(--g) + 4px) 8px;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* Náhled obrázků přechodu mezi obrazovkami (View Transitions API). */
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 240ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+html[data-nav='push']::view-transition-new(root) { animation-name: push-in; }
+html[data-nav='push']::view-transition-old(root) { animation-name: push-out; }
+html[data-nav='pop']::view-transition-new(root) { animation-name: pop-in; }
+html[data-nav='pop']::view-transition-old(root) { animation-name: pop-out; }
+@keyframes push-in { from { transform: translateX(36%); opacity: 0.4; } }
+@keyframes push-out { to { transform: translateX(-12%); opacity: 0; } }
+@keyframes pop-in { from { transform: translateX(-12%); opacity: 0; } }
+@keyframes pop-out { to { transform: translateX(36%); opacity: 0; } }
+
+/* Appka je dělaná na telefon. Na širokém okně se srazí do sloupce v šířce telefonu.
    Bez transformu: ten by rozbil position: fixed uvnitř. */
 @media (min-width: 560px) {
-  .app {
-    width: 440px;
-    margin-inline: auto;
-    border-inline: 1px solid var(--rule-soft);
-  }
+  .app { width: 440px; margin-inline: auto; box-shadow: 0 0 0 0.5px var(--line-strong); }
 }

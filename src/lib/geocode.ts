@@ -39,20 +39,3 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
     context: [r.admin1 ?? r.admin2, r.country].filter(Boolean).join(', '),
   }))
 }
-
-/** Nadmořská výška bodu naťukaného na mapě. */
-export async function lookupElevation(
-  lat: number,
-  lon: number,
-  signal?: AbortSignal,
-): Promise<number> {
-  const url = `https://api.open-meteo.com/v1/elevation?latitude=${lat.toFixed(5)}&longitude=${lon.toFixed(5)}`
-  try {
-    const res = await fetch(url, { signal })
-    if (!res.ok) return 0
-    const data = (await res.json()) as { elevation?: number[] }
-    return Math.round(data.elevation?.[0] ?? 0)
-  } catch {
-    return 0
-  }
-}

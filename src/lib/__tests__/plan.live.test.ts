@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fetchForecast } from '../openMeteo'
 import { fetchTrack } from '../routing'
+import { forecastSites } from '../sites'
 import { assess, weekOutlook } from '../plan'
 import type { Forecast } from '../openMeteo'
 import type { Route, Waypoint } from '../types'
@@ -19,8 +20,8 @@ async function orSkip(promise: Promise<Forecast>): Promise<Forecast | null> {
 }
 
 const WPS: Waypoint[] = [
-  { id: 'a', name: 'Pec pod Sněžkou', lat: 50.6903, lon: 15.7322, elevation: 769 },
-  { id: 'b', name: 'Růžová hora', lat: 50.7253, lon: 15.7397, elevation: 1390 },
+  { id: 'a', name: 'Pec pod Sněžkou', lat: 50.695, lon: 15.7392, elevation: 762 },
+  { id: 'b', name: 'Růžohorky', lat: 50.7104, lon: 15.7499, elevation: 1250 },
   { id: 'c', name: 'Sněžka', lat: 50.7361, lon: 15.7397, elevation: 1603 },
 ]
 const route: Route = {
@@ -33,8 +34,13 @@ const route: Route = {
 
 describe('celý plán na živých datech', () => {
   it('posoudí konkrétní start i celý týden', { timeout: 60000 }, async () => {
-    const [track, forecast] = await Promise.all([fetchTrack(WPS), orSkip(fetchForecast(WPS, 7))])
+    const track = await fetchTrack(WPS)
+    const sites = forecastSites(track.points)
+    const forecast = await orSkip(fetchForecast(sites, 7))
     if (!forecast) return
+    // Hřeben mezi Růžohorky a Sněžkou má vlastní místo předpovědi, ne jen koncové body.
+    expect(sites.length).toBeGreaterThanOrEqual(3)
+    expect(Math.max(...sites.map((x) => x.elevation))).toBeGreaterThan(1550)
 
     // Zítra v sedm. Hodinové řady začínají dva dny v minulosti (kvůli tomu, co
     // spadlo před túrou), takže se start bere ze seznamu dnů, ne z první hodiny.
@@ -67,9 +73,12 @@ describe('celý plán na živých datech', () => {
     expect(a.wetGround.mm24).toBeGreaterThanOrEqual(0)
     expect(a.wetGround.mm48).toBeGreaterThanOrEqual(a.wetGround.mm24)
 
-    // Body se míjejí v pořadí a vrchol je nejchladnější.
+    // Body se míjejí v pořadí a nahoře je ve stejnou hodinu chladněji než dole.
     expect(a.passes[2].at.getTime()).toBeGreaterThan(a.passes[0].at.getTime())
-    expect(a.passes[2].hour.temperature).toBeLessThan(a.passes[0].hour.temperature)
+    const low = forecast.points[0]
+    const high = forecast.points.find((p) => p.siteId === [...sites].sort((x, y) => y.elevation - x.elevation)[0].id)!
+    const k = low.hours.findIndex((h) => h.time.endsWith('T12:00')) + 24
+    expect(high.hours[k].temperature).toBeLessThan(low.hours[k].temperature)
 
     // Výbava má u každé položky důvod.
     expect(a.gear.every((g) => g.why.length > 0)).toBe(true)
@@ -96,26 +105,13 @@ describe('celý plán na živých datech', () => {
   })
 })
 
-describe('nesouhlasná data', () => {
-  it('předpověď z jiné trasy nesmí vyrobit nesmyslné body průchodu', async () => {
-    const [track, forecast] = await Promise.all([fetchTrack(WPS), orSkip(fetchForecast(WPS, 2))])
-    if (!forecast) return
-
-    // Stejné souřadnice, jiná ID — přesně to, co vzniklo při přepnutí na novou trasu.
-    const jinaTrasa: Route = {
-      ...route,
-      id: 'jina',
-      waypoints: WPS.map((w) => ({ ...w, id: `${w.id}-nove` })),
-    }
-
-    const start = new Date(forecast.points[0].hours[0].time)
-    start.setHours(start.getHours() + 3)
-
-    const a = assess(jinaTrasa, track, forecast, start)
-    // Smí vyjít prázdno, ale nesmí to spadnout ani vyrobit body bez hodiny.
+describe('neúplná data', () => {
+  it('předpověď bez míst nesmí vyrobit nesmyslné hodiny ani výbavu', async () => {
+    const track = await fetchTrack(WPS)
+    const forecast = { sites: [], points: [], days: [], fetchedAt: Date.now(), ensembles: [] }
+    const a = assess(route, track, forecast, new Date())
     expect(a.passes).toHaveLength(0)
     expect(a.samples).toHaveLength(0)
-    expect(a.passes.every((p) => p.hour !== undefined)).toBe(true)
     expect(a.score.verdict).toBe('nejdi')
     expect(a.gear).toEqual([])
   })

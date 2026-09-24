@@ -8,8 +8,9 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#0d100e" />
-    <meta name="description" content="Nejpřesnější počasí na túru: verdikt, kdy jít, a co si vzít." />
+    <meta name="theme-color" content="#f2f2ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0c0d" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Počasí na túru, které řekne, jestli jít, kdy vyrazit a co si vzít." />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icon-180.png" />
@@ -22,26 +23,15 @@
       neobarvený pruh, kam webové okno vůbec nedosáhne.
     -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!--
-      Jedna nadrodina ve třech hlasech: Sans na text, Condensed na verdikt
-      a nadpisy (písmo horské cedule), Mono na naměřené hodnoty. Díky společné
-      kostře sedí číslo v tabulce opticky k popisce vedle sebe.
-    -->
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap"
-    />
     <meta name="robots" content="noindex" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="NaVrchol" />
     <meta property="og:locale" content="cs_CZ" />
-    <meta property="og:title" content="NaVrchol — jít, nebo nejít?" />
+    <meta property="og:title" content="NaVrchol" />
     <meta
       property="og:description"
-      content="Počasí na túru, které ti dá rozhodnutí místo obrázku sluníčka. Ansámbl desítek členů, skutečná pěšina, a řekne ti, v kolik vyrazit."
+      content="Počasí v každém místě trasy, v hodinu, kdy tam budeš. Verdikt, nejlepší čas startu, obrat před bouřkou a výbava podle předpovědi."
     />
     <meta property="og:image" content="https://navrchol.vercel.app/og.png" />
     <meta property="og:image:width" content="1200" />
@@ -49,7 +39,7 @@
     <meta property="og:url" content="https://navrchol.vercel.app/" />
     <meta name="twitter:card" content="summary_large_image" />
 
-    <title>NaVrchol — jít, nebo nejít?</title>
+    <title>NaVrchol</title>
   </head>
   <body>
     <div id="root"></div>

@@ -1,402 +1,598 @@
-import { Gauge } from '../components/Gauge'
-import { Icon } from '../components/Icon'
+import { useState, type ReactNode } from 'react'
+import { DayStrip } from '../components/DayStrip'
+import { HikeChart } from '../components/HikeChart'
+import { HourStrip } from '../components/HourStrip'
+import { Icon, type IconName } from '../components/Icon'
 import { RadarMap } from '../components/RadarMap'
-import { Scroll } from '../components/Scroll'
-import { Section } from '../components/Section'
+import { RouteMap } from '../components/RouteMap'
+import { Screen } from '../components/Screen'
+import { Cell, Section, Sheet } from '../components/ui'
 import { Empty, ErrorState, Loading } from '../components/States'
 import { modelLabel } from '../lib/openMeteo'
-import { formatDuration } from '../lib/pace'
-import { clock, dayLabel, km, metres, num, temp } from '../lib/format'
-import type { Assessment } from '../lib/plan'
+import { haversine } from '../lib/geo'
+import type { Issue } from '../lib/score'
+import {
+  ago,
+  capital,
+  fromWhen,
+  clock,
+  dayLabel,
+  duration,
+  hhmm,
+  km,
+  metres,
+  num,
+  parseDay,
+  plural,
+  temp,
+  vlna,
+} from '../lib/format'
+import { dayKey, type Assessment, type DayOutlook, type Sample } from '../lib/plan'
 import type { RouteData } from '../state/useRouteData'
 import type { Route } from '../lib/types'
 
-const WORD = { jdi: 'JDI', zvaz: 'ZVAŽ', nejdi: 'NEJDI' } as const
+const WORD = { jdi: 'Jdi', zvaz: 'Zvaž', nejdi: 'Nejdi' } as const
+
+const ISSUE_ICON: Record<string, IconName> = {
+  vitr: 'wind',
+  'vitr-chvost': 'wind',
+  bourka: 'bolt',
+  mlha: 'eye',
+  srazky: 'drop',
+  snih: 'snowflake',
+  'snih-lezi': 'snowflake',
+  podchlazeni: 'thermo',
+  omrzliny: 'thermo',
+  namraza: 'snowflake',
+}
 
 /** Jedna věta, která shrne, proč verdikt vypadá takhle. */
 function summaryOf(a: Assessment): string {
-  if (a.score.blockers.length > 0) return a.score.blockers[0].text
+  const [blocker] = a.score.blockers
+  if (blocker) return `${blocker.title}. ${blocker.detail}`
   if (a.certainty !== null && a.certainty < 55) {
-    return 'Skóre se v rozptylu ansámblu hýbe o desítky bodů. Ráno se podívej na radar, než vyrazíš.'
+    return 'Scénáře předpovědi se rozcházejí. Rozhodni se ráno podle radaru.'
   }
+  const [warning] = a.score.warnings
   if (a.score.verdict === 'jdi') {
-    return a.score.warnings.length > 0
-      ? `Dobré podmínky. ${a.score.warnings[0].text}`
-      : 'Dobré podmínky po celé trase, nic vážného se nerýsuje.'
+    return warning ? `Dobré podmínky. Počítej s tímhle: ${warning.title.toLowerCase()}.` : 'Dobré podmínky po celé trase.'
   }
-  return a.score.warnings[0]?.text ?? 'Podmínky jsou na hraně, zvaž to podle sebe.'
+  if (warning) return `${warning.title}. ${warning.detail}`
+  const weak = a.score.weakest?.penalties[0]
+  return weak ? `Na hraně. Nejvíc bere ${weak.label.toLowerCase()} (${weak.detail}).` : 'Podmínky jsou na hraně.'
+}
+
+function worst<T>(samples: Sample[], value: (s: Sample) => T, better: (a: T, b: T) => boolean) {
+  return samples.reduce((acc, s) => (better(value(s), value(acc)) ? s : acc), samples[0])
 }
 
 interface Props {
   route: Route | null
+  routes: Route[]
   data: RouteData
   assessment: Assessment | null
+  week: DayOutlook[] | null
   start: Date
   onStartChange: (d: Date) => void
+  onPickRoute: (id: string) => void
   onEdit: () => void
-  onTimeline: () => void
   onNew: () => void
 }
 
-export function VerdiktScreen({
-  route,
-  data,
-  assessment,
-  start,
-  onStartChange,
-  onEdit,
-  onTimeline,
-  onNew,
-}: Props) {
+export function VerdiktScreen(props: Props) {
+  const { route, routes, data, assessment, week, start, onStartChange, onPickRoute, onEdit, onNew } = props
+  const [switching, setSwitching] = useState(false)
+
   if (!route) {
     return (
-      <div className="scroll">
+      <Screen title="Verdikt">
         <Empty
           title="Žádná trasa"
-          hint="Nejdřív přidej trasu, pak ti řeknu, jestli se na ni vyplatí jít."
+          hint="Přidej trasu a appka ti řekne, jestli se na ni vyplatí jít."
           action={{ label: 'Nová trasa', onClick: onNew }}
         />
-      </div>
+      </Screen>
     )
   }
+
+  const title = (
+    <button className="row" style={{ gap: 6, textAlign: 'left' }} onClick={() => setSwitching(true)}>
+      <span>{route.name || 'Bez názvu'}</span>
+      {routes.length > 1 && <Icon name="chevronDown" size={20} stroke={2.4} color="var(--ink-3)" style={{ marginTop: 6 }} />}
+    </button>
+  )
+
+  const switcher = (
+    <Sheet open={switching} title="Trasy" onClose={() => setSwitching(false)}>
+      <div className="list">
+        {routes.map((r) => (
+          <Cell
+            key={r.id}
+            title={r.name || 'Bez názvu'}
+            sub={r.waypoints.map((w) => w.name).join(' → ')}
+            onClick={() => {
+              onPickRoute(r.id)
+              setSwitching(false)
+            }}
+          >
+            {r.id === route.id && <Icon name="check" size={20} stroke={2.4} color="var(--accent)" />}
+          </Cell>
+        ))}
+      </div>
+      <div className="page mt-12">
+        <button
+          className="btn btn--gray"
+          onClick={() => {
+            setSwitching(false)
+            onNew()
+          }}
+        >
+          <Icon name="plus" size={18} stroke={2.2} />
+          Nová trasa
+        </button>
+      </div>
+    </Sheet>
+  )
+
+  const actions = (
+    <>
+      {assessment && (
+        <button className="icon-btn" onClick={() => void share(route, assessment)} aria-label="Sdílet plán">
+          <Icon name="share" size={22} />
+        </button>
+      )}
+      <button className="icon-btn" onClick={onEdit} aria-label="Upravit trasu">
+        <Icon name="edit" size={22} />
+      </button>
+    </>
+  )
+
+  const track = data.oneWay
+  const first = route.waypoints[0]
+  const last = route.waypoints[route.waypoints.length - 1]
+  const loop = !route.roundTrip && route.waypoints.length > 2 && haversine(first, last) < 0.2
+  const kind = route.roundTrip ? 'tam a zpět' : loop ? 'okruh' : 'jedním směrem'
+  const subtitle = track
+    ? `${km(route.roundTrip ? track.lengthKm * 2 : track.lengthKm)} · ↑ ${metres(route.roundTrip ? track.ascentM + track.descentM : track.ascentM)} · ${kind}`
+    : route.waypoints.map((w) => w.name).join(' → ')
+
+  const shell = (children: ReactNode) => (
+    <Screen
+      title={title}
+      barTitle={route.name}
+      actions={actions}
+      subtitle={subtitle}
+      onRefresh={data.reload}
+      refreshing={data.loading && Boolean(assessment)}
+    >
+      {children}
+      {switcher}
+    </Screen>
+  )
+
   if (route.waypoints.length < 2) {
-    return (
-      <div className="scroll">
-        <Empty
-          title="Trasa nemá dost bodů"
-          hint="Přidej aspoň dva body, ať je co spočítat."
-          action={{ label: 'Upravit trasu', onClick: onEdit }}
-        />
-      </div>
+    return shell(
+      <Empty
+        title="Trasa nemá dost bodů"
+        hint="Přidej aspoň start a cíl, ať je co spočítat."
+        action={{ label: 'Upravit trasu', onClick: onEdit, icon: 'edit' }}
+      />,
     )
   }
-  if (data.error) return <div className="scroll"><ErrorState message={data.error} onRetry={data.reload} /></div>
-  if (!assessment) return <div className="scroll"><Loading what="počítám podmínky na trase" /></div>
+  if (data.error) return shell(<ErrorState message={data.error} onRetry={data.reload} />)
+  if (!assessment || !data.track) return shell(<Loading what="Počítám podmínky na trase" />)
   if (assessment.samples.length === 0) {
-    return (
-      <div className="scroll">
-        <ErrorState
-          message="Pro body téhle trasy nedorazila žádná předpověď. Zkus to znovu, nebo zkontroluj, že body leží na souši."
-          onRetry={data.reload}
-        />
-      </div>
+    return shell(
+      <ErrorState
+        message="Pro tenhle den předpověď nesahá. Vyber bližší den, nebo stáhni předpověď znovu."
+        onRetry={data.reload}
+      />,
     )
   }
 
-  const verdict = assessment.score.verdict
-  const score = assessment.score.score
-  const summit = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
-  const summitPass = assessment.passes.find((p) => p.waypoint.id === summit.id) ?? assessment.passes[0]
-  const h = summitPass?.hour ?? assessment.samples[0].hour
-  const end = assessment.plan.arrivals.at(-1)?.at ?? start
+  const a = assessment
+  const verdict = a.score.verdict
+  const samples = a.samples
+  const selectedDay = dayKey(start)
 
-  const samples = assessment.samples
-  const minApparent = Math.min(...samples.map((s) => s.hour.apparentTemperatureRisk))
-  const maxGust = Math.max(...samples.map((s) => s.hour.windGustsRisk))
-  const maxGustTail = Math.max(...samples.map((s) => s.hour.windGustsHigh))
-  const maxProb = Math.max(...samples.map((s) => s.hour.precipitationProbability))
-  const maxSnowDepth = Math.max(...samples.map((s) => s.hour.snowDepth))
-  const visibilities = samples
-    .map((s) => s.hour.visibility)
-    .filter((v): v is number => v !== null)
-  const minVis = visibilities.length ? Math.min(...visibilities) : null
-  const maxCape = Math.max(...samples.map((s) => s.hour.capeRisk))
+  const days = (week ?? []).map((d) => ({ date: d.date, best: d.best?.score ?? null }))
+  const pickDay = (date: string) => {
+    const d = parseDay(date)
+    d.setHours(start.getHours(), start.getMinutes(), 0, 0)
+    // Dnešní start, který už proběhl, se posune na nejbližší celou hodinu.
+    const now = new Date()
+    if (d < now && dayKey(d) === dayKey(now)) d.setHours(now.getHours() + 1, 0, 0, 0)
+    onStartChange(d)
+  }
 
-  const breakdown = assessment.score.weakest?.penalties ?? []
-  // Pruhy se poměřují k nejhorší penalizaci, ale nejmíň k dvaceti bodům. Bez
-  // toho vypadá osamocená ztráta čtyř bodů jako plný pruh, tedy jako katastrofa.
+  const coldest = worst(samples, (s) => s.hour.apparentTemperatureRisk, (x, y) => x < y)
+  const windiest = worst(samples, (s) => s.hour.windGustsRisk, (x, y) => x > y)
+  const wettest = worst(samples, (s) => s.hour.precipitationProbability, (x, y) => x > y)
+  const visible = samples.filter((s) => s.hour.visibility !== null)
+  const foggiest = visible.length ? worst(visible, (s) => s.hour.visibility ?? 1e9, (x, y) => x < y) : null
+  const freezing = samples.map((s) => s.hour.freezingLevel).filter((f): f is number => f !== null)
+  const freezeLow = freezing.length ? Math.min(...freezing) : null
+  const maxSnow = Math.max(...samples.map((s) => s.hour.snowDepth))
+  const top = Math.max(...data.track.points.map((p) => p.elevation))
+
+  const issues = [...a.score.blockers, ...a.score.warnings]
+  const gust = Math.round(windiest.hour.windGustsRisk)
+  const reserve = a.daylightReserveMin
+  const breakdown = a.score.weakest?.penalties ?? []
   const penaltyScale = Math.max(20, breakdown[0]?.points ?? 1)
-  const weakestAt = assessment.score.weakest ? new Date(assessment.score.weakest.hour.time) : null
-  const reserve = assessment.daylightReserveMin
-  const storm = assessment.storm
+  const stale = data.fetchedAt !== null && Date.now() - data.fetchedAt > 3 * 3_600_000
 
-  const startValue = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(
-    start.getDate(),
-  ).padStart(2, '0')}T${clock(start)}`
-
-  return (
-    <Scroll onRefresh={data.reload} refreshing={data.loading}>
-      <header className="masthead">
-        <h1>{route.name || 'Bez názvu'}</h1>
-        <label className="masthead-time">
+  return shell(
+    <>
+      {(data.offline || stale) && data.fetchedAt !== null && (
+        <div className="banner mt-8" data-tone="zvaz" style={{ marginBottom: 4 }}>
+          <Icon name="clock" size={18} stroke={2} />
           <span>
-            {dayLabel(start)} · {clock(start)}→{clock(end)}
+            {data.offline
+              ? `${data.offline}. Ukazuju předpověď ${fromWhen(data.fetchedAt)}.`
+              : `Předpověď je ${fromWhen(data.fetchedAt)}. Novou stáhneš tažením dolů.`}
           </span>
-          <span style={{ color: 'var(--paper-4)' }}>{formatDuration(assessment.plan.minutes)}</span>
-          <Icon name="chevron" size={13} stroke={2} />
-          <input
-            type="datetime-local"
-            value={startValue}
-            aria-label="Čas startu"
-            onChange={(e) => e.target.value && onStartChange(new Date(e.target.value))}
-          />
-        </label>
-      </header>
+        </div>
+      )}
 
-      {/* Verdikt. Slovo je větší než číslo schválně — appka má vydat rozhodnutí,
-          skóre je až jeho doklad. */}
-      <div className="sec" style={{ marginTop: 20 }} data-tone={verdict}>
-        <div className="verdict">
-          <div className="verdict-head">
+      {days.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <DayStrip days={days} selected={selectedDay} onSelect={pickDay} />
+        </div>
+      )}
+
+      <div className="page mt-12">
+        <div className="card verdict" data-tone={verdict}>
+          <div className="verdict-top">
             <div className="verdict-word">{WORD[verdict]}</div>
-            <div className="verdict-score">
-              <b>{score}</b>
-              <span>/100</span>
+            <div className="score">
+              <b>{a.score.score}</b>
+              <span>bodů ze 100</span>
             </div>
           </div>
-          <Gauge score={score} tone={verdict} size="lg" scale />
-          <p className="verdict-why">{summaryOf(assessment)}</p>
+          <p className="verdict-why">{vlna(summaryOf(a))}</p>
+          <HourStrip assessment={a} roundTrip={route.roundTrip === true} />
+          <div className="verdict-foot">
+            <label className="pill time-pick">
+              <Icon name="clock" size={16} stroke={2.2} />
+              Start {clock(start)}
+              <input
+                type="time"
+                value={hhmm(start)}
+                aria-label="Čas startu"
+                onChange={(e) => {
+                  if (!e.target.value) return
+                  const [h, m] = e.target.value.split(':').map(Number)
+                  const d = new Date(start)
+                  d.setHours(h, m, 0, 0)
+                  onStartChange(d)
+                }}
+              />
+            </label>
+            <span className="t-sub muted grow" style={{ textAlign: 'right' }}>
+              {duration(a.plan.minutes)}
+              {a.plan.breakMin > 0 ? ` vč. pauzy ${a.plan.breakMin} min` : ''}
+            </span>
+          </div>
         </div>
       </div>
 
-      {[...assessment.score.blockers, ...assessment.score.warnings].slice(0, 3).map((issue, i) => (
-        <div className="sec sec--tight" key={issue.key + i} data-tone={issue.severity === 'blok' ? 'nejdi' : 'zvaz'}>
-          <div className="note">
-            <Icon name="warn" size={15} stroke={2} />
-            <div>{issue.text}</div>
-          </div>
+      {issues.length > 0 && (
+        <div className="list mt-12">
+          {issues.slice(0, 5).map((issue) => (
+            <IssueRow key={issue.key} issue={issue} />
+          ))}
         </div>
-      ))}
+      )}
 
-      {/* Bouřka se neřeší frází „buď dole do poledne", ale hodinou. */}
-      {storm && (
-        <Section label="Bouřka a obrat" meta={`riziko od ${clock(storm.from)}`}>
-          <div className="rows">
-            <Measure
-              label="Obrat nahoře"
-              note={`sestup z hřebene ${formatDuration(storm.exitMin)}`}
-              value={clock(storm.turnaround)}
+      {a.storm && (
+        <Section title="Bouřky" aside={<span className="aside">od {clock(a.storm.from)}</span>}>
+          <div className="list">
+            <Cell
+              icon="flag"
               tone="zvaz"
+              title="Otoč se nejpozději"
+              sub={`${a.storm.summit}, sestup pod hranici lesa ${duration(a.storm.exitMin)}`}
+              value={<b style={{ color: 'var(--ink)' }}>{clock(a.storm.turnaround)}</b>}
             />
-            <Measure
-              label="Nejpozdější start"
-              note={
-                storm.latestStart < start
-                  ? `o ${formatDuration((start.getTime() - storm.latestStart.getTime()) / 60000)} dřív, než máš`
-                  : 'tvůj start se do okna vejde'
+            <Cell
+              icon="walk"
+              tone={a.storm.latestStart < start ? 'nejdi' : 'jdi'}
+              title="Vyraž nejpozději"
+              sub={
+                a.storm.latestStart < start
+                  ? `O ${duration((start.getTime() - a.storm.latestStart.getTime()) / 60000)} dřív, než máš v plánu.`
+                  : 'Tvůj start se do okna vejde.'
               }
-              value={clock(storm.latestStart)}
-              tone={storm.latestStart < start ? 'nejdi' : undefined}
+              value={<b style={{ color: 'var(--ink)' }}>{clock(a.storm.latestStart)}</b>}
             />
           </div>
-          <p className="footnote" style={{ marginTop: 12 }}>
-            Riziko začíná, když CAPE přeleze 500 J/kg a aspoň dvě pětiny členů ansámblu hlásí
-            srážky. Obrat je ten čas, kdy se ještě stihneš dostat pod hranici lesa.
-          </p>
         </Section>
       )}
 
-      <Section label="Měření na trase" meta="hodinu po hodině">
-        <div className="rows">
-          {/* Ukazuje se ta hodnota, ze které se skóruje. Medián na vrcholu vedle
-              rozpadu, který počítá z nepříznivého kvartilu, by si odporovaly. */}
-          <Measure
+      <Section title="Průběh túry" aside={<span className="aside">{capital(dayLabel(start))}</span>}>
+        <div className="card card-pad" style={{ margin: '0 var(--g)' }}>
+          <HikeChart assessment={a} track={data.track} />
+        </div>
+      </Section>
+
+      <Section title="Na trase">
+        <div className="tiles">
+          <Tile
+            icon="thermo"
             label="Pocitově"
-            note="nejchladnější hodina trasy"
-            value={temp(minApparent)}
-            tone={minApparent <= -8 ? 'nejdi' : minApparent <= 0 ? 'zvaz' : undefined}
+            tone={coldest.hour.apparentTemperatureRisk <= -8 ? 'nejdi' : coldest.hour.apparentTemperatureRisk <= 2 ? 'zvaz' : undefined}
+            value={temp(coldest.hour.apparentTemperatureRisk)}
+            note={`nejchladněji v ${clock(coldest.at)}, ${coldest.where.name}`}
           />
-          <Measure
-            label="Nárazy"
-            note={maxGustTail > maxGust + 8 ? `v chvostu ansámblu ${Math.round(maxGustTail)} km/h` : 'nejhorší hodina trasy'}
-            value={`${Math.round(maxGust)} km/h`}
-            tone={maxGust >= 70 ? 'nejdi' : maxGust >= 50 ? 'zvaz' : undefined}
+          <Tile
+            icon="wind"
+            label="Nárazy větru"
+            tone={gust >= 70 ? 'nejdi' : gust >= 50 ? 'zvaz' : undefined}
+            value={
+              <>
+                {gust}
+                <small>km/h</small>
+              </>
+            }
+            note={windiest.hour.ridgeWind ? `na hřebeni kolem ${clock(windiest.at)}` : `nejvíc kolem ${clock(windiest.at)}`}
           />
-          <Measure
+          <Tile
+            icon="drop"
             label="Srážky"
-            note={`za celou túru, prší ${Math.round(maxProb)} % členů`}
-            value={`${num(assessment.score.rainMm, 1)} mm`}
-            tone={assessment.score.rainMm >= 8 ? 'nejdi' : assessment.score.rainMm >= 3 ? 'zvaz' : undefined}
+            tone={a.score.rainMm >= 8 ? 'nejdi' : a.score.rainMm >= 2 ? 'zvaz' : undefined}
+            value={
+              <>
+                {num(a.score.rainMm, 1)}
+                <small>mm</small>
+              </>
+            }
+            note={
+              wettest.hour.precipitationProbability >= 10
+                ? `šance na déšť až ${Math.round(wettest.hour.precipitationProbability)} %`
+                : 'bez deště'
+            }
           />
-          <Measure
+          <Tile
+            icon="eye"
             label="Viditelnost"
-            note={minVis !== null && minVis < 2000 ? 'mlha na trase' : 'bez mlhy'}
-            value={minVis === null ? '—' : minVis >= 1000 ? `${num(minVis / 1000, 0)} km` : `${Math.round(minVis)} m`}
-            tone={minVis !== null && minVis < 1000 ? 'nejdi' : undefined}
+            tone={foggiest && (foggiest.hour.visibility ?? 1e9) < 1000 ? 'nejdi' : foggiest && (foggiest.hour.visibility ?? 1e9) < 3000 ? 'zvaz' : undefined}
+            value={visibilityValue(foggiest?.hour.visibility ?? null)}
+            note={
+              foggiest && (foggiest.hour.visibility ?? 1e9) < 3000
+                ? `mlha kolem ${clock(foggiest.at)}`
+                : 'bez mlhy'
+            }
           />
         </div>
       </Section>
 
-      <Section label="Světlo a terén" meta={dayLabel(start)}>
-        <div className="rows">
-          <Measure
-            label="Do tmy"
-            note={
-              reserve === null
-                ? 'časy slunce nedorazily'
-                : reserve < 0
-                  ? 'vracíš se po západu, čelovka povinně'
-                  : 'mezi koncem túry a západem slunce'
-            }
-            value={reserve === null ? '—' : reserve < 0 ? `−${formatDuration(-reserve)}` : formatDuration(reserve)}
-            tone={reserve === null ? undefined : reserve < 0 ? 'nejdi' : reserve < 60 ? 'zvaz' : undefined}
+      <Section title="Světlo a terén">
+        <div className="list">
+          {a.sunset && (
+            <Cell
+              icon="sunset"
+              tone={reserve !== null && reserve < 0 ? 'nejdi' : reserve !== null && reserve < 60 ? 'zvaz' : 'sun'}
+              title="Západ slunce"
+              sub={
+                reserve === null
+                  ? undefined
+                  : reserve < 0
+                    ? `Vracíš se ${duration(-reserve)} po západu. Čelovka povinně.`
+                    : `Po návratu zbývá ${duration(reserve)} světla.`
+              }
+              value={clock(a.sunset)}
+            />
+          )}
+          {a.startsBeforeSunrise && a.sunrise && (
+            <Cell icon="sunrise" tone="sun" title="Start před východem" sub="Nahoru jdeš za tmy." value={clock(a.sunrise)} />
+          )}
+          <Cell
+            icon="ground"
+            tone={a.wetGround.mm24 >= 20 ? 'nejdi' : a.wetGround.mm24 >= 8 ? 'zvaz' : undefined}
+            title="Napršelo za 24 h"
+            sub={`${groundLabel(a.wetGround.mm24)} · za 48 h ${num(a.wetGround.mm48, 1)} mm`}
+            value={`${num(a.wetGround.mm24, 1)} mm`}
           />
-          <Measure
-            label="Před startem spadlo"
-            note={`za 48 h ${num(assessment.wetGround.mm48, 1)} mm · ${groundLabel(assessment.wetGround.mm24)}`}
-            value={`${num(assessment.wetGround.mm24, 1)} mm`}
-            tone={assessment.wetGround.mm24 >= 20 ? 'nejdi' : assessment.wetGround.mm24 >= 8 ? 'zvaz' : undefined}
-          />
-          {maxSnowDepth > 0.02 && (
-            <Measure
-              label="Sníh na trase"
-              note={maxSnowDepth >= 0.3 ? 'tempo je přepočítané na prošlapávání' : 'jen vrchní část trasy'}
-              value={`${Math.round(maxSnowDepth * 100)} cm`}
-              tone={maxSnowDepth >= 0.4 ? 'zvaz' : undefined}
+          {maxSnow > 0.02 && (
+            <Cell
+              icon="snowflake"
+              tone={maxSnow >= 0.4 ? 'zvaz' : undefined}
+              title="Sníh na trase"
+              sub={maxSnow >= 0.3 ? 'Tempo je přepočítané na prošlapávání.' : 'Poprašek ve vyšších polohách.'}
+              value={`${Math.round(maxSnow * 100)} cm`}
+            />
+          )}
+          {freezeLow !== null && (
+            <Cell
+              icon="thermo"
+              tone={freezeLow < top ? 'zvaz' : undefined}
+              title="Nulová izoterma"
+              sub={freezeLow < top ? 'Nahoře může mrznout, pozor na námrazu.' : 'Nad celou trasou.'}
+              value={metres(freezeLow)}
             />
           )}
         </div>
       </Section>
 
-      {/* Rozpad skóre — ať jde to číslo rozporovat, ne jen věřit. */}
       <Section
-        label={`Proč ${score}`}
-        meta={
-          assessment.score.weakest
-            ? `${assessment.score.weakest.waypoint.name}${weakestAt ? ` v ${clock(weakestAt)}` : ''}`
-            : undefined
+        title={`Proč ${plural(a.score.score, 'bod', 'body', 'bodů')}`}
+        aside={
+          a.score.weakest ? (
+            <span className="aside">
+              nejslabší {clock(new Date(a.score.weakest.hour.time))}
+            </span>
+          ) : undefined
         }
+        footer="Skóre je ze 60 % nejslabší hodina a ze 40 % průměr celé túry. Počítá se z nepříznivé čtvrtiny scénářů ansámblu, ne z nejpravděpodobnější hodnoty."
       >
-        {breakdown.length === 0 ? (
-          <p className="body">
-            Nic ti tam body nesebralo — teplota, vítr, srážky i viditelnost jsou v pohodě.
-          </p>
-        ) : (
-          <div className="rows">
-            {breakdown.map((pen) => (
-              <div
-                className="row"
-                key={pen.key}
-                data-tone={pen.points >= 20 ? 'nejdi' : pen.points >= 8 ? 'zvaz' : 'none'}
-              >
-                <div className="row-key" style={{ fontSize: 13, fontWeight: 600 }}>
-                  {pen.label}
-                </div>
-                <div style={{ flexGrow: 1, minWidth: 0 }}>
-                  <div className="bar">
-                    <span style={{ width: `${Math.min(100, Math.max(4, (pen.points / penaltyScale) * 100))}%` }} />
+        <div className="list">
+          {breakdown.length === 0 ? (
+            <Cell icon="check" tone="jdi" title="Nic body nesebralo" sub="Teplota, vítr, srážky i viditelnost jsou v pohodě." />
+          ) : (
+            breakdown.map((p) => (
+              <div className="cell" key={p.key} data-tone={p.points >= 20 ? 'nejdi' : p.points >= 8 ? 'zvaz' : 'none'}>
+                <div className="cell-main">
+                  <div className="between">
+                    <span className="cell-title">{p.label}</span>
+                    <span className="num" style={{ color: 'var(--tone)', fontWeight: 600 }}>
+                      −{Math.round(p.points)}
+                    </span>
                   </div>
-                  <div className="footnote" style={{ marginTop: 5 }}>
-                    {pen.detail}
+                  <div className="meter mt-8">
+                    <i style={{ width: `${Math.min(100, Math.max(3, (p.points / penaltyScale) * 100))}%` }} />
                   </div>
-                </div>
-                <div
-                  className="row-value"
-                  style={{ width: 34, textAlign: 'right', color: 'var(--tone)' }}
-                >
-                  &minus;{Math.round(pen.points)}
+                  <div className="cell-sub">{p.detail}</div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-        <p className="footnote" style={{ marginTop: 12 }}>
-          Skóre trasy je ze 60 % z nejslabší hodiny a ze 40 % z průměru všech — jedna zlá
-          hodina na hřebeni váží víc než šest hezkých v lese. Penalizace se počítají
-          z nepříznivého kvartilu ansámblu, ne z nejpravděpodobnější hodnoty.
-        </p>
+            ))
+          )}
+        </div>
       </Section>
 
-      <Section
-        label="Jistota"
-        meta={
-          <span
-            data-tone={
-              assessment.certainty === null
-                ? 'none'
-                : assessment.certainty >= 75
-                  ? 'jdi'
-                  : assessment.certainty >= 50
-                    ? 'zvaz'
-                    : 'nejdi'
+      <Section title="Jistota předpovědi" footer={certaintyFootnote(a, data)}>
+        <div className="list">
+          <Cell
+            icon="gauge"
+            tone={a.certainty === null ? 'none' : a.certainty >= 75 ? 'jdi' : a.certainty >= 50 ? 'zvaz' : 'nejdi'}
+            title={
+              a.certainty === null
+                ? 'Bez ansámblu'
+                : a.certainty >= 75
+                  ? 'Vysoká'
+                  : a.certainty >= 50
+                    ? 'Střední'
+                    : 'Nízká'
             }
-            style={{ color: 'var(--tone)', fontWeight: 600, fontSize: 12 }}
-          >
-            {assessment.certainty === null ? 'bez ansámblu' : `${assessment.certainty} %`}
-          </span>
-        }
-      >
-        <p className="body">
-          {assessment.certainty === null
-            ? 'Ansámbl se nestáhl, takže se skóruje z jednoho modelu bez rezervy na horší scénář. Ber číslo s rezervou.'
-            : `Mezi nejlepší a nepříznivou variantou ansámblu se skóre hýbe o ${Math.round(
-                ((100 - assessment.certainty) / 1.4),
-              )} bodů.`}
-        </p>
-        <p className="footnote" style={{ marginTop: 10 }}>
-          rozptyl p10—p90: teplota {num(assessment.spread.temperature, 1)} °C · nárazy{' '}
-          {num(assessment.spread.windGusts, 0)} km/h · srážky {num(assessment.spread.precipitation, 1)} mm
-          {data.forecast && data.forecast.ensembles.length > 0
-            ? ` · ${data.forecast.ensembles.map(modelLabel).join(' + ')}, ${Math.max(
-                ...samples.map((s) => s.hour.members),
-              )} členů`
-            : ''}
-        </p>
+            sub={
+              a.certainty === null
+                ? 'Ansámbl se nestáhl, skóre je z jednoho modelu bez rezervy na horší scénář.'
+                : `Mezi příznivým a nepříznivým scénářem se skóre liší o ${plural(Math.round((100 - a.certainty) / 1.4), 'bod', 'body', 'bodů')}.`
+            }
+            value={a.certainty === null ? '—' : `${a.certainty} %`}
+          />
+        </div>
       </Section>
 
-      {/* Appka výš sama radí ověřit si radar, tak ho rovnou ukáže. */}
-      <Section label="Srážkový radar" meta="poslední 2 h">
-        <RadarMap track={data.track} center={summit} />
+      <Section title="Mapa">
+        <div className="card" style={{ margin: '0 var(--g)', overflow: 'hidden' }}>
+          <RouteMap track={data.track} samples={samples} />
+        </div>
       </Section>
 
-      <div className="sec">
-        <p className="footnote">
-          Bouřka: {stormLabel(maxCape)}
-          <br />
-          Nulová izoterma {h.freezingLevel === null ? '—' : metres(h.freezingLevel)} · Trasa{' '}
-          {km(assessment.plan.distanceKm)}
-          {route.roundTrip ? ' tam a zpět' : ' jednosměrně'}
-          {data.track?.fallback ? ' (vzdušnou čarou)' : ''}
-          {data.fetchedAt ? ` · staženo v ${clock(new Date(data.fetchedAt))}` : ''}
-        </p>
-      </div>
+      <RadarSection track={data.track} center={top > 0 ? highestPoint(data.track) : route.waypoints[0]} />
 
-      <div className="sec">
-        <button className="btn" onClick={onTimeline}>
-          <Icon name="peak" size={17} stroke={2} />
-          Počasí podél trasy
-        </button>
-      </div>
-    </Scroll>
+      <p className="footer-note">
+        {data.fetchedAt ? `Aktualizováno ${ago(data.fetchedAt)}` : ''}
+        {data.forecast ? ` · předpověď pro ${plural(data.forecast.sites.length, 'místo', 'místa', 'míst')} podél trati` : ''}
+        {data.track.fallback ? ' · trať se nenašla, počítáno vzdušnou čarou' : ''}
+        {data.track.fromGpx ? ' · trať z GPX' : ''}
+      </p>
+    </>,
   )
 }
 
-function stormLabel(cape: number): string {
-  if (cape >= 1200) return `vysoké riziko (CAPE ${Math.round(cape)})`
-  if (cape >= 500) return `zvýšené riziko (CAPE ${Math.round(cape)})`
-  if (cape >= 300) return `nízké riziko (CAPE ${Math.round(cape)})`
-  return `bez rizika (CAPE ${Math.round(cape)})`
+function IssueRow({ issue }: { issue: Issue }) {
+  const tone = issue.severity === 'blok' ? 'nejdi' : 'zvaz'
+  return (
+    <div className="issue" data-tone={tone}>
+      <span className="cell-icon" data-tone={tone}>
+        <Icon name={ISSUE_ICON[issue.key] ?? 'warn'} size={18} stroke={2} />
+      </span>
+      <div className="grow">
+        <div className="issue-title">{issue.title}</div>
+        <div className="issue-meta">
+          {issue.place}
+          {issue.at ? ` · ${clock(new Date(issue.at))}` : ''}
+          {issue.detail ? ` · ${vlna(issue.detail)}` : ''}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Tile({
+  icon,
+  label,
+  value,
+  note,
+  tone,
+}: {
+  icon: IconName
+  label: string
+  value: ReactNode
+  note: string
+  tone?: 'zvaz' | 'nejdi'
+}) {
+  return (
+    <div className="card tile" data-tone={tone}>
+      <div className="tile-label">
+        <Icon name={icon} size={15} stroke={2.2} />
+        {label}
+      </div>
+      <div className="tile-value">{value}</div>
+      <div className="tile-note truncate">{note}</div>
+    </div>
+  )
+}
+
+function RadarSection({ track, center }: { track: RouteData['track']; center: { lat: number; lon: number } }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Section title="Srážkový radar">
+      {open ? (
+        <div style={{ margin: '0 var(--g)' }}>
+          <RadarMap track={track} center={center} />
+        </div>
+      ) : (
+        <div className="list">
+          <Cell icon="radar" title="Ukázat radar" sub="Poslední dvě hodiny, s trasou navrch." chevron onClick={() => setOpen(true)} />
+        </div>
+      )}
+    </Section>
+  )
+}
+
+function highestPoint(track: NonNullable<RouteData['track']>) {
+  return track.points.reduce((a, p) => (p.elevation > a.elevation ? p : a), track.points[0])
+}
+
+function visibilityValue(v: number | null) {
+  if (v === null) return '—'
+  if (v >= 10000) return <>10+<small>km</small></>
+  if (v >= 1000) return <>{num(v / 1000, v < 3000 ? 1 : 0)}<small>km</small></>
+  return <>{Math.round(v / 10) * 10}<small>m</small></>
 }
 
 /** Co dělá spadlá voda s terénem. */
 function groundLabel(mm24: number): string {
-  if (mm24 >= 20) return 'rozbahněno, brody vysoké'
-  if (mm24 >= 8) return 'mokré kameny a korní'
+  if (mm24 >= 20) return 'rozbahněno, potoky vysoko'
+  if (mm24 >= 8) return 'mokré kameny a kořeny'
   if (mm24 >= 2) return 'vlhko, ale schůdné'
-  return 'suchý terén'
+  return 'sucho'
 }
 
-/** Řádek naměřené hodnoty: co, kde, kolik. */
-function Measure({
-  label,
-  note,
-  value,
-  tone,
-}: {
-  label: string
-  note: string
-  value: string
-  tone?: 'zvaz' | 'nejdi'
-}) {
-  return (
-    <div className="row" data-tone={tone}>
-      <span className="label row-key">{label}</span>
-      <span className="hint truncate" style={{ flexGrow: 1 }}>
-        {note}
-      </span>
-      <span className="row-value" style={tone ? { color: 'var(--tone)' } : undefined}>
-        {value}
-      </span>
-    </div>
-  )
+function certaintyFootnote(a: Assessment, data: RouteData): string {
+  const models = data.forecast?.ensembles.map(modelLabel).join(' + ')
+  const members = Math.max(0, ...a.samples.map((s) => s.hour.members))
+  const spread = `Rozptyl scénářů: teplota ${num(a.spread.temperature, 1)} °C, nárazy ${num(a.spread.windGusts, 0)} km/h, srážky ${num(a.spread.precipitation, 1)} mm.`
+  return models ? `${spread} ${models}, ${members} členů.` : spread
 }
+
+async function share(route: Route, a: Assessment) {
+  const lines = [
+    `${route.name} · ${dayLabel(a.start)}`,
+    `Start ${clock(a.start)}, návrat ${clock(a.end)} (${duration(a.plan.minutes)})`,
+    `${WORD[a.score.verdict].toUpperCase()} · ${a.score.score}/100`,
+    ...[...a.score.blockers, ...a.score.warnings].slice(0, 3).map((i) => `– ${i.title} (${i.place}, ${clock(new Date(i.at ?? a.start))})`),
+  ]
+  const text = lines.join('\n')
+  const url = location.origin
+  try {
+    if (navigator.share) await navigator.share({ title: `NaVrchol: ${route.name}`, text, url })
+    else await navigator.clipboard?.writeText(`${text}\n${url}`)
+  } catch {
+    // Zavřený dialog sdílení není chyba.
+  }
+}
+

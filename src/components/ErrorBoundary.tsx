@@ -30,20 +30,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <div className="app">
-        <div className="state" style={{ justifyContent: 'center', flexGrow: 1 }}>
-          <Icon name="warn" size={34} stroke={1.6} color="var(--stop)" />
-          <div className="state-title">Appka spadla</div>
-          <div className="hint" style={{ maxWidth: 280 }}>
-            Něco se pokazilo při vykreslování. Tvoje trasy jsou v pořádku, jsou uložené v telefonu.
+        <div className="empty" style={{ flex: 1, justifyContent: 'center' }}>
+          <div className="empty-icon">
+            <Icon name="warn" size={44} stroke={1.6} color="var(--stop)" />
           </div>
+          <div className="t-headline">Appka spadla</div>
+          <p>Něco se pokazilo při vykreslování. Tvoje trasy jsou v pořádku, jsou uložené v telefonu.</p>
           <code
-            className="mono"
             style={{
-              fontSize: 10.5,
-              color: 'var(--paper-3)',
-              background: 'var(--surface)',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 12,
+              color: 'var(--ink-2)',
+              background: 'var(--fill-2)',
               padding: '8px 10px',
-              borderRadius: 3,
+              borderRadius: 8,
               maxWidth: 300,
               wordBreak: 'break-word',
               textAlign: 'left',
@@ -51,19 +51,11 @@ export class ErrorBoundary extends Component<Props, State> {
           >
             {error.message}
           </code>
-          <button
-            className="btn"
-            style={{ maxWidth: 240, marginTop: 6 }}
-            onClick={() => this.setState({ error: null })}
-          >
+          <button className="btn btn--small" onClick={() => this.setState({ error: null })}>
             <Icon name="refresh" size={17} stroke={2} />
             Zkusit znovu
           </button>
-          <button
-            className="mono"
-            style={{ fontSize: 11.5, color: 'var(--paper-3)', textDecoration: 'underline' }}
-            onClick={() => location.reload()}
-          >
+          <button className="link t-sub" onClick={() => location.reload()}>
             Načíst appku od začátku
           </button>
         </div>

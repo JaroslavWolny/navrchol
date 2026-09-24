@@ -1,10 +1,22 @@
 import { suggestGear, type GearItem } from './gear'
-import { exitMinutes, planFromTrack, snowProfileOf, type RoutePlan, type SnowProfile } from './pace'
+import {
+  breakIndexOf,
+  exitMinutes,
+  planFromTrack,
+  snowProfileOf,
+  type PaceLike,
+  type RoutePlan,
+  type SnowProfile,
+} from './pace'
 import { certaintyOf, scoreRoute, EXPOSED_ABOVE_M, type RouteScore } from './score'
 import { scoreSky, type SkyScore } from './sky'
+import { siteIndexByPoint } from './sites'
 import type { Track } from './routing'
 import type { Forecast } from './openMeteo'
-import type { HourPoint, PointForecast, Route, Spread, Waypoint } from './types'
+import type { ForecastSite, HourPoint, PointForecast, Route, Spread, Waypoint } from './types'
+
+/** Trasa, jak se s ní počítá: uložená trasa plus osobní kalibrace tempa. */
+export type PlannedRoute = Route & PaceLike
 
 /** Index hodiny v předpovědi pro daný okamžik. Řady jsou souvisle po hodinách. */
 export function hourIndex(hours: HourPoint[], at: Date): number {
@@ -14,24 +26,30 @@ export function hourIndex(hours: HourPoint[], at: Date): number {
   return Math.max(0, Math.min(hours.length - 1, i))
 }
 
+/** Teplota klesá s výškou zhruba o 6,5 °C na kilometr. */
+const LAPSE_PER_M = -0.0065
+
 export interface PassPoint {
   waypoint: Waypoint
   at: Date
+  leaveAt?: Date
   hour: HourPoint
 }
 
 /**
  * Jedna hodina túry: kde v tu hodinu jsi a jaké tam je počasí. Skóre se počítá
- * z těchto vzorků, ne z časů příchodu do bodů trasy — trasa o dvou bodech na šest
- * hodin by jinak měla oskórované dvě hodiny ze šesti a bouřka mezi nimi by
- * do verdiktu vůbec nepromluvila.
+ * z těchto vzorků, ne z časů příchodu do bodů trasy.
  */
 export interface Sample {
   at: Date
-  /** Nejbližší bod trasy, ale s výškou ze skutečné trati — kvůli exponovanosti. */
+  /** Místo na trati: jméno úseku, skutečná výška trati. */
   where: Waypoint
+  /** Index v trati — kvůli grafu a mapě. */
+  trackIndex: number
   hour: HourPoint
   spread: Spread
+  /** Skóre téhle hodiny (0—100). */
+  score: number
 }
 
 /** Kdy na trase začne být bouřkové riziko a co z toho plyne pro obrat. */
@@ -43,10 +61,13 @@ export interface StormWindow {
   turnaround: Date
   /** Nejpozdější start, aby se obrat stihl. */
   latestStart: Date
+  /** Kde je nejvyšší bod, ke kterému se obrat vztahuje. */
+  summit: string
 }
 
 export interface Assessment {
   start: Date
+  end: Date
   plan: RoutePlan
   score: RouteScore
   /** Časy příchodu do bodů trasy. Pro výpis, ne pro skóre. */
@@ -58,6 +79,8 @@ export interface Assessment {
   /** Nejširší rozptyl ansámblu na trase. */
   spread: { temperature: number; windGusts: number; precipitation: number }
   gear: GearItem[]
+  sunrise: Date | null
+  sunset: Date | null
   startsBeforeSunrise: boolean
   endsAfterSunset: boolean
   /** Minut mezi koncem túry a západem slunce. Negativní = vracíš se po tmě. */
@@ -69,27 +92,80 @@ export interface Assessment {
 
 /**
  * Trasa tak, jak se opravdu jde. U túry tam a zpět se každý bod kromě obrátky
- * míjí dvakrát; trať návrat už obsahuje (zrcadlí se hned po stažení), tady se
- * k ní dorovná seznam bodů — jinak by se druhá polovina túry nenaplánovala
- * ani neoskórovala.
+ * míjí dvakrát; trať návrat už obsahuje, tady se k ní dorovná seznam bodů.
  */
-export function walkedRoute(route: Route): Route {
+export function walkedRoute<R extends Route>(route: R): R {
   if (!route.roundTrip || route.waypoints.length < 2) return route
   return { ...route, waypoints: [...route.waypoints, ...route.waypoints.slice(0, -1).reverse()] }
 }
 
-function withStart(route: Route, start: Date): Route {
+function withStart<R extends Route>(route: R, start: Date): R {
   const hh = String(start.getHours()).padStart(2, '0')
   const mm = String(start.getMinutes()).padStart(2, '0')
   return { ...route, startTime: `${hh}:${mm}` }
 }
 
-/** Výška sněhu podle nadmořské výšky, naměřená v bodech trasy v hodinu startu. */
-function snowAt(route: Route, byId: Map<string, PointForecast>, start: Date): SnowProfile {
-  const samples = route.waypoints.flatMap((w) => {
-    const pf = byId.get(w.id)
+/**
+ * Model trasy pro výpočty: ke každému bodu trati místo předpovědi, které k němu
+ * patří. Počítá se jednou na dvojici trať + předpověď — „Kdy jít" volá posouzení
+ * stokrát a víckrát a pokaždé by to bylo znovu.
+ */
+interface Model {
+  siteOf: Int16Array
+  byId: Map<string, PointForecast>
+  sites: ForecastSite[]
+  highestSite: ForecastSite | null
+}
+
+const models = new WeakMap<Track, WeakMap<Forecast, Model>>()
+
+function modelOf(track: Track, forecast: Forecast): Model {
+  let inner = models.get(track)
+  if (!inner) {
+    inner = new WeakMap()
+    models.set(track, inner)
+  }
+  const hit = inner.get(forecast)
+  if (hit) return hit
+  const sites = forecast.sites ?? []
+  const model: Model = {
+    siteOf: siteIndexByPoint(track.points, sites, track.turnIndex),
+    byId: new Map(forecast.points.map((p) => [p.siteId, p])),
+    sites,
+    highestSite: sites.reduce<ForecastSite | null>((a, s) => (!a || s.elevation > a.elevation ? s : a), null),
+  }
+  inner.set(forecast, model)
+  return model
+}
+
+/** Hodina předpovědi pro bod trati, s teplotou přepočtenou na jeho skutečnou výšku. */
+function hourAt(model: Model, track: Track, idx: number, at: Date): { hour: HourPoint; spread: Spread } | null {
+  const siteIdx = model.siteOf[Math.max(0, Math.min(idx, model.siteOf.length - 1))]
+  const site = model.sites[siteIdx]
+  const pf = site ? model.byId.get(site.id) : undefined
+  if (!site || !pf || pf.hours.length === 0) return null
+  const i = hourIndex(pf.hours, at)
+  const hour = pf.hours[i]
+  const dz = (track.points[idx]?.elevation ?? site.elevation) - site.elevation
+  if (Math.abs(dz) < 25) return { hour, spread: pf.spread[i] }
+  const dt = dz * LAPSE_PER_M
+  return {
+    hour: {
+      ...hour,
+      temperature: hour.temperature + dt,
+      apparentTemperature: hour.apparentTemperature + dt,
+      apparentTemperatureRisk: hour.apparentTemperatureRisk + dt,
+    },
+    spread: pf.spread[i],
+  }
+}
+
+/** Výška sněhu podle nadmořské výšky, naměřená v místech předpovědi v hodinu startu. */
+function snowAt(model: Model, start: Date): SnowProfile {
+  const samples = model.sites.flatMap((s) => {
+    const pf = model.byId.get(s.id)
     if (!pf || pf.hours.length === 0) return []
-    return [{ elevation: w.elevation, depthM: pf.hours[hourIndex(pf.hours, start)].snowDepth }]
+    return [{ elevation: s.elevation, depthM: pf.hours[hourIndex(pf.hours, start)].snowDepth }]
   })
   return snowProfileOf(samples)
 }
@@ -107,11 +183,8 @@ function stampsBetween(start: Date, end: Date): Date[] {
   return out
 }
 
-/**
- * Kde na trati jsi po `offsetMin` minutách chůze. Vrací index bodu trati —
- * z něj plyne skutečná výška, a tedy i to, jestli jsi v tu hodinu na hřebeni.
- */
-function indexAtMinute(elapsed: number[], offsetMin: number): number {
+/** Kde na trati jsi po `offsetMin` minutách. Vrací index bodu trati. */
+export function indexAtMinute(elapsed: number[], offsetMin: number): number {
   if (elapsed.length === 0) return 0
   let lo = 0
   let hi = elapsed.length - 1
@@ -123,11 +196,14 @@ function indexAtMinute(elapsed: number[], offsetMin: number): number {
   return lo
 }
 
-/** Jméno místa: v bodě trasy jeho název, mezi body úsek „A → B". */
+/** Jméno místa: v bodě trasy (i během pauzy) jeho název, mezi body úsek „A → B". */
 function placeName(route: Route, plan: RoutePlan, offsetMin: number): string {
   const arrivals = plan.arrivals
   if (arrivals.length === 0) return route.name
-  const near = arrivals.find((a) => Math.abs(a.offsetMin - offsetMin) <= 8)
+  const near = arrivals.find((a) => {
+    const leave = a.leaveAt ? a.offsetMin + (a.leaveAt.getTime() - a.at.getTime()) / 60000 : a.offsetMin
+    return offsetMin >= a.offsetMin - 8 && offsetMin <= leave + 8
+  })
   if (near) return near.waypoint.name
   for (let i = 1; i < arrivals.length; i++) {
     if (offsetMin < arrivals[i].offsetMin) {
@@ -138,46 +214,43 @@ function placeName(route: Route, plan: RoutePlan, offsetMin: number): string {
 }
 
 /** Kompletní posouzení jednoho konkrétního času startu. */
-export function assess(
-  route: Route,
-  track: Track,
-  forecast: Forecast,
-  start: Date,
-): Assessment {
-  const byId = new Map(forecast.points.map((p) => [p.waypointId, p]))
-  const snow = snowAt(route, byId, start)
+export function assess(route: PlannedRoute, track: Track, forecast: Forecast, start: Date): Assessment {
+  const model = modelOf(track, forecast)
+  const snow = snowAt(model, start)
   const walked = walkedRoute(route)
   const plan = planFromTrack(track, withStart(walked, start), start, snow)
+  const end = new Date(start.getTime() + plan.minutes * 60000)
 
-  const passes: PassPoint[] = plan.arrivals.flatMap((a) => {
-    const pf = byId.get(a.waypoint.id)
-    if (!pf || pf.hours.length === 0) return []
-    return [{ waypoint: a.waypoint, at: a.at, hour: pf.hours[hourIndex(pf.hours, a.at)] }]
+  const passes: PassPoint[] = plan.arrivals.flatMap((a, i) => {
+    const h = hourAt(model, track, track.waypointIndices[i] ?? 0, a.at)
+    return h ? [{ waypoint: a.waypoint, at: a.at, leaveAt: a.leaveAt, hour: h.hour }] : []
   })
 
-  const end = plan.arrivals.at(-1)?.at ?? start
-  const samples: Sample[] = stampsBetween(start, end).flatMap((at) => {
+  const raw = stampsBetween(start, end).flatMap((at) => {
     const offsetMin = (at.getTime() - start.getTime()) / 60000
     const idx = indexAtMinute(plan.elapsed, offsetMin)
-    // Předpověď je jen v bodech trasy. Pro hodinu mezi nimi se vezme ta z nejbližšího
-    // bodu, ale exponovanost se posuzuje ze skutečné výšky trati — hřeben mezi dvěma
-    // waypointy je hřeben, i když tam žádný waypoint není.
-    const nearest = nearestWaypoint(walked, track, idx)
-    const pf = byId.get(nearest.id)
-    if (!pf || pf.hours.length === 0) return []
-    const i = hourIndex(pf.hours, at)
-    const elevation = track.points[idx]?.elevation ?? nearest.elevation
+    const h = hourAt(model, track, idx, at)
+    if (!h) return []
+    const p = track.points[idx]
     return [
       {
         at,
-        where: { ...nearest, name: placeName(walked, plan, offsetMin), elevation },
-        hour: pf.hours[i],
-        spread: pf.spread[i],
+        trackIndex: idx,
+        where: {
+          id: `t${idx}`,
+          name: placeName(walked, plan, offsetMin),
+          lat: p?.lat ?? 0,
+          lon: p?.lon ?? 0,
+          elevation: p?.elevation ?? 0,
+        },
+        hour: h.hour,
+        spread: h.spread,
       },
     ]
   })
 
-  const score = scoreRoute(samples.map((s) => ({ waypoint: s.where, hour: s.hour })))
+  const score = scoreRoute(raw.map((s) => ({ waypoint: s.where, hour: s.hour })))
+  const samples: Sample[] = raw.map((s, i) => ({ ...s, score: score.hourly[i]?.score ?? 0 }))
 
   const certainties = samples
     .map((s) => certaintyOf(s.hour, s.spread, s.where))
@@ -186,8 +259,7 @@ export function assess(
     ? Math.round(certainties.reduce((a, b) => a + b, 0) / certainties.length)
     : null
 
-  // Ukazuje se nejširší rozptyl na trase, ne ten v hodině startu: nejistota
-  // patří k té hodině, kde je největší, protože ta rozhoduje.
+  // Ukazuje se nejširší rozptyl na trase: nejistota patří k té hodině, kde je největší.
   const spread = samples.reduce(
     (acc, s) => ({
       temperature: Math.max(acc.temperature, s.spread.temperature),
@@ -198,41 +270,46 @@ export function assess(
   )
 
   const day = dayOf(forecast, start)
+  const sunrise = day ? new Date(day.sunrise) : null
   const sunset = day ? new Date(day.sunset) : null
-  const startsBeforeSunrise = day ? start < new Date(day.sunrise) : false
+  const startsBeforeSunrise = sunrise ? start < sunrise : false
   const endsAfterSunset = sunset ? end > sunset : false
   const daylightReserveMin = sunset ? Math.round((sunset.getTime() - end.getTime()) / 60000) : null
 
-  const highest = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
-  const storm = stormWindowOf(walked, track, byId, plan, start, end, snow, highest)
-
+  const storm = stormWindowOf(route, track, model, plan, start, end, snow)
   const wetGround = wetnessBefore(forecast, start)
+  const top = track.points.reduce((a, p) => (p.elevation > a ? p.elevation : a), -Infinity)
+  const highest = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
 
   // Bez jediné hodiny předpovědi se výbava neradí. Prázdné pole by přes Math.min
   // propadlo jako nula stupňů a appka by si vymyslela čepici a rukavice.
-  const gear = samples.length === 0 ? [] : suggestGear({
-    minApparent: min(samples.map((s) => s.hour.apparentTemperatureRisk)),
-    maxGusts: max(samples.map((s) => s.hour.windGustsRisk)),
-    totalPrecip: score.rainMm,
-    maxPrecipProbability: max(samples.map((s) => s.hour.precipitationProbability)),
-    maxUv: max(samples.map((s) => s.hour.uvIndex)),
-    minVisibility: minVisibility(samples),
-    maxSnowDepth: max(samples.map((s) => s.hour.snowDepth)),
-    anyIcing: samples.some(
-      (s) =>
-        s.hour.freezingLevel !== null &&
-        s.hour.freezingLevel < s.where.elevation &&
-        s.hour.precipitationRisk > 0.2,
-    ),
-    startsBeforeSunrise,
-    endsAfterSunset,
-    durationMin: plan.minutes,
-    highestName: highest?.name ?? '',
-    highestElevation: Math.round(highest?.elevation ?? 0),
-  })
+  const gear =
+    samples.length === 0
+      ? []
+      : suggestGear({
+          minApparent: min(samples.map((s) => s.hour.apparentTemperatureRisk)),
+          maxGusts: max(samples.map((s) => s.hour.windGustsRisk)),
+          totalPrecip: score.rainMm,
+          maxPrecipProbability: max(samples.map((s) => s.hour.precipitationProbability)),
+          maxUv: max(samples.map((s) => s.hour.uvIndex)),
+          minVisibility: minVisibility(samples),
+          maxSnowDepth: max(samples.map((s) => s.hour.snowDepth)),
+          anyIcing: samples.some(
+            (s) =>
+              s.hour.freezingLevel !== null &&
+              s.hour.freezingLevel < s.where.elevation &&
+              s.hour.precipitationRisk > 0.2,
+          ),
+          startsBeforeSunrise,
+          endsAfterSunset,
+          durationMin: plan.minutes,
+          highestName: highest?.name ?? '',
+          highestElevation: Math.round(Number.isFinite(top) ? top : (highest?.elevation ?? 0)),
+        })
 
   return {
     start,
+    end,
     plan,
     score,
     passes,
@@ -240,6 +317,8 @@ export function assess(
     certainty,
     spread,
     gear,
+    sunrise,
+    sunset,
     startsBeforeSunrise,
     endsAfterSunset,
     daylightReserveMin,
@@ -248,61 +327,56 @@ export function assess(
   }
 }
 
-/** Ke kterému bodu trasy je daný index trati nejblíž. */
-function nearestWaypoint(route: Route, track: Track, idx: number): Waypoint {
-  let best = route.waypoints[0]
-  let bestDist = Infinity
-  route.waypoints.forEach((w, i) => {
-    const d = Math.abs((track.waypointIndices[i] ?? 0) - idx)
-    if (d < bestDist) {
-      bestDist = d
-      best = w
-    }
-  })
-  return best
-}
-
 /**
  * Kdy na trase začne bouřkové riziko a kolik času zbývá na sestup z hřebene.
- * Prahy: CAPE nad 500 s aspoň čtyřiceti procenty členů, kterým prší, nebo CAPE
- * nad 800 bez ohledu na srážky — energie tam je a stačí spouštěč.
+ * Prahy: CAPE nad 500 s aspoň čtyřiceti procenty scénářů, ve kterých prší, nebo
+ * CAPE nad 800 bez ohledu na srážky — energie tam je a stačí spouštěč.
  */
 function stormWindowOf(
-  route: Route,
+  route: PlannedRoute,
   track: Track,
-  byId: Map<string, PointForecast>,
+  model: Model,
   plan: RoutePlan,
   start: Date,
   end: Date,
   snow: SnowProfile,
-  highest: Waypoint | undefined,
 ): StormWindow | null {
-  if (!highest) return null
-  const pf = byId.get(highest.id)
+  const site = model.highestSite
+  if (!site || site.elevation < EXPOSED_ABOVE_M) return null
+  const pf = model.byId.get(site.id)
   if (!pf || pf.hours.length === 0) return null
-  if (highest.elevation < EXPOSED_ABOVE_M) return null
 
+  // Nejvyšší bod na chozené trati (u tam a zpět ten první průchod).
+  const summitIdx = track.points.reduce(
+    (best, p, i, arr) => (p.elevation > arr[best].elevation ? i : best),
+    0,
+  )
   const from = hourIndex(pf.hours, start)
   // Tři hodiny po návratu se ještě sledují: „vejdeš se před bouřku" je stejně
-  // užitečná informace jako „nevejdeš", a obě se dají říct jen s tímhle přesahem.
+  // užitečná informace jako „nevejdeš".
   const until = hourIndex(pf.hours, new Date(end.getTime() + 3 * 3_600_000))
   for (let i = from; i <= until; i++) {
     const h = pf.hours[i]
     const risky = (h.capeRisk >= 500 && h.precipitationProbability >= 40) || h.capeRisk >= 800
     if (!risky) continue
 
-    const summitIdx = track.waypointIndices[route.waypoints.indexOf(highest)] ?? 0
-    const exitMin = exitMinutes(track, summitIdx, EXPOSED_ABOVE_M, route.pace, snow)
+    const exitMin = exitMinutes(track, summitIdx, EXPOSED_ABOVE_M, route, snow)
     if (!Number.isFinite(exitMin)) return null
 
     const at = new Date(h.time)
     const turnaround = new Date(at.getTime() - exitMin * 60000)
-    const summitOffset = plan.arrivals.find((a) => a.waypoint.id === highest.id)?.offsetMin ?? 0
+    // Pauza nahoře se do času obratu počítá: nahoře sedíš, ale ještě nejsi dole.
+    const pause = plan.breakMin > 0 && breakIndexOf(track) === summitIdx ? plan.breakMin : 0
+    const summitOffset = (plan.elapsed[summitIdx] ?? 0) + pause
+    const nearest = [...route.waypoints].sort(
+      (a, b) => Math.abs(a.elevation - site.elevation) - Math.abs(b.elevation - site.elevation),
+    )[0]
     return {
       from: at,
       exitMin: Math.round(exitMin),
       turnaround,
       latestStart: new Date(turnaround.getTime() - summitOffset * 60000),
+      summit: nearest?.name ?? route.name,
     }
   }
   return null
@@ -338,14 +412,25 @@ const minVisibility = (samples: Sample[]) => {
   return vs.length ? Math.min(...vs) : null
 }
 
+export const dayKey = (at: Date) =>
+  `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`
+
 function dayOf(forecast: Forecast, at: Date) {
-  const key = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}`
+  const key = dayKey(at)
   return forecast.days.find((d) => d.date === key)
+}
+
+/** Hodiny předpovědi v nejvyšším místě trati — pro oblohu, inverzi a zákal. */
+export function summitHours(track: Track, forecast: Forecast): { site: ForecastSite; hours: HourPoint[] } | null {
+  const model = modelOf(track, forecast)
+  const site = model.highestSite
+  const pf = site ? model.byId.get(site.id) : undefined
+  return site && pf ? { site, hours: pf.hours } : null
 }
 
 export interface DayOutlook {
   date: string
-  /** Skóre trasy podle hodiny startu; null = mimo denní světlo. */
+  /** Skóre trasy podle hodiny startu; null = mimo denní světlo nebo v minulosti. */
   hourly: Array<number | null>
   best: { start: Date; score: number; endsAt: Date } | null
   sunrise: SkyScore & { at: Date }
@@ -354,13 +439,11 @@ export interface DayOutlook {
 
 /**
  * Pro každý den prozkoumá všechny hodiny startu a řekne, která je nejlepší.
- * Tohle je ta věc, kterou běžné appky na počasí neumí: neptáš se „jaké bude v sobotu",
- * ale „kdy přesně mám vyrazit".
+ * Neptáš se „jaké bude v sobotu", ale „kdy přesně mám vyrazit".
  */
-export function weekOutlook(route: Route, track: Track, forecast: Forecast): DayOutlook[] {
+export function weekOutlook(route: PlannedRoute, track: Track, forecast: Forecast): DayOutlook[] {
   const now = new Date()
-  const highest = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
-  const summit = forecast.points.find((p) => p.waypointId === highest?.id) ?? forecast.points[0]
+  const summit = summitHours(track, forecast)?.hours ?? forecast.points[0]?.hours ?? []
 
   return forecast.days.map((day) => {
     const sunrise = new Date(day.sunrise)
@@ -372,30 +455,30 @@ export function weekOutlook(route: Route, track: Track, forecast: Forecast): Day
       const start = new Date(sunrise)
       start.setHours(h, 0, 0, 0)
 
-      const a = assess(route, track, forecast, start)
-      const end = a.plan.arrivals.at(-1)?.at ?? start
       // Startovat po setmění, vracet se dlouho po západu ani vyrážet v čase,
-      // který už dávno minul, nedává smysl.
-      const usable =
-        start >= now && start >= addMinutes(sunrise, -60) && end <= addMinutes(sunset, 30)
-      if (!usable) {
+      // který už dávno minul, nedává smysl. Levná kontrola jde před drahým výpočtem.
+      if (start < now || start < addMinutes(sunrise, -60) || start > sunset) {
+        hourly.push(null)
+        continue
+      }
+      const a = assess(route, track, forecast, start)
+      if (a.end > addMinutes(sunset, 30)) {
         hourly.push(null)
         continue
       }
 
       hourly.push(a.score.score)
       if (!best || a.score.score > best.score) {
-        best = { start, score: a.score.score, endsAt: end }
+        best = { start, score: a.score.score, endsAt: a.end }
       }
     }
 
-    const summitHours = summit?.hours ?? []
     return {
       date: day.date,
       hourly,
       best,
-      sunrise: { ...skyAt(summitHours, sunrise), at: sunrise },
-      sunset: { ...skyAt(summitHours, sunset), at: sunset },
+      sunrise: { ...skyAt(summit, sunrise), at: sunrise },
+      sunset: { ...skyAt(summit, sunset), at: sunset },
     }
   })
 }

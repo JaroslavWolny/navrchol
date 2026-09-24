@@ -7,23 +7,34 @@ export interface BaseGearItem {
   name: string
 }
 
+export interface Settings {
+  /**
+   * Osobní kalibrace tempa, 1 = průměrný turista podle Toblerovy funkce.
+   * Spočítá se z túry, kterou člověk opravdu ušel.
+   */
+  paceScale: number
+  /** Kdy a z jaké túry se tempo naposledy kalibrovalo. */
+  calibratedFrom?: { routeName: string; at: number }
+}
+
 export interface StoredState {
   routes: Route[]
   activeRouteId: string | null
   baseGear: BaseGearItem[]
   /** ID trasy → názvy položek, které už jsou sbalené. */
   packed: Record<string, string[]>
-  /** Úvod se ukazuje jen jednou, ale jde vyvolat znovu z „O appce". */
+  /** Úvod se ukazuje jen jednou, ale jde vyvolat znovu z nastavení. */
   seenIntro: boolean
+  settings: Settings
 }
 
 export const DEFAULT_BASE_GEAR: BaseGearItem[] = [
-  { id: 'voda', name: 'Voda 2 l' },
-  { id: 'mapa', name: 'Offline mapa' },
+  { id: 'voda', name: 'Voda 1,5 l' },
+  { id: 'mapa', name: 'Offline mapa v telefonu' },
   { id: 'lekarnicka', name: 'Lékárnička' },
   { id: 'svacina', name: 'Svačina' },
+  { id: 'vrstva', name: 'Teplá vrstva navíc' },
   { id: 'powerbanka', name: 'Powerbanka' },
-  { id: 'nuz', name: 'Nůž' },
   { id: 'hotovost', name: 'Hotovost na chatu' },
 ]
 
@@ -33,12 +44,13 @@ export const DEMO_ROUTE_ID = 'demo-snezka'
 export const DEMO_ROUTE: Route = {
   id: DEMO_ROUTE_ID,
   name: 'Sněžka z Pece',
-  startTime: '07:00',
+  startTime: '07:30',
   pace: 'stredni',
   roundTrip: true,
+  breakMin: 20,
   waypoints: [
-    { id: 'w1', name: 'Pec pod Sněžkou', lat: 50.6903, lon: 15.7322, elevation: 769 },
-    { id: 'w2', name: 'Růžová hora', lat: 50.7253, lon: 15.7397, elevation: 1390 },
+    { id: 'w1', name: 'Pec pod Sněžkou', lat: 50.695, lon: 15.7392, elevation: 762 },
+    { id: 'w2', name: 'Růžohorky', lat: 50.7104, lon: 15.7499, elevation: 1250 },
     { id: 'w3', name: 'Sněžka', lat: 50.7361, lon: 15.7397, elevation: 1603 },
   ],
 }
@@ -49,16 +61,23 @@ const EMPTY: StoredState = {
   baseGear: DEFAULT_BASE_GEAR,
   packed: {},
   seenIntro: false,
+  settings: { paceScale: 1 },
 }
 
 /**
- * Ukázková trasa se uložila dřív, než appka uměla návrat, takže počítá jen
- * výstup. Sněžka z Pece se chodí tam a zpět — ať to tak i počítá. Vlastních
- * tras se to netýká, ty si nastavení drží podle toho, jak je kdo založil.
+ * Ukázková trasa se uložila dřív, než appka uměla návrat a pauzu, a start ležel
+ * na svahu nad Pecí — trať pak nejdřív devadesát metrů klesala. Uživatelských
+ * úprav ukázky (jméno, čas, tempo) se oprava nedotkne.
  */
 function upgradeDemo(route: Route): Route {
-  if (route.id !== DEMO_ROUTE_ID || route.roundTrip !== undefined) return route
-  return { ...route, roundTrip: true }
+  if (route.id !== DEMO_ROUTE_ID) return route
+  const oldStart = route.waypoints[0]?.lat === 50.6903 && route.waypoints[0]?.lon === 15.7322
+  return {
+    ...route,
+    roundTrip: route.roundTrip ?? true,
+    breakMin: route.breakMin ?? DEMO_ROUTE.breakMin,
+    waypoints: oldStart ? DEMO_ROUTE.waypoints : route.waypoints,
+  }
 }
 
 /** localStorage umí selhat v anonymním okně i při zaplněné kvótě — nikdy kvůli tomu nespadnout. */
@@ -73,17 +92,20 @@ export function load(): StoredState {
       baseGear: parsed.baseGear ?? DEFAULT_BASE_GEAR,
       packed: parsed.packed ?? {},
       seenIntro: parsed.seenIntro ?? false,
+      settings: { paceScale: 1, ...parsed.settings },
     }
   } catch {
     return EMPTY
   }
 }
 
-export function save(state: StoredState): void {
+export function save(state: StoredState): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(state))
+    return true
   } catch {
     // Neuložilo se. Appka běží dál, jen si to nezapamatuje.
+    return false
   }
 }
 

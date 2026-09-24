@@ -7,6 +7,22 @@ const PACE_FACTOR: Record<PaceKey, number> = {
   svizne: 1.25,
 }
 
+/** Rychlost na rovině podle tempa, v km/h — kvůli popisku v editoru. */
+export const flatSpeed = (pace: PaceKey, scale = 1) => toblerSpeed(0) * PACE_FACTOR[pace] * scale
+
+/**
+ * Tempo trasy jako násobek Toblerovy funkce: zvolené tempo krát osobní
+ * kalibrace. Kalibraci si appka spočítá z túry, kterou člověk opravdu ušel.
+ */
+export interface PaceLike {
+  pace: PaceKey
+  /** Osobní kalibrace, 1 = průměrný turista. Neukládá se do trasy, ale do nastavení. */
+  paceScale?: number
+}
+
+export const paceFactor = (p: PaceLike | PaceKey | number): number =>
+  typeof p === 'number' ? p : typeof p === 'string' ? PACE_FACTOR[p] : PACE_FACTOR[p.pace] * (p.paceScale ?? 1)
+
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
 
 /**
@@ -19,8 +35,7 @@ export function toblerSpeed(slope: number): number {
 
 /**
  * Prošlapávání. Do patnácti centimetrů se jde normálně, po kolena ve neprošlapaném
- * sněhu spadne rychlost na třetinu — v Krkonoších v zimě je to rozdíl několika hodin,
- * a tedy i rozdíl mezi návratem za světla a návratem po tmě.
+ * sněhu spadne rychlost na třetinu.
  */
 export function snowFactor(depthM: number): number {
   if (depthM <= 0.15) return 1
@@ -31,7 +46,7 @@ export function snowFactor(depthM: number): number {
 export type SnowProfile = (elevation: number) => number
 
 /**
- * Sníh měřený v bodech trasy přepočtený na výšku: v údolí nemusí ležet nic,
+ * Sníh měřený v místech podél trati přepočtený na výšku: v údolí nemusí ležet nic,
  * na hřebeni půl metru, a průměr z toho by lhal oběma směrům.
  */
 export function snowProfileOf(samples: Array<{ elevation: number; depthM: number }>): SnowProfile {
@@ -69,6 +84,8 @@ export interface Arrival {
   at: Date
   /** Minut od startu. */
   offsetMin: number
+  /** Když je tu pauza: kdy se odtud pokračuje. */
+  leaveAt?: Date
 }
 
 export interface RoutePlan {
@@ -77,14 +94,18 @@ export interface RoutePlan {
   distanceKm: number
   ascentM: number
   descentM: number
+  /** Celá túra včetně pauzy, v minutách. */
   minutes: number
+  /** Čistý čas chůze bez pauzy. */
+  walkingMinutes: number
+  breakMin: number
   /** Kumulativní čas v minutách ke každému bodu trati. Prázdné bez trati. */
   elapsed: number[]
 }
 
 /** Rozloží trasu na úseky mezi sousedními body a spočítá, jak dlouho každý zabere. */
-export function legsOf(route: Route): Leg[] {
-  const factor = PACE_FACTOR[route.pace]
+export function legsOf(route: Route & PaceLike): Leg[] {
+  const factor = paceFactor(route)
   const out: Leg[] = []
   for (let i = 0; i < route.waypoints.length - 1; i++) {
     const from = route.waypoints[i]
@@ -114,7 +135,8 @@ export function startOf(day: Date, startTime: string): Date {
   return d
 }
 
-export function planRoute(route: Route, day: Date): RoutePlan {
+/** Odhad jen z bodů trasy, vzdušnou čarou. Pro náhled, než dorazí skutečná trať. */
+export function planRoute(route: Route & PaceLike, day: Date): RoutePlan {
   const ls = legsOf(route)
   const start = startOf(day, route.startTime)
 
@@ -125,11 +147,7 @@ export function planRoute(route: Route, day: Date): RoutePlan {
   }
   for (const leg of ls) {
     offsetMin += leg.minutes
-    arrivals.push({
-      waypoint: leg.to,
-      at: new Date(start.getTime() + offsetMin * 60000),
-      offsetMin,
-    })
+    arrivals.push({ waypoint: leg.to, at: new Date(start.getTime() + offsetMin * 60000), offsetMin })
   }
 
   return {
@@ -139,6 +157,8 @@ export function planRoute(route: Route, day: Date): RoutePlan {
     ascentM: ls.reduce((s, l) => s + l.ascentM, 0),
     descentM: ls.reduce((s, l) => s + l.descentM, 0),
     minutes: offsetMin,
+    walkingMinutes: offsetMin,
+    breakMin: 0,
     elapsed: [],
   }
 }
@@ -154,6 +174,16 @@ export function formatDuration(minutes: number): string {
 interface TrackLike {
   points: Array<{ lat: number; lon: number; elevation: number }>
   waypointIndices: number[]
+  turnIndex?: number
+}
+
+/**
+ * Kde se dělá pauza: u túry tam a zpět na obrátce, jinak na nejvyšším bodě.
+ * Tam se obvykle svačí — a tam taky nejvíc fouká, takže pauza patří do skóre.
+ */
+export function breakIndexOf(track: TrackLike): number {
+  if (track.turnIndex !== undefined) return track.turnIndex
+  return track.points.reduce((best, p, i, arr) => (p.elevation > arr[best].elevation ? i : best), 0)
 }
 
 /**
@@ -163,12 +193,14 @@ interface TrackLike {
  */
 export function planFromTrack(
   track: TrackLike,
-  route: Route,
+  route: Route & PaceLike,
   day: Date,
   snow?: SnowProfile,
 ): RoutePlan {
-  const factor = PACE_FACTOR[route.pace]
+  const factor = paceFactor(route)
   const { points } = track
+  const breakMin = Math.max(0, route.breakMin ?? 0)
+  const breakAt = breakMin > 0 && points.length > 1 ? breakIndexOf(track) : -1
 
   // Kumulativní čas v minutách ke každému bodu trati.
   const elapsed: number[] = new Array(points.length).fill(0)
@@ -181,17 +213,23 @@ export function planFromTrack(
     const dh = points[i].elevation - points[i - 1].elevation
     const slope = segKm > 0 ? dh / (segKm * 1000) : 0
     const speed = toblerSpeed(slope) * factor * (snow ? snowFactor(snow(points[i].elevation)) : 1)
-    elapsed[i] = elapsed[i - 1] + (speed > 0 ? (segKm / speed) * 60 : 0)
+    elapsed[i] =
+      elapsed[i - 1] + (speed > 0 ? (segKm / speed) * 60 : 0) + (i - 1 === breakAt ? breakMin : 0)
     distanceKm += segKm
     if (dh > 0) ascentM += dh
     else descentM -= dh
   }
 
   const start = startOf(day, route.startTime)
+  const total = elapsed[elapsed.length - 1] ?? 0
+  const pauseTaken = breakAt >= 0 && breakAt < points.length - 1 ? breakMin : 0
   const arrivals: Arrival[] = route.waypoints.map((waypoint, i) => {
     const idx = track.waypointIndices[i] ?? 0
     const offsetMin = elapsed[idx] ?? 0
-    return { waypoint, at: new Date(start.getTime() + offsetMin * 60000), offsetMin }
+    const at = new Date(start.getTime() + offsetMin * 60000)
+    return idx === breakAt && pauseTaken > 0
+      ? { waypoint, at, offsetMin, leaveAt: new Date(at.getTime() + pauseTaken * 60000) }
+      : { waypoint, at, offsetMin }
   })
 
   return {
@@ -200,7 +238,9 @@ export function planFromTrack(
     distanceKm,
     ascentM: Math.round(ascentM),
     descentM: Math.round(descentM),
-    minutes: elapsed[elapsed.length - 1] ?? 0,
+    minutes: total,
+    walkingMinutes: total - pauseTaken,
+    breakMin: pauseTaken,
     elapsed,
   }
 }
@@ -208,17 +248,16 @@ export function planFromTrack(
 /**
  * Za jak dlouho se z daného místa trati dostaneš pod hranici exponovaného terénu.
  * Bere kratší z obou směrů — před bouřkou je jedno, jestli seběhneš dopředu nebo zpátky,
- * důležité je, jak dlouho budeš ještě na hřebeni. Bez tohohle čísla je „buď dole
- * do poledne" jen fráze.
+ * důležité je, jak dlouho budeš ještě na hřebeni.
  */
 export function exitMinutes(
   track: TrackLike,
   fromIndex: number,
   exposedAbove: number,
-  pace: PaceKey,
+  pace: PaceLike | PaceKey | number,
   snow?: SnowProfile,
 ): number {
-  const factor = PACE_FACTOR[pace]
+  const factor = paceFactor(pace)
   const { points } = track
   if (points.length === 0) return 0
   const from = clamp(Math.round(fromIndex), 0, points.length - 1)
@@ -240,4 +279,14 @@ export function exitMinutes(
   }
 
   return Math.min(walk(1), walk(-1))
+}
+
+/**
+ * Osobní kalibrace tempa z túry, kterou člověk opravdu ušel: poměr odhadu
+ * a skutečnosti. Drží se v rozumných mezích — překlep v čase nesmí z appky
+ * udělat stroj na nesmyslné odhady.
+ */
+export function calibrate(predictedWalkingMin: number, actualWalkingMin: number): number {
+  if (!(predictedWalkingMin > 0) || !(actualWalkingMin > 0)) return 1
+  return clamp(predictedWalkingMin / actualWalkingMin, 0.5, 1.8)
 }

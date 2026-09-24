@@ -1,14 +1,14 @@
 {
-  "name": "NaVrchol — plánovač hiků",
+  "name": "NaVrchol",
   "short_name": "NaVrchol",
-  "description": "Nejpřesnější počasí na túru: verdikt, kdy jít, a co si vzít.",
+  "description": "Počasí na túru, které řekne, jestli jít, kdy vyrazit a co si vzít.",
   "lang": "cs",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0d100e",
-  "theme_color": "#0d100e",
+  "background_color": "#0b0c0d",
+  "theme_color": "#0b0c0d",
   "icons": [
     {
       "src": "/icon-192.png",

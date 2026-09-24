@@ -3,8 +3,8 @@ import { fetchTrack, nearestIndex } from '../routing'
 import { planFromTrack, planRoute } from '../pace'
 import type { Route, Waypoint } from '../types'
 
-const PEC: Waypoint = { id: 'a', name: 'Pec pod Sněžkou', lat: 50.6903, lon: 15.7322, elevation: 769 }
-const RUZOVA: Waypoint = { id: 'b', name: 'Růžová hora', lat: 50.7253, lon: 15.7397, elevation: 1390 }
+const PEC: Waypoint = { id: 'a', name: 'Pec pod Sněžkou', lat: 50.695, lon: 15.7392, elevation: 762 }
+const RUZOVA: Waypoint = { id: 'b', name: 'Růžohorky', lat: 50.7104, lon: 15.7499, elevation: 1250 }
 const SNEZKA: Waypoint = { id: 'c', name: 'Sněžka', lat: 50.7361, lon: 15.7397, elevation: 1603 }
 
 const route: Route = {
@@ -39,9 +39,11 @@ describe('trať po pěšinách', () => {
     }
 
     expect(track.points.length).toBeGreaterThan(50)
-    expect(track.lengthKm).toBeGreaterThan(6)
+    expect(track.lengthKm).toBeGreaterThan(5.5)
     expect(track.lengthKm).toBeLessThan(12)
-    expect(track.ascentM).toBeGreaterThan(700)
+    expect(track.ascentM).toBeGreaterThan(780)
+    // Stoupání s hysterezí sedí na to, co počítá BRouter (852 m), ne na součet šumu.
+    expect(track.ascentM).toBeLessThan(900)
 
     // Kvůli tomuhle to celé je: pěšina je výrazně delší než spojnice bodů.
     const primka = planRoute(route, new Date('2026-09-20T00:00:00'))

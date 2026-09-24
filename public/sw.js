@@ -1,12 +1,20 @@
 // Verzi zvyš při každém vydání — vynutí to zahození starých cache.
-const VERSION = 'navrchol-v10'
+const VERSION = 'navrchol-v11'
 
 self.addEventListener('install', (event) => {
   // Nová verze se nesmí schovávat za starou. Zastaralý service worker je
   // nejčastější důvod, proč „nasazená změna není vidět".
   self.skipWaiting()
   event.waitUntil(
-    caches.open(VERSION).then((cache) => cache.addAll(['/', '/manifest.webmanifest', '/icon.svg'])),
+    caches.open(VERSION).then(async (cache) => {
+      await cache.addAll(['/', '/manifest.webmanifest', '/icon.svg', '/icon-180.png'])
+      // Skripty a styly mají v názvu otisk obsahu a jejich seznam je jen v index.html.
+      // Bez nich by první spuštění na hřebeni bez signálu skončilo prázdnou stránkou.
+      const page = await cache.match('/')
+      const html = page ? await page.text() : ''
+      const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1])
+      await cache.addAll(assets)
+    }),
   )
 })
 
@@ -35,7 +43,8 @@ self.addEventListener('fetch', (event) => {
   // Soubor s číslem verze musí vždy z sítě, jinak by appka nikdy nepoznala,
   // že běží na staré verzi.
   if (url.pathname === '/version.json') return
-  // Předpověď se nikdy neservíruje ze cache — stará předpověď je horší než žádná.
+  // Předpověď se přes service worker necachuje: appka si ji ukládá sama do IndexedDB
+  // i s časem stažení, takže offline ukáže poslední předpověď a řekne, jak je stará.
   if (url.hostname.endsWith('open-meteo.com') || url.hostname.endsWith('brouter.de')) return
 
   // Všude jinde nejdřív síť, cache je záloha pro offline.

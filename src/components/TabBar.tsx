@@ -10,16 +10,14 @@ const TABS: Array<{ id: Tab; label: string; icon: IconName }> = [
   { id: 'vybava', label: 'Výbava', icon: 'vybava' },
 ]
 
-export function BottomNav({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
+export function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   return (
-    <nav className="nav">
+    <nav className="tabbar" aria-label="Hlavní navigace">
       {TABS.map((t) => {
         const on = active === t.id
         return (
           <button key={t.id} onClick={() => onChange(t.id)} aria-current={on ? 'page' : undefined}>
-            {/* Aktivní ikona má o chlup silnější tah — doplňuje jazýček nad ní,
-                aby se stav poznal i periferním viděním. */}
-            <Icon name={t.icon} size={20} stroke={on ? 2 : 1.6} />
+            <Icon name={t.icon} size={25} stroke={1.7} filled={on} />
             <span>{t.label}</span>
           </button>
         )
