@@ -16,6 +16,14 @@ export function haversine(
   return 2 * R_EARTH * Math.asin(Math.sqrt(h))
 }
 
+/**
+ * Okruh končí tam, kde začal. Návrat je pak už v bodech trasy — kdyby se k tomu
+ * zapnulo i tam a zpět, šla by se celá trasa dvakrát.
+ */
+export function isLoop(waypoints: Array<{ lat: number; lon: number }>): boolean {
+  return waypoints.length > 2 && haversine(waypoints[0], waypoints[waypoints.length - 1]) < 0.15
+}
+
 /** Kumulativní vzdálenost podél lomené čáry, v kilometrech. První prvek je nula. */
 export function cumulativeKm(points: Array<{ lat: number; lon: number }>): number[] {
   const out = new Array<number>(points.length).fill(0)

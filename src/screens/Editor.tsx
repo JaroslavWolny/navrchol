@@ -8,7 +8,7 @@ import { lookupElevation } from '../lib/elevation'
 import { fetchTrack, trackFromPoints, withReturn, type Track } from '../lib/routing'
 import { flatSpeed, planFromTrack } from '../lib/pace'
 import { walkedRoute } from '../lib/plan'
-import { haversine } from '../lib/geo'
+import { isLoop } from '../lib/geo'
 import { duration, km, metres, num } from '../lib/format'
 import { newId } from '../state/store'
 import type { PaceKey, Route, Waypoint } from '../lib/types'
@@ -89,10 +89,13 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
     () => (fromGpx ? trackFromPoints(route.track!, route.waypoints) : routed),
     [fromGpx, route.track, route.waypoints, routed],
   )
-  const preview = track && route.roundTrip ? withReturn(track) : track
+  const loop = isLoop(route.waypoints)
+  // Okruh se vrací sám; přepínač tam a zpět by ho poslal ještě jednou.
+  const roundTrip = route.roundTrip === true && !loop
+  const preview = track && roundTrip ? withReturn(track) : track
   const plan = useMemo(
-    () => (preview ? planFromTrack(preview, { ...walkedRoute(route), paceScale }, new Date()) : null),
-    [preview, route, paceScale],
+    () => (preview ? planFromTrack(preview, { ...walkedRoute({ ...route, roundTrip }), paceScale }, new Date()) : null),
+    [preview, route, roundTrip, paceScale],
   )
 
   const addWaypoint = (w: Omit<Waypoint, 'id'>) =>
@@ -129,15 +132,12 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
       return { ...r, waypoints: next }
     })
 
-  const first = route.waypoints[0]
-  const last = route.waypoints[route.waypoints.length - 1]
-  const isLoop = route.waypoints.length > 2 && first && last && haversine(first, last) < 0.15
   const canSave = route.waypoints.length >= 2 && route.waypoints.every((w) => Number.isFinite(w.elevation))
 
   const save = () => {
     if (!canSave) return
     const highest = [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0]
-    onSave({ ...route, name: route.name.trim() || highest?.name || 'Moje trasa' })
+    onSave({ ...route, roundTrip, name: route.name.trim() || highest?.name || 'Moje trasa' })
   }
 
   return (
@@ -301,7 +301,7 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
               <Icon name="swap" size={16} stroke={2.2} />
               Obrátit směr
             </button>
-            {!isLoop && (
+            {!loop && (
               <button
                 className="btn btn--gray btn--small"
                 onClick={() =>
@@ -334,9 +334,9 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
       <Section
         title="Plán"
         footer={
-          route.roundTrip
+          roundTrip
             ? 'Tam a zpět počítá i návrat po stejné cestě — do času, do rezervy do tmy i do skóre. Vypni, když se vracíš lanovkou, autobusem nebo jinudy.'
-            : isLoop
+            : loop
               ? 'Okruh končí na startu, návrat je součástí trasy.'
               : 'Počítá se jen cesta tam. Zapni tam a zpět, když se vracíš stejnou cestou.'
         }
@@ -353,13 +353,15 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
               />
             </label>
           </Cell>
-          <Cell icon="swap" title="Tam a zpět">
-            <Switch
-              checked={route.roundTrip === true}
-              onChange={(v) => patch({ roundTrip: v })}
-              label="Tam a zpět"
-            />
-          </Cell>
+          {!loop && (
+            <Cell icon="swap" title="Tam a zpět">
+              <Switch
+                checked={roundTrip}
+                onChange={(v) => patch({ roundTrip: v })}
+                label="Tam a zpět"
+              />
+            </Cell>
+          )}
           <div className="cell" style={{ ['--inset' as string]: '58px', flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
             <div className="row" style={{ gap: 12 }}>
               <span className="cell-icon">

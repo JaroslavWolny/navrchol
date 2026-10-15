@@ -699,4 +699,16 @@ describe('uložená data', () => {
     expect(c.roundTrip).toBe(false)
     localStorage.clear()
   })
+
+  it('okruh uložený se zapnutým tam a zpět se nejde dvakrát', () => {
+    const [start, vrchol] = route.waypoints
+    const okruh: Route = { ...route, id: 'okruh', roundTrip: true, waypoints: [start, vrchol, { ...start, id: 'zpet' }] }
+    const tamZpet: Route = { ...route, id: 'tam', roundTrip: true }
+
+    localStorage.setItem('navrchol.v1', JSON.stringify({ routes: [okruh, tamZpet], activeRouteId: 'okruh' }))
+    const [a, b] = load().routes
+    expect(a.roundTrip).toBe(false)
+    expect(b.roundTrip).toBe(true)
+    localStorage.clear()
+  })
 })

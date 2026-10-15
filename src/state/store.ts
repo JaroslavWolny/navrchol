@@ -1,3 +1,4 @@
+import { isLoop } from '../lib/geo'
 import type { Route } from '../lib/types'
 
 const KEY = 'navrchol.v1'
@@ -87,7 +88,11 @@ export function load(): StoredState {
     if (!raw) return EMPTY
     const parsed = JSON.parse(raw) as Partial<StoredState>
     return {
-      routes: (parsed.routes ?? EMPTY.routes).map(upgradeDemo),
+      // Okruh uložený se zapnutým tam a zpět by se šel dvakrát — nová trasa měla
+      // přepínač zapnutý už od začátku.
+      routes: (parsed.routes ?? EMPTY.routes)
+        .map(upgradeDemo)
+        .map((r) => (isLoop(r.waypoints) ? { ...r, roundTrip: false } : r)),
       activeRouteId: parsed.activeRouteId ?? parsed.routes?.[0]?.id ?? null,
       baseGear: parsed.baseGear ?? DEFAULT_BASE_GEAR,
       packed: parsed.packed ?? {},
