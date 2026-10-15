@@ -753,6 +753,20 @@ svg { flex-shrink: 0; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--tone-fill, var(--ink-4)); }
 
+/* Meteogram vrcholu: osa stojí, týden se roluje do strany. */
+.meteo { display: flex; }
+.meteo-axis { flex: none; width: 30px; }
+.meteo-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.meteo-scroll::-webkit-scrollbar { display: none; }
+.meteo-scroll .chart { width: auto; }
+
 /* Teplotní mapa startů: dny × hodiny. */
 .heat { display: grid; gap: 3px; align-items: center; }
 .heat-cell {

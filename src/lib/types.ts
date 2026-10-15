@@ -106,6 +106,11 @@ export interface HourPoint {
   levels: Array<{ height: number; temperature: number }>
   /** Optická tloušťka aerosolu — zákal pro dálky. Null = data nedorazila. */
   aerosol: number | null
+  /**
+   * Oblačnost (%) po tlakových hladinách s jejich nadmořskou výškou, od země
+   * nahoru. Jen na vrcholu; v předpovědích uložených před meteogramem chybí.
+   */
+  clouds?: Array<{ height: number; cover: number }>
   /** Kolik členů ansámblu tuhle hodinu pokrylo. 0 = ansámbl tak daleko nedosáhl. */
   members: number
 }

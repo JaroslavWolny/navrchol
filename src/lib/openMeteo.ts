@@ -53,6 +53,14 @@ const WIND_VARS = [
 ]
 
 /**
+ * Oblačnost po výškách pro meteogram vrcholu. Vrstvy nízká/střední/vysoká neřeknou,
+ * jestli mrak leží pod vrcholem, na něm, nebo nad ním — tlakové hladiny s výškou ano.
+ * Stahuje se jen pro vrchol, dvacet proměnných na místo není zadarmo.
+ */
+const CLOUD_HPA = [1000, 950, 900, 850, 800, 700, 600, 500, 400, 300] as const
+const CLOUD_VARS = CLOUD_HPA.flatMap((hpa) => [`cloud_cover_${hpa}hPa`, `geopotential_height_${hpa}hPa`])
+
+/**
  * Veličiny, na kterých stojí rozhodnutí, se berou z pravého ansámblu — desítek členů
  * jednoho modelu, ne pár různě jemných modelů vedle sebe.
  */
@@ -129,9 +137,10 @@ async function getJson(url: string, signal?: AbortSignal): Promise<unknown> {
 }
 
 /**
- * Čtyři dotazy na celou trasu: tvar počasí ve všech místech podél trati, vítr
+ * Pět dotazů na celou trasu: tvar počasí ve všech místech podél trati, vítr
  * a teploty ve volné atmosféře jen tam, kde se použijí (hřeben a vrchol),
- * rizikové veličiny z ansámblu a zákal. Ansámbl se stahuje jen v nejnižším
+ * rizikové veličiny z ansámblu, zákal a oblačnost po výškách na vrcholu.
+ * Ansámbl se stahuje jen v nejnižším
  * a nejvyšším místě — je to velká odpověď s minutovým limitem, a mezi dvěma
  * výškami se dá rozumně dopočítat. Když nedorazí, appka jede dál jen
  * s jemným modelem.
@@ -177,8 +186,9 @@ export async function fetchForecast(
     models: models.join(','),
   })
   const airUrl = buildUrl(AIR_URL, { ...coords([top]), hourly: 'aerosol_optical_depth' })
+  const cloudUrl = buildUrl(FORECAST_URL, { ...coords([top]), hourly: CLOUD_VARS.join(',') })
 
-  const [shapeRaw, upperRaw, ensembleRaw, airRaw] = await Promise.all([
+  const [shapeRaw, upperRaw, ensembleRaw, airRaw, cloudRaw] = await Promise.all([
     getJson(shapeUrl, signal),
     // Bez volné atmosféry zůstane vítr z modelu a moře mlhy se nespočítá.
     getJson(upperUrl, signal).catch(() => null),
@@ -187,6 +197,8 @@ export async function fetchForecast(
     getJson(ensembleUrl, signal).catch(() => null),
     // Zákal je třešnička pro fotky, ne podklad pro rozhodnutí.
     getJson(airUrl, signal).catch(() => null),
+    // Oblačnost po výškách je jen na koukání, rozhodnutí na ní nestojí.
+    getJson(cloudUrl, signal).catch(() => null),
   ])
 
   const shape = asArray(shapeRaw)
@@ -194,10 +206,12 @@ export async function fetchForecast(
   const upperOf = new Map(upperSites.map((s, i) => [s.id, upper[i]]))
   const ensemble = ensembleRaw === null ? [] : asArray(ensembleRaw).map(ensembleStats)
   const air = airRaw === null ? null : asArray(airRaw)[0]
+  const cloud = cloudRaw === null ? null : asArray(cloudRaw)[0]
 
   const points = sites.map((site, i) => {
     const ens = ensembleFor(site.elevation, ensembleSites, ensemble)
-    return mergePoint(site, shape[i], upperOf.get(site.id), ens, site.id === top.id ? air : null)
+    const isTop = site.id === top.id
+    return mergePoint(site, shape[i], upperOf.get(site.id), ens, isTop ? air : null, isTop ? cloud : null)
   })
 
   const daily = shape[0]?.daily
@@ -356,12 +370,15 @@ function mergePoint(
   upperRaw: RawLocation | undefined,
   ensemble: (time: string) => EnsembleHour | null,
   airRaw: RawLocation | null,
+  cloudRaw: RawLocation | null,
 ): PointForecast {
   const times = (raw?.hourly?.time as unknown as string[]) ?? []
   const upperTimes = (upperRaw?.hourly?.time as unknown as string[]) ?? []
   const upperIndex = new Map(upperTimes.map((t, i) => [t, i]))
   const airTimes = (airRaw?.hourly?.time as unknown as string[]) ?? []
   const airIndex = new Map(airTimes.map((t, i) => [t, i]))
+  const cloudTimes = (cloudRaw?.hourly?.time as unknown as string[]) ?? []
+  const cloudIndex = new Map(cloudTimes.map((t, i) => [t, i]))
   const exposed = site.elevation >= EXPOSED_ABOVE_M
 
   const at = (base: string, i: number, fallback = 0): number => {
@@ -427,6 +444,7 @@ function mergePoint(
       uvIndex: at('uv_index', i),
       levels: u === undefined ? [] : levelsAt(upperRaw, u),
       aerosol: aerosolAt(airRaw, airIndex.get(times[i])),
+      clouds: cloudsAt(cloudRaw, cloudIndex.get(times[i])),
       members: e?.members ?? 0,
     })
 
@@ -450,6 +468,18 @@ function levelsAt(raw: RawLocation | undefined, i: number): HourPoint['levels'] 
     if (typeof temperature === 'number' && typeof height === 'number') {
       out.push({ height: Math.round(height), temperature: Math.round(temperature * 10) / 10 })
     }
+  }
+  return out.sort((a, b) => a.height - b.height)
+}
+
+/** Oblačnost po tlakových hladinách i s jejich výškou, setříděná od země nahoru. */
+function cloudsAt(raw: RawLocation | null, i: number | undefined): HourPoint['clouds'] {
+  if (raw === null || i === undefined) return []
+  const out: NonNullable<HourPoint['clouds']> = []
+  for (const hpa of CLOUD_HPA) {
+    const cover = raw.hourly?.[`cloud_cover_${hpa}hPa`]?.[i]
+    const height = raw.hourly?.[`geopotential_height_${hpa}hPa`]?.[i]
+    if (typeof cover === 'number' && typeof height === 'number') out.push({ height: Math.round(height), cover })
   }
   return out.sort((a, b) => a.height - b.height)
 }

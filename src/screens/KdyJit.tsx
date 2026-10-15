@@ -1,11 +1,12 @@
 import { Heatmap } from '../components/Heatmap'
 import { Icon } from '../components/Icon'
+import { Meteogram } from '../components/Meteogram'
 import { Screen } from '../components/Screen'
 import { Cell, Section } from '../components/ui'
 import { Empty, ErrorState, Loading } from '../components/States'
 import { verdictOf } from '../lib/score'
-import { capital, clock, dayLabel, duration, parseDay } from '../lib/format'
-import type { DayOutlook } from '../lib/plan'
+import { capital, clock, dayLabel, duration, metres, parseDay, vlna } from '../lib/format'
+import { summitHours, type DayOutlook } from '../lib/plan'
 import type { RouteData } from '../state/useRouteData'
 import type { Route } from '../lib/types'
 
@@ -37,6 +38,7 @@ export function KdyJitScreen({ route, data, week, start, onPickStart }: Props) {
   if (data.error) return shell(<ErrorState message={data.error} onRetry={data.reload} />)
   if (!week) return shell(<Loading what="Procházím každou hodinu startu v týdnu" />)
 
+  const summit = data.track && data.forecast ? summitHours(data.track, data.forecast) : null
   const usable = week.filter((d) => d.best)
   const best = usable.length ? usable.reduce((a, b) => (b.best!.score > a.best!.score ? b : a)) : null
 
@@ -105,6 +107,20 @@ export function KdyJitScreen({ route, data, week, start, onPickStart }: Props) {
           </div>
         </div>
       </Section>
+
+      {summit && data.forecast && (
+        <Section
+          title="Na vrcholu"
+          aside={<span className="aside">{metres(summit.site.elevation)}</span>}
+          footer={vlna(
+            'Šedá je oblačnost v dané výšce, čím tmavší, tím hustší. Když přetne čárkovanou výšku vrcholu, budeš nahoře v mraku. Vítr je dorovnaný na hřeben, nárazy a srážky jsou z nepříznivé strany ansámblu jako ve verdiktu.',
+          )}
+        >
+          <div className="card card-pad" style={{ margin: '0 var(--g)' }}>
+            <Meteogram hours={summit.hours} days={data.forecast.days} elevation={summit.site.elevation} />
+          </div>
+        </Section>
+      )}
 
       <Section title="Po dnech">
         <div className="list">

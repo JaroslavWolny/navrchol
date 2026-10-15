@@ -70,6 +70,16 @@ describe('živé Open-Meteo', () => {
 
     const h = snezka.hours[i]
 
+    // Oblačnost po výškách: jen na vrcholu, odspodu nahoru, od nížin po cirry.
+    const clouds = snezka.hours.filter((x) => (x.clouds?.length ?? 0) >= 8)
+    expect(clouds.length).toBeGreaterThan(24 * 6)
+    expect(pec.hours.every((x) => (x.clouds?.length ?? 0) === 0)).toBe(true)
+    const c = clouds[0].clouds!
+    for (let k = 1; k < c.length; k++) expect(c[k].height).toBeGreaterThan(c[k - 1].height)
+    expect(c[0].height).toBeLessThan(600)
+    expect(c.at(-1)!.height).toBeGreaterThan(8000)
+    expect(c.every((l) => l.cover >= 0 && l.cover <= 100)).toBe(true)
+
     // Na hřebeni se vítr dorovná na volnou atmosféru; v údolí ne.
     const ridge = snezka.hours.filter((x) => x.ridgeWind).length / snezka.hours.length
     console.log(`vítr dopočtený z volné atmosféry na Sněžce: ${Math.round(ridge * 100)} % hodin`)

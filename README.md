@@ -145,6 +145,18 @@ tak ho rovnou ukáže (RainViewer, poslední dvě hodiny, bez klíče).
 barvu (ideál kolem 45 %), nízká zacloní obzor a je proto **násobič**, ne sčítanec —
 při zavřeném obzoru nepomůže sebehezčí cirrus nad hlavou.
 
+**Meteogram vrcholu s oblačností po výškách.** Vrstvy nízká/střední/vysoká neřeknou,
+jestli mrak leží pod vrcholem, na něm, nebo nad ním. Pro vrchol se proto zvlášť
+stahuje oblačnost v deseti tlakových hladinách (1000–300 hPa) i s jejich skutečnou
+výškou a v záložce Kdy jít se kreslí jako meteogram na celý výhled: teplota,
+oblačnost po výškách s čarou vrcholu, srážky a vítr se směrem. Když šedá přetne
+čáru vrcholu, budeš nahoře v mraku; když leží celá pod ní, je to moře mlhy.
+Graf ukazuje tytéž hodnoty, ze kterých se skóruje (vítr dorovnaný na hřeben,
+nárazy a srážky z p75 ansámblu), aby graf a verdikt neříkaly dvě různé věci.
+Modely vedle sebe jako meteoblue MultiModel appka záměrně nekreslí, viz „Proč ne
+shoda čtyř modelů". Hladiny pod terénem modelu (v horách 1000 hPa) jsou
+extrapolované, takže mlha v nížinách je orientační.
+
 **Na fotky se počítá i to, co se nedá stáhnout.** Open-Meteo dává jen východ
 a západ pro rovný obzor, takže zbytek si appka spočítá sama (`src/lib/sun.ts`,
 `horizon.ts`, `inversion.ts`):
