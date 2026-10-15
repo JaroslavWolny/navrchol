@@ -9,19 +9,20 @@ import { vlna } from '../lib/format'
 export function Loading({ what }: { what: string }) {
   return (
     <div aria-busy="true" aria-label={what}>
-      <div className="days" style={{ marginTop: 14 }}>
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="skel" style={{ width: 52, height: 62, borderRadius: 13, flexShrink: 0 }} />
+      <div className="days" style={{ marginTop: 18 }}>
+        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="skel" style={{ height: 66, borderRadius: 16 }} />
         ))}
       </div>
-      <div className="page mt-12">
-        <div className="card verdict">
-          <div className="between">
-            <div className="skel" style={{ width: 110, height: 38 }} />
-            <div className="skel" style={{ width: 54, height: 38 }} />
+      <div className="page" style={{ marginTop: 16 }}>
+        <div className="verdict" style={{ background: 'var(--surface)' }}>
+          <div className="skel" style={{ width: '60%', height: 12 }} />
+          <div className="between mt-16" style={{ alignItems: 'flex-end' }}>
+            <div className="skel" style={{ width: 150, height: 96, borderRadius: 14 }} />
+            <div className="skel" style={{ width: 70, height: 52, borderRadius: 12 }} />
           </div>
-          <div className="skel mt-12" style={{ width: '86%', height: 14 }} />
-          <div className="skel mt-16" style={{ height: 10 }} />
+          <div className="skel mt-16" style={{ width: '86%', height: 16 }} />
+          <div className="skel mt-24" style={{ height: 8 }} />
           <div className="skel mt-12" style={{ width: '60%', height: 12 }} />
         </div>
         <div className="card mt-12" style={{ height: 210, padding: 16 }}>
@@ -37,7 +38,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   return (
     <div className="empty">
       <div className="empty-icon">
-        <Icon name="cloud" size={44} stroke={1.5} />
+        <Icon name="cloud" size={28} stroke={1.8} />
       </div>
       <div className="t-headline">Předpověď nedorazila</div>
       <p>{vlna(/[.!?]$/.test(message) ? message : `${message}.`)}</p>
@@ -65,7 +66,7 @@ export function Empty({
   return (
     <div className="empty">
       <div className="empty-icon">
-        <Icon name={icon} size={44} stroke={1.5} />
+        <Icon name={icon} size={28} stroke={1.8} />
       </div>
       <div className="t-headline">{title}</div>
       <p>{vlna(hint)}</p>

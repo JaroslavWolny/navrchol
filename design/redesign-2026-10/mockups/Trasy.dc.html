@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>NaVrchol — trasy</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; box-sizing: border-box; background: {{t.bg}}; color: {{t.ink}}; font-family: Archivo, system-ui, sans-serif">
+
+  <header style="padding: 58px 18px 0 20px; display: flex; align-items: flex-end; justify-content: space-between">
+    <h1 style="margin: 0; font-size: 54px; line-height: 0.9; font-weight: 800; font-stretch: 70%; letter-spacing: -0.015em">Trasy</h1>
+    <div style="display: flex; gap: 8px">
+      <a href="Nastaveni.dc.html" aria-label="Nastavení" style="width: 44px; height: 44px; border-radius: 14px; background: {{t.surface}}; color: {{t.ink}}; display: flex; align-items: center; justify-content: center">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg>
+      </a>
+      <a href="UpravitTrasu.dc.html" aria-label="Nová trasa" style="width: 44px; height: 44px; border-radius: 14px; background: {{t.btn}}; color: {{t.btnInk}}; display: flex; align-items: center; justify-content: center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+      </a>
+    </div>
+  </header>
+
+  <div style="padding: 10px 20px 0; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: {{t.ink3}}">2 trasy · předpověď na 7 dní</div>
+
+  <div style="padding: 18px 14px 0; display: flex; flex-direction: column; gap: 12px">
+
+    <a href="Verdikt.dc.html" style="position: relative; display: block; height: 184px; border-radius: 26px; overflow: hidden; background: {{t.surface}}; color: {{t.ink}}; text-decoration: none; box-shadow: inset 0 0 0 2px {{t.ink}}">
+      <svg width="100%" height="84" viewBox="0 0 132 44" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; display: block">
+        <path d="M0.0 40.0 10.2 39.2 23.7 35.7 40.6 34.1 54.2 30.9 64.3 30.5 84.6 26.6 94.8 26.3 108.3 23.1 121.8 22.3 132.0 20.2 L132 44 L0 44 Z" fill="{{t.sunk}}"></path>
+        <path d="M0.0 40.0 10.2 39.2 23.7 35.7 40.6 34.1 54.2 30.9 64.3 30.5 84.6 26.6 94.8 26.3 108.3 23.1 121.8 22.3 132.0 20.2" fill="none" stroke="{{t.ink2}}" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+      </svg>
+      <div style="position: relative; padding: 18px 12px 0 20px; display: flex; justify-content: space-between; align-items: flex-start">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <span style="width: 8px; height: 8px; border-radius: 99px; background: #C8F169; box-shadow: 0 0 0 2px {{t.ink}}"></span>
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.ink2}}">Aktivní</span>
+          </div>
+          <div style="font-size: 26px; line-height: 1; font-weight: 800; font-stretch: 72%">Červená hora ze sedla</div>
+          <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: {{t.ink2}}; display: flex; gap: 12px; font-variant-numeric: tabular-nums">
+            <span>6,2 km</span><span>↑ 313 m</span><span>2:05 h</span>
+          </div>
+        </div>
+        <span aria-hidden="true" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: {{t.ink2}}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg>
+        </span>
+      </div>
+      <div style="position: absolute; left: 20px; right: 14px; bottom: 14px; display: flex; align-items: flex-end; justify-content: space-between">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.ink2}}">Nejlépe tento týden</span>
+          <span style="font-size: 20px; font-weight: 700">Zítra, 10:00</span>
+        </div>
+        <div style="width: 62px; height: 62px; border-radius: 18px; background: #C8F169; color: #0E1210; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px">
+          <span style="font-size: 26px; line-height: 1; font-weight: 800; font-stretch: 72%; font-variant-numeric: tabular-nums">100</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em">JDI</span>
+        </div>
+      </div>
+    </a>
+
+    <a href="Verdikt.dc.html" style="position: relative; display: block; height: 184px; border-radius: 26px; overflow: hidden; background: {{t.surface}}; color: {{t.ink}}; text-decoration: none">
+      <svg width="100%" height="84" viewBox="0 0 132 44" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; display: block">
+        <path d="M0.0 40.0 13.5 33.3 23.7 32.3 44.0 24.9 50.8 25.0 71.1 17.9 77.8 17.6 81.2 16.9 98.2 11.1 108.3 10.2 121.8 5.4 128.6 4.0 132.0 4.1 L132 44 L0 44 Z" fill="{{t.sunk}}"></path>
+        <path d="M0.0 40.0 13.5 33.3 23.7 32.3 44.0 24.9 50.8 25.0 71.1 17.9 77.8 17.6 81.2 16.9 98.2 11.1 108.3 10.2 121.8 5.4 128.6 4.0 132.0 4.1" fill="none" stroke="{{t.ink2}}" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+      </svg>
+      <div style="position: relative; padding: 18px 12px 0 20px; display: flex; justify-content: space-between; align-items: flex-start">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; align-items: center; gap: 8px">
+            <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.ink2}}; border: 1px solid {{t.line2}}; border-radius: 6px; padding: 2px 6px">Ukázka</span>
+          </div>
+          <div style="font-size: 26px; line-height: 1; font-weight: 800; font-stretch: 72%">Sněžka z Pece</div>
+          <div style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; color: {{t.ink2}}; display: flex; gap: 12px; font-variant-numeric: tabular-nums">
+            <span>12 km</span><span>↑ 861 m</span><span>3:59 h</span>
+          </div>
+        </div>
+        <span aria-hidden="true" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: {{t.ink2}}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg>
+        </span>
+      </div>
+      <div style="position: absolute; left: 20px; right: 14px; bottom: 14px; display: flex; align-items: flex-end; justify-content: space-between">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.ink2}}">Nejlépe tento týden</span>
+          <span style="font-size: 20px; font-weight: 700">Zítra, 9:00</span>
+        </div>
+        <div style="width: 62px; height: 62px; border-radius: 18px; background: #C8F169; color: #0E1210; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px">
+          <span style="font-size: 26px; line-height: 1; font-weight: 800; font-stretch: 72%; font-variant-numeric: tabular-nums">100</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9px; letter-spacing: 0.1em">JDI</span>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div style="padding: 20px 14px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+    <a href="UpravitTrasu.dc.html" style="height: 56px; border-radius: 18px; background: {{t.btn}}; color: {{t.btnInk}}; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 650">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+      Nová trasa
+    </a>
+    <button type="button" style="height: 56px; border-radius: 18px; border: 1.5px solid {{t.line2}}; background: transparent; color: {{t.ink}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 16px; font-weight: 600">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path><path d="M14 3v5h5M12 11v6M9 14l3 3 3-3"></path></svg>
+      Import GPX
+    </button>
+  </div>
+  <p style="margin: 14px 28px 0; font-size: 12.5px; line-height: 1.45; color: {{t.ink3}}; text-align: center; text-wrap: balance">GPX vyexportuješ v Mapy.cz přes Sdílet → Export GPX. Trasy zůstávají jen v tomhle telefonu.</p>
+
+  <div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: linear-gradient(to bottom, {{t.fade}}, {{t.bg}} 60%)"></div>
+  <nav aria-label="Hlavní navigace" style="position: absolute; left: 14px; right: 14px; bottom: 22px; height: 68px; border-radius: 24px; background: {{t.tab}}; box-shadow: inset 0 0 0 1px {{t.tabLine}}, 0 18px 40px -18px rgba(14,18,16,0.55); box-sizing: border-box; padding: 6px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px">
+    <a href="Trasy.dc.html" aria-current="page" style="border-radius: 18px; background: #C8F169; color: #0E1210; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 650">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5.5" r="2.25"></circle><circle cx="18" cy="18.5" r="2.25"></circle><path d="M8.2 5.5h6.3a3.25 3.25 0 0 1 0 6.5h-5a3.25 3.25 0 0 0 0 6.5h6.3"></path></svg>
+      <span>Trasy</span>
+    </a>
+    <a href="Verdikt.dc.html" style="border-radius: 18px; color: {{t.tabInk}}; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 19.5 9 8.5l3.6 6 2.4-3.6 6.5 8.6z"></path><path d="M9 8.5V3.5l3.2 1.3L9 6.1"></path></svg>
+      <span>Verdikt</span>
+    </a>
+    <a href="KdyJit.dc.html" style="border-radius: 18px; color: {{t.tabInk}}; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"></rect><path d="M3.5 10h17M8 3v4M16 3v4M8 14.5h3"></path></svg>
+      <span>Kdy jít</span>
+    </a>
+    <a href="Slunce.dc.html" style="border-radius: 18px; color: {{t.tabInk}}; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17.5h18M6.5 17.5a5.5 5.5 0 0 1 11 0M12 5v3M4.6 9.6l2 2M19.4 9.6l-2 2M8 21h8"></path></svg>
+      <span>Slunce</span>
+    </a>
+    <a href="Vybava.dc.html" style="border-radius: 18px; color: {{t.tabInk}}; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 500">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9A5.5 5.5 0 0 1 17.5 9v10a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 19z"></path><path d="M9.5 5.2V4.8a1.3 1.3 0 0 1 1.3-1.3h2.4a1.3 1.3 0 0 1 1.3 1.3v.4M9.5 14h5v3h-5z"></path></svg>
+      <span>Výbava</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false,"section":"Režim"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const LIGHT = { bg: '#E9EBE6', surface: '#F7F8F5', sunk: '#E0E4DD', ink: '#0E1210', ink2: '#454D48', ink3: '#5C645F', line: '#D2D7D0', line2: '#B9BFB7', btn: '#0E1210', btnInk: '#F2F4EF', tab: '#0E1210', tabInk: '#A8B0AA', tabLine: 'rgba(0,0,0,0)', fade: 'rgba(233,235,230,0)' };
+    const DARK = { bg: '#0B0D0C', surface: '#161A18', sunk: '#202623', ink: '#EDF0EB', ink2: '#B0B8B2', ink3: '#8E9690', line: '#262C29', line2: '#3A423E', btn: '#C8F169', btnInk: '#0E1210', tab: '#1A1F1C', tabInk: '#9AA29C', tabLine: '#2C3330', fade: 'rgba(11,13,12,0)' };
+    return { t: this.props.dark ? DARK : LIGHT };
+  }
+}
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Diagnostika } from '../components/Diagnostika'
 import { Icon } from '../components/Icon'
 import { Screen } from '../components/Screen'
-import { Cell, Section } from '../components/ui'
+import { Cell, Logo, Section } from '../components/ui'
 import { calibrate, planFromTrack } from '../lib/pace'
 import { walkedRoute } from '../lib/plan'
 import { withReturn } from '../lib/routing'
@@ -56,15 +56,15 @@ export function NastaveniScreen({ state, onBack, onSettings, onShowIntro }: Prop
 
   return (
     <Screen
-      compact
       title="Nastavení"
       leading={
-        <button className="bar-btn" onClick={onBack} style={{ paddingLeft: 2 }}>
-          <Icon name="back" size={22} stroke={2.4} />
+        <button className="hd-back" onClick={onBack}>
+          <Icon name="back" size={22} stroke={2} />
           Trasy
         </button>
       }
     >
+      <div className="settings">
       <Section
         title="Moje tempo"
         footer="Zadej, jak dlouho ti opravdu trvala některá z uložených tras — čistá chůze bez delších zastávek. Appka si podle toho upraví všechny odhady."
@@ -86,19 +86,24 @@ export function NastaveniScreen({ state, onBack, onSettings, onShowIntro }: Prop
               </button>
             )}
           </Cell>
+          <Calibration state={state} onSettings={onSettings} />
         </div>
-        <Calibration state={state} onSettings={onSettings} />
       </Section>
 
       <Section title="Jak NaVrchol počítá">
         <div className="list">
-          {HOW.map((h) => (
-            <details key={h.title} className="cell" style={{ display: 'block' }}>
-              <summary className="between" style={{ listStyle: 'none', cursor: 'pointer', minHeight: 28 }}>
-                <span className="cell-title">{h.title}</span>
-                <Icon name="chevronDown" size={16} stroke={2.2} color="var(--ink-4)" />
+          {HOW.map((h, i) => (
+            <details key={h.title} className="cell how">
+              <summary>
+                <span className="label" style={{ width: 22 }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span className="cell-title grow" style={{ fontWeight: 600 }}>
+                  {h.title}
+                </span>
+                <Icon name="plus" size={18} stroke={2} color="var(--ink-3)" className="how-plus" />
               </summary>
-              <p className="t-sub muted" style={{ paddingTop: 8, paddingBottom: 4, textWrap: 'pretty' }}>
+              <p className="t-sub muted" style={{ padding: '0 0 10px 36px', textWrap: 'pretty' }}>
                 {h.text}
               </p>
             </details>
@@ -107,15 +112,17 @@ export function NastaveniScreen({ state, onBack, onSettings, onShowIntro }: Prop
       </Section>
 
       {!standalone && (
-        <Section title="Na plochu">
-          <div className="list">
-            <Cell
-              icon="share"
-              title="Přidej si NaVrchol na plochu"
-              sub="Na iPhonu Sdílet → Přidat na plochu. Pak běží na celou obrazovku a funguje i offline."
-            />
-          </div>
-        </Section>
+        <div className="install">
+          <span>
+            <Icon name="share" size={20} stroke={1.9} />
+          </span>
+          <span className="stack" style={{ gap: 4 }}>
+            <span style={{ fontSize: 16, fontWeight: 650 }}>Přidej si NaVrchol na plochu</span>
+            <span style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--on-ink-2)' }}>
+              Na iPhonu Sdílet → Přidat na plochu. Pak běží na celou obrazovku a funguje i offline.
+            </span>
+          </span>
+        </div>
       )}
 
       <Section
@@ -151,6 +158,14 @@ export function NastaveniScreen({ state, onBack, onSettings, onShowIntro }: Prop
           </div>
         </Section>
       )}
+
+      <div className="stack" style={{ alignItems: 'center', gap: 10, marginTop: 40 }}>
+        <Logo size={30} />
+        <span className="label" style={{ fontSize: 10.5, letterSpacing: '0.08em' }}>
+          NaVrchol · bez účtu
+        </span>
+      </div>
+      </div>
     </Screen>
   )
 }
@@ -188,45 +203,49 @@ function Calibration({ state, onSettings }: { state: StoredState; onSettings: (s
   if (routes.length === 0) return null
 
   return (
-    <div className="list mt-12">
+    <>
       <div className="cell">
-        <span className="cell-title grow">Trasa</span>
-        <select
-          value={routeId}
-          onChange={(e) => setRouteId(e.target.value)}
-          style={{ border: 'none', background: 'none', color: 'var(--accent)', textAlign: 'right', maxWidth: '60%' }}
-        >
-          {routes.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
+        <span className="grow" style={{ fontSize: 15 }}>Trasa</span>
+        <label className="row" style={{ gap: 4, maxWidth: '62%' }}>
+          <select
+            value={routeId}
+            onChange={(e) => setRouteId(e.target.value)}
+            aria-label="Trasa"
+            style={{ appearance: 'none', border: 'none', background: 'none', color: 'var(--ink)', fontSize: 15, fontWeight: 650, textAlign: 'right', minWidth: 0, maxWidth: '100%' }}
+          >
+            {routes.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <Icon name="chevronDown" size={16} stroke={2.2} />
+        </label>
       </div>
       <div className="cell">
-        <span className="cell-title grow">Odhad appky</span>
+        <span className="grow" style={{ fontSize: 15 }}>Odhad appky</span>
         <span className="cell-value">{predicted ? duration(predicted) : 'otevři trasu'}</span>
       </div>
-      <div className="cell">
-        <span className="cell-title grow">Šel jsem ji za</span>
-        <input
-          inputMode="numeric"
-          className="field num"
-          style={{ width: 58, textAlign: 'center' }}
-          placeholder="h"
-          value={hours}
-          onChange={(e) => setHours(e.target.value.replace(/\D/g, '').slice(0, 2))}
-          aria-label="Hodiny"
-        />
-        <input
-          inputMode="numeric"
-          className="field num"
-          style={{ width: 66, textAlign: 'center' }}
-          placeholder="min"
-          value={minutes}
-          onChange={(e) => setMinutes(e.target.value.replace(/\D/g, '').slice(0, 2))}
-          aria-label="Minuty"
-        />
+      <div className="cell" style={{ gap: 8, minHeight: 64 }}>
+        <span className="grow" style={{ fontSize: 15 }}>Šel jsem ji za</span>
+        <label className="unit-field" style={{ width: 74 }}>
+          <input
+            inputMode="numeric"
+            value={hours}
+            onChange={(e) => setHours(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            aria-label="Hodiny"
+          />
+          <span>h</span>
+        </label>
+        <label className="unit-field" style={{ width: 88 }}>
+          <input
+            inputMode="numeric"
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value.replace(/\D/g, '').slice(0, 2))}
+            aria-label="Minuty"
+          />
+          <span>min</span>
+        </label>
       </div>
       {next !== null && route && (
         <div className="cell">
@@ -248,6 +267,6 @@ function Calibration({ state, onSettings }: { state: StoredState; onSettings: (s
           </button>
         </div>
       )}
-    </div>
+    </>
   )
 }

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<title>NaVrchol — upravit trasu</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 390px; height: 1720px; position: relative; overflow: hidden; box-sizing: border-box; background: #E9EBE6; color: #0E1210; font-family: Archivo, system-ui, sans-serif">
+
+  <header style="height: 104px; box-sizing: border-box; padding: 52px 12px 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center">
+    <a href="Trasy.dc.html" style="justify-self: start; height: 44px; padding: 0 10px; display: flex; align-items: center; color: #0E1210; text-decoration: none; font-size: 16px; font-weight: 500">Zrušit</a>
+    <div style="font-size: 17px; font-weight: 700">Upravit trasu</div>
+    <a href="Verdikt.dc.html" style="justify-self: end; height: 40px; padding: 0 16px; border-radius: 13px; background: #0E1210; color: #C8F169; display: flex; align-items: center; text-decoration: none; font-size: 15px; font-weight: 650">Uložit</a>
+  </header>
+
+  <div style="position: relative; height: 384px; background: #E3E7DF">
+    <svg width="390" height="384" viewBox="0 0 390 380" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="display: block">
+      <path d="M269 228 246 235 208 251 182 264 163 278 152 291 148 304 149 317 156 330 164 336 170 338 180 338 193 334 234 311 270 284 288 264 293 254 296 245 293 235 288 230 279 227 269 228Z M198 380 217 360 239 343 259 330 300 307 319 294 336 278 348 261 353 248 354 238 353 225 348 215 340 205 328 195 315 189 302 188 285 190 265 197 213 223 141 254 128 262 117 271 112 278 108 285 106 294 106 304 109 324 123 380 M0 47 9 33 20 21 31 10 45 0 M390 157 370 156 321 144 302 145 282 152 229 183 193 201 151 214 105 223 69 226 39 224 16 218 0 207 M0 298 16 300 29 307 43 319 51 334 55 350 53 363 46 374 34 380 M275 380 283 370 294 363 308 359 324 357 338 359 347 364 353 370 356 380 M390 132 380 135 370 135 324 125 305 125 295 128 282 135 239 165 216 178 193 189 170 197 138 204 105 207 75 204 52 197 39 191 29 183 20 173 13 162 7 149 3 132 2 116 3 99 6 83 12 66 18 53 27 40 36 29 49 18 62 9 79 0 M390 109 380 113 367 114 354 112 324 104 315 103 305 104 295 108 285 114 248 145 226 161 206 172 184 182 154 190 125 193 95 191 72 185 58 178 46 169 36 159 28 145 23 132 20 116 20 99 22 86 28 69 34 56 44 43 53 33 66 23 82 13 98 6 116 0 M151 13 177 11 203 13 226 19 243 26 259 40 267 53 270 66 266 83 255 106 239 126 220 143 197 156 174 165 147 171 121 171 98 166 85 160 74 152 64 142 57 132 52 119 50 106 50 93 53 79 59 66 66 56 75 46 87 36 98 29 115 22 131 17 151 13Z M147 23 170 21 190 22 210 26 226 34 238 43 247 56 251 69 249 86 242 102 231 119 216 133 197 146 177 155 154 160 134 161 115 158 102 154 91 149 82 142 74 132 68 122 64 109 63 99 65 86 70 73 75 63 92 46 105 37 118 31 147 23Z M147 33 167 31 184 32 200 36 213 41 224 50 231 59 235 73 235 86 229 102 220 116 206 128 193 137 177 145 161 149 141 151 125 149 105 142 95 136 88 129 82 119 78 109 77 99 78 89 81 79 86 69 101 53 121 41 147 33Z M147 55 167 54 177 55 187 59 193 63 199 69 203 76 204 83 203 90 200 99 189 112 180 119 170 124 151 128 134 126 120 119 111 109 107 96 110 83 118 71 131 61 147 55Z M147 72 157 70 164 71 171 73 177 76 181 83 182 89 180 96 174 102 164 109 151 111 141 109 132 102 129 96 131 86 138 78 147 72Z" fill="none" stroke="rgba(14,18,16,0.17)" stroke-width="1" stroke-linejoin="round"></path>
+      <path d="M390 190 374 185 328 166 311 163 298 165 275 173 226 199 197 213 167 224 108 243 85 253 73 264 70 271 68 281 70 294 82 330 86 347 86 363 84 380 M238 380 245 370 254 360 268 350 282 343 315 331 390 310 M390 79 383 85 377 88 364 90 348 86 318 72 311 71 305 72 292 82 254 126 227 149 210 160 193 168 177 174 157 179 138 182 121 182 105 180 88 176 75 170 63 162 53 152 46 142 39 126 36 109 37 89 42 73 50 56 61 43 77 30 95 19 118 10 141 5 167 1 197 1 216 3 236 7 256 13 285 26 298 28 305 27 311 23 341 0 M151 43 167 42 180 43 193 46 203 51 213 59 218 69 220 79 219 89 214 102 207 112 197 122 187 129 174 135 161 139 144 140 131 139 115 133 101 122 96 116 92 106 92 89 99 73 111 59 128 49 151 43Z" fill="none" stroke="rgba(14,18,16,0.34)" stroke-width="1.25" stroke-linejoin="round"></path>
+      <path d="M300 380 C296 360 300 340 292 322 C284 304 276 304 270 302" fill="none" stroke="#0E1210" stroke-width="1.5" stroke-dasharray="1 5" stroke-linecap="round"></path>
+      <path d="M270 302C265 299 244 292 242 284C240 276 257 262 256 252C255 242 246 232 238 224C230 216 213 213 206 204C199 195 201 181 196 170C191 159 182 148 176 138C170 128 164 118 160 110C156 102 152 92 150 88" fill="none" stroke="#E3E7DF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path d="M270 302C265 299 244 292 242 284C240 276 257 262 256 252C255 242 246 232 238 224C230 216 213 213 206 204C199 195 201 181 196 170C191 159 182 148 176 138C170 128 164 118 160 110C156 102 152 92 150 88" fill="none" stroke="#0E1210" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+      <path d="M270 302C265 299 244 292 242 284C240 276 257 262 256 252C255 242 246 232 238 224C230 216 213 213 206 204C199 195 201 181 196 170C191 159 182 148 176 138C170 128 164 118 160 110C156 102 152 92 150 88" fill="none" stroke="#C8F169" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+    <span aria-hidden="true" style="position: absolute; left: 254px; top: 288px; width: 32px; height: 32px; border-radius: 99px; background: #0E1210; color: #F2F4EF; box-shadow: 0 0 0 3px #E3E7DF; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600">1</span>
+    <span aria-hidden="true" style="position: absolute; left: 134px; top: 70px; width: 32px; height: 32px; border-radius: 10px; background: #C8F169; color: #0E1210; box-shadow: 0 0 0 2px #0E1210, 0 0 0 5px #E3E7DF; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600">2</span>
+    <button type="button" aria-label="Moje poloha" style="position: absolute; right: 12px; top: 12px; width: 44px; height: 44px; border: 0; border-radius: 14px; background: #F7F8F5; color: #0E1210; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 16px -8px rgba(14,18,16,0.4)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4 3.5 10.5l7 3 3 7z"></path></svg>
+    </button>
+    <div style="position: absolute; right: 12px; bottom: 40px; border-radius: 14px; background: #F7F8F5; display: flex; flex-direction: column; box-shadow: 0 6px 16px -8px rgba(14,18,16,0.4)">
+      <button type="button" aria-label="Přiblížit" style="width: 44px; height: 44px; border: 0; border-bottom: 1px solid #DCE0D9; background: transparent; color: #0E1210; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+      </button>
+      <button type="button" aria-label="Oddálit" style="width: 44px; height: 44px; border: 0; background: transparent; color: #0E1210; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"></path></svg>
+      </button>
+    </div>
+  </div>
+
+  <div style="position: relative; margin-top: -26px; border-radius: 28px 28px 0 0; background: #E9EBE6; padding: 10px 16px 0">
+    <div aria-hidden="true" style="width: 40px; height: 5px; border-radius: 3px; background: #C4CAC2; margin: 0 auto 14px"></div>
+
+    <label style="height: 52px; border-radius: 16px; background: #F7F8F5; display: flex; align-items: center; gap: 10px; padding: 0 16px; color: #5C645F">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg>
+      <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Hledat místo</span>
+      <input type="search" placeholder="Najít vrchol, chatu, obec…" style="flex: 1; min-width: 0; height: 48px; border: 0; background: transparent; font-family: inherit; font-size: 16px; color: #0E1210; outline: none">
+    </label>
+
+    <div style="margin-top: 12px; border-radius: 20px; background: #0E1210; color: #F2F4EF; padding: 14px 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.06em; color: #A8B0AA">DÉLKA</span>
+        <span style="font-size: 21px; font-weight: 750; font-stretch: 76%; font-variant-numeric: tabular-nums">6,2 km</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.06em; color: #A8B0AA">STOUPÁNÍ</span>
+        <span style="font-size: 21px; font-weight: 750; font-stretch: 76%; font-variant-numeric: tabular-nums">313 m</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.06em; color: #A8B0AA">CHŮZE</span>
+        <span style="font-size: 21px; font-weight: 750; font-stretch: 76%; font-variant-numeric: tabular-nums">1:35 h</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 9.5px; letter-spacing: 0.06em; color: #C8F169">CELKEM</span>
+        <span style="font-size: 21px; font-weight: 750; font-stretch: 76%; font-variant-numeric: tabular-nums; color: #C8F169">{{total}}</span>
+      </div>
+    </div>
+
+    <label style="display: flex; flex-direction: column; gap: 8px; margin-top: 28px">
+      <span style="padding: 0 6px; font-size: 22px; line-height: 1; font-weight: 800; font-stretch: 72%">Název</span>
+      <input type="text" value="Červená hora ze sedla" style="height: 52px; border: 0; border-radius: 16px; background: #F7F8F5; padding: 0 16px; font-family: inherit; font-size: 16px; color: #0E1210; outline: none; box-sizing: border-box; width: 100%">
+    </label>
+
+    <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 6px; margin: 30px 0 10px">
+      <h2 style="margin: 0; font-size: 22px; line-height: 1; font-weight: 800; font-stretch: 72%">Body trasy</h2>
+      <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #5C645F">2</span>
+    </div>
+    <div style="border-radius: 20px; background: #F7F8F5; padding: 4px 6px 4px 14px">
+      <div style="display: flex; align-items: center; gap: 12px; min-height: 60px; border-bottom: 1px solid #DCE0D9">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 99px; background: #0E1210; color: #F2F4EF; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600">1</span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 15px; font-weight: 600">Červenohorské sedlo</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #5C645F">1 013 m · start</span>
+        </span>
+        <button type="button" aria-label="Posunout nahoru" disabled style="width: 44px; height: 44px; border: 0; background: transparent; color: #B9BFB7; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>
+        </button>
+        <button type="button" aria-label="Odebrat bod Červenohorské sedlo" style="width: 44px; height: 44px; border: 0; background: transparent; color: #B3261E; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"></path></svg>
+        </button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; min-height: 60px">
+        <span style="width: 28px; height: 28px; flex: none; border-radius: 9px; background: #C8F169; color: #0E1210; box-shadow: inset 0 0 0 1.5px #0E1210; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600">2</span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 15px; font-weight: 600">Červená hora</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 11px; color: #5C645F">1 333 m · vrchol</span>
+        </span>
+        <button type="button" aria-label="Posunout nahoru" style="width: 44px; height: 44px; border: 0; background: transparent; color: #0E1210; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>
+        </button>
+        <button type="button" aria-label="Odebrat bod Červená hora" style="width: 44px; height: 44px; border: 0; background: transparent; color: #B3261E; display: flex; align-items: center; justify-content: center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"></path></svg>
+        </button>
+      </div>
+    </div>
+    <div style="margin-top: 10px; display: flex; gap: 8px">
+      <button type="button" style="height: 44px; border: 1.5px solid #B9BFB7; border-radius: 14px; background: transparent; color: #0E1210; padding: 0 14px; display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 14px; font-weight: 600">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"></path></svg>
+        Obrátit směr
+      </button>
+      <button type="button" style="height: 44px; border: 1.5px solid #B9BFB7; border-radius: 14px; background: transparent; color: #0E1210; padding: 0 14px; display: flex; align-items: center; gap: 8px; font-family: inherit; font-size: 14px; font-weight: 600">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"></path></svg>
+        Uzavřít okruh
+      </button>
+    </div>
+
+    <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 6px; margin: 30px 0 10px">
+      <h2 style="margin: 0; font-size: 22px; line-height: 1; font-weight: 800; font-stretch: 72%">Plán</h2>
+    </div>
+    <div style="border-radius: 20px; background: #F7F8F5; padding: 4px 14px">
+      <div style="display: flex; align-items: center; gap: 12px; min-height: 64px; border-bottom: 1px solid #DCE0D9">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#454D48" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>
+        <span style="flex: 1; font-size: 16px; font-weight: 600">Start</span>
+        <button type="button" style="height: 40px; padding: 0 14px; border: 0; border-radius: 12px; background: #E3E7E0; color: #0E1210; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 16px; font-weight: 600">15:00</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; min-height: 64px; border-bottom: 1px solid #DCE0D9">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#454D48" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"></path></svg>
+        <span style="flex: 1; font-size: 16px; font-weight: 600">Tam a zpět</span>
+        <button type="button" role="switch" aria-checked="{{roundTripAria}}" aria-label="Tam a zpět" onClick="{{toggleRound}}" style="width: 54px; height: 32px; border: 0; border-radius: 99px; background: {{trackBg}}; padding: 3px; display: flex; justify-content: {{knobSide}}">
+          <span style="width: 26px; height: 26px; border-radius: 99px; background: {{knobBg}}; box-shadow: 0 1px 3px rgba(14,18,16,0.3)"></span>
+        </button>
+      </div>
+      <div style="padding: 14px 0; border-bottom: 1px solid #DCE0D9; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#454D48" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 10h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5v3M11 3.5v3"></path></svg>
+          <span style="flex: 1; font-size: 16px; font-weight: 600">Pauza nahoře</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #454D48">{{pauseLabel}}</span>
+        </div>
+        <div role="group" aria-label="Délka pauzy v minutách" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: #E3E7E0">
+          <sc-for list="{{pauses}}" as="p" hint-placeholder-count="6">
+            <button type="button" aria-pressed="{{p.pressed}}" onClick="{{p.pick}}" style="height: 40px; border: 0; border-radius: 10px; background: {{p.bg}}; color: {{p.fg}}; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 14px; font-weight: 600">{{p.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding: 14px 0; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#454D48" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13" cy="4.5" r="1.8"></circle><path d="M10 21l2-6 3 3v3M8 12l3-4 3 2 3 1M12 8l-1 5"></path></svg>
+          <span style="flex: 1; font-size: 16px; font-weight: 600">Tempo</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, monospace; font-size: 13px; color: #454D48">po rovině 5,0 km/h</span>
+        </div>
+        <div role="group" aria-label="Tempo" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: #E3E7E0">
+          <sc-for list="{{tempos}}" as="p" hint-placeholder-count="3">
+            <button type="button" aria-pressed="{{p.pressed}}" onClick="{{p.pick}}" style="height: 40px; border: 0; border-radius: 10px; background: {{p.bg}}; color: {{p.fg}}; font-family: inherit; font-size: 15px; font-weight: 600">{{p.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    <p style="margin: 10px 6px 0; font-size: 12.5px; line-height: 1.45; color: #5C645F; text-wrap: pretty">Tam a zpět počítá i návrat po stejné cestě — do času, do rezervy do tmy i do skóre. Vypni, když se vracíš lanovkou, autobusem nebo jinudy.</p>
+
+    <button type="button" style="margin-top: 26px; width: 100%; height: 54px; border: 0; border-radius: 16px; background: #F6DED8; color: #9E1F14; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; font-size: 16px; font-weight: 650">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.5A1.5 1.5 0 0 0 8.5 21h7a1.5 1.5 0 0 0 1.5-1.5L18 7M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"></path></svg>
+      Smazat trasu
+    </button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1720}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { pause: 30, tempo: 1, round: true };
+  }
+  renderVals() {
+    const s = this.state;
+    const pauses = [0, 10, 20, 30, 45, 60].map((m) => ({
+      label: String(m),
+      pressed: s.pause === m ? 'true' : 'false',
+      bg: s.pause === m ? '#0E1210' : 'transparent',
+      fg: s.pause === m ? '#F2F4EF' : '#0E1210',
+      pick: () => this.setState({ pause: m })
+    }));
+    const tempos = ['Pohodově', 'Běžně', 'Svižně'].map((label, i) => ({
+      label,
+      pressed: s.tempo === i ? 'true' : 'false',
+      bg: s.tempo === i ? '#0E1210' : 'transparent',
+      fg: s.tempo === i ? '#F2F4EF' : '#0E1210',
+      pick: () => this.setState({ tempo: i })
+    }));
+    const mins = 95 + s.pause;
+    const total = Math.floor(mins / 60) + ':' + String(mins % 60).padStart(2, '0') + ' h';
+    return {
+      pauses, tempos, total,
+      pauseLabel: s.pause + ' min',
+      roundTripAria: s.round ? 'true' : 'false',
+      trackBg: s.round ? '#0E1210' : '#C4CAC2',
+      knobBg: s.round ? '#C8F169' : '#F7F8F5',
+      knobSide: s.round ? 'flex-end' : 'flex-start',
+      toggleRound: () => this.setState({ round: !s.round })
+    };
+  }
+}
+</script>
+</body>
+</html>

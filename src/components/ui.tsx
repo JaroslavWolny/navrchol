@@ -40,18 +40,17 @@ interface CellProps {
   chevron?: boolean
   onClick?: () => void
   children?: ReactNode
-  inset?: number
   style?: CSSProperties
   ariaLabel?: string
 }
 
 /** Řádek seskupeného seznamu. Se `onClick` je to tlačítko přes celou šířku. */
-export function Cell({ icon, tone, title, sub, value, chevron, onClick, children, inset, style, ariaLabel }: CellProps) {
+export function Cell({ icon, tone, title, sub, value, chevron, onClick, children, style, ariaLabel }: CellProps) {
   const body = (
     <>
       {icon && (
         <span className="cell-icon" data-tone={tone}>
-          <Icon name={icon} size={18} stroke={2} />
+          <Icon name={icon} size={20} stroke={1.9} />
         </span>
       )}
       <div className="cell-main">
@@ -63,13 +62,12 @@ export function Cell({ icon, tone, title, sub, value, chevron, onClick, children
       {chevron && <Icon name="chevron" size={16} stroke={2.2} className="cell-chev" />}
     </>
   )
-  const cellStyle = { ...(icon ? { ['--inset' as string]: '58px' } : {}), ...(inset ? { ['--inset' as string]: `${inset}px` } : {}), ...style }
   return onClick ? (
-    <button className="cell cell--tap" onClick={onClick} style={cellStyle} aria-label={ariaLabel}>
+    <button className="cell cell--tap" onClick={onClick} style={style} aria-label={ariaLabel}>
       {body}
     </button>
   ) : (
-    <div className="cell" style={cellStyle}>
+    <div className="cell" style={style}>
       {body}
     </div>
   )
@@ -107,7 +105,7 @@ export function Sheet({
             <div className="t-headline">{title}</div>
             {action ?? (
               <button className="icon-btn icon-btn--filled" onClick={onClose} aria-label="Zavřít">
-                <Icon name="close" size={15} stroke={2.4} color="var(--ink-2)" />
+                <Icon name="close" size={16} stroke={2.2} />
               </button>
             )}
           </div>
@@ -119,13 +117,19 @@ export function Sheet({
   )
 }
 
-/** Značka: turistická značka KČT „k vrcholu" — trojúhelník v bílém čtverci. */
-export function Mark({ size = 28 }: { size?: number }) {
+/** Logo: turistická značka — pruhy bílá, limetková, bílá na černém čtverci. */
+export function Logo({ size = 26 }: { size?: number }) {
+  const k = size / 26
   return (
-    <svg className="mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="6" fill="#fafaf7" stroke="rgba(0,0,0,0.12)" strokeWidth="1.5" />
-      <path d="M16 5.8 27.3 25.3H4.7Z" fill="#1f5fc4" />
-    </svg>
+    <span
+      className="logo"
+      aria-hidden="true"
+      style={k === 1 ? undefined : { width: size, height: size, padding: `${5 * k}px ${4 * k}px`, borderRadius: 7 * k, gap: 2 * k }}
+    >
+      <i style={k === 1 ? undefined : { height: 4 * k }} />
+      <i style={k === 1 ? undefined : { height: 6 * k }} />
+      <i style={k === 1 ? undefined : { height: 4 * k }} />
+    </span>
   )
 }
 
@@ -142,20 +146,22 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
   )
 }
 
-/** Segmentový přepínač. */
+/** Segmentový přepínač. Čísla (minuty pauzy) jdou v monospace. */
 export function Segmented<T extends string | number>({
   value,
   options,
   onChange,
   label,
+  mono = false,
 }: {
   value: T
   options: Array<{ id: T; label: ReactNode }>
   onChange: (v: T) => void
   label: string
+  mono?: boolean
 }) {
   return (
-    <div className="seg" role="group" aria-label={label}>
+    <div className={mono ? 'seg seg--mono' : 'seg'} role="group" aria-label={label}>
       {options.map((o) => (
         <button key={String(o.id)} aria-pressed={o.id === value} onClick={() => onChange(o.id)}>
           {o.label}

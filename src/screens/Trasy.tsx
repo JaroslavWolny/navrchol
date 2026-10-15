@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Icon } from '../components/Icon'
 import { Screen } from '../components/Screen'
 import { Cell, Sheet } from '../components/ui'
@@ -6,7 +6,7 @@ import { Empty } from '../components/States'
 import { useAllOutlooks } from '../state/useRouteData'
 import { importGpx } from '../lib/gpx'
 import { verdictOf } from '../lib/score'
-import { capital, clock, dayLabel, durationShort, km, metres } from '../lib/format'
+import { capital, clock, dayLabel, durationShort, km, metres, plural } from '../lib/format'
 import type { DayOutlook, PlannedRoute } from '../lib/plan'
 import type { Track } from '../lib/routing'
 import { DEMO_ROUTE_ID, newId, type StoredState } from '../state/store'
@@ -69,11 +69,11 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onE
 
   const actions = (
     <>
-      <button className="icon-btn" onClick={onSettings} aria-label="Nastavení">
-        <Icon name="settings" size={23} />
+      <button className="icon-btn icon-btn--card" onClick={onSettings} aria-label="Nastavení">
+        <Icon name="sliders" size={21} />
       </button>
-      <button className="icon-btn" onClick={onNew} aria-label="Nová trasa">
-        <Icon name="plus" size={25} stroke={2} />
+      <button className="icon-btn icon-btn--ink" onClick={onNew} aria-label="Nová trasa">
+        <Icon name="plus" size={20} stroke={2.2} />
       </button>
     </>
   )
@@ -88,14 +88,18 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onE
         onChange={(e) => void onFile(e.target.files?.[0])}
       />
       <button className="btn btn--gray" onClick={() => file.current?.click()} disabled={importing}>
-        <Icon name="file" size={19} stroke={2} />
-        {importing ? 'Načítám GPX…' : 'Importovat GPX'}
+        <Icon name="file" size={18} stroke={1.9} />
+        {importing ? 'Načítám GPX…' : 'Import GPX'}
       </button>
     </>
   )
 
   return (
-    <Screen title="Trasy" actions={actions}>
+    <Screen
+      title="Trasy"
+      actions={actions}
+      subtitle={state.routes.length > 0 ? `${plural(state.routes.length, 'trasa', 'trasy', 'tras')} · předpověď na 7 dní` : undefined}
+    >
       {state.routes.length === 0 ? (
         <>
           <Empty
@@ -107,7 +111,7 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onE
           <div className="page">{importButton}</div>
         </>
       ) : (
-        <div className="page stack mt-8" style={{ gap: 10 }}>
+        <div className="page stack" style={{ gap: 12, marginTop: 18, paddingInline: 14 }}>
           {state.routes.map((route) => {
             const o = outlooks[route.id]
             const best = o ? bestOfWeek(o.week) : null
@@ -127,9 +131,9 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onE
               />
             )
           })}
-          <div className="stack mt-8" style={{ gap: 10 }}>
+          <div className="mt-8" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
             <button className="btn" onClick={onNew}>
-              <Icon name="plus" size={19} stroke={2.2} />
+              <Icon name="plus" size={18} stroke={2.2} />
               Nová trasa
             </button>
             {importButton}
@@ -144,7 +148,7 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onE
         </div>
       )}
 
-      <p className="footer-note">
+      <p className="footer-note footer-note--plain">
         GPX vyexportuješ v Mapy.cz přes Sdílet → Export GPX. Trasy zůstávají jen v tomhle telefonu.
       </p>
 
@@ -164,7 +168,7 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onE
               <Cell
                 icon="trash"
                 tone="nejdi"
-                title={<span style={{ color: 'var(--stop)', fontWeight: 600 }}>Opravdu smazat</span>}
+                title={<span style={{ color: 'var(--danger-ink)' }}>Opravdu smazat</span>}
                 sub="Nedá se vrátit."
                 onClick={() => {
                   onDelete(menuFor.id)
@@ -172,7 +176,7 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onE
                 }}
               />
             ) : (
-              <Cell icon="trash" tone="nejdi" title={<span style={{ color: 'var(--stop)' }}>Smazat trasu</span>} onClick={() => setConfirming(true)} />
+              <Cell icon="trash" tone="nejdi" title={<span style={{ color: 'var(--danger-ink)' }}>Smazat trasu</span>} onClick={() => setConfirming(true)} />
             )}
           </div>
         )}
@@ -180,6 +184,8 @@ export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onE
     </Screen>
   )
 }
+
+const WORD = { jdi: 'jdi', zvaz: 'zvaž', nejdi: 'nejdi' } as const
 
 function RouteCard({
   route,
@@ -199,74 +205,87 @@ function RouteCard({
   onMenu: () => void
 }) {
   const oneWay = track ? (track.turnIndex !== undefined ? track.points.slice(0, track.turnIndex + 1) : track.points) : null
-  let meta: ReactNode = route.waypoints.map((w) => w.name).join(' → ')
-  if (track) {
-    meta = `${km(track.lengthKm)} · ↑ ${metres(track.ascentM)}${best ? ` · ${durationShort((best.endsAt.getTime() - best.start.getTime()) / 60000)}` : ''}`
-  }
+  const meta = track
+    ? [km(track.lengthKm), `↑ ${metres(track.ascentM)}`, ...(best ? [durationShort((best.endsAt.getTime() - best.start.getTime()) / 60000)] : [])]
+    : null
 
   return (
-    <div className="card" style={{ position: 'relative', boxShadow: active ? '0 0 0 1.5px var(--accent)' : undefined }}>
-      <button onClick={onPick} style={{ display: 'block', width: '100%', padding: '14px 16px 14px', textAlign: 'left' }}>
-        <div className="between" style={{ alignItems: 'flex-start', paddingRight: 36 }}>
-          <div className="grow">
-            <div className="row" style={{ gap: 8 }}>
-              <span className="t-headline truncate">{route.name || 'Bez názvu'}</span>
-              {route.id === DEMO_ROUTE_ID && <span className="tag">ukázka</span>}
+    <div className="route-card" data-active={active}>
+      {oneWay && <Profile points={oneWay} />}
+      <button className="route-hit" onClick={onPick}>
+        <span className="stack" style={{ gap: 6, paddingRight: 36 }}>
+          {(active || route.id === DEMO_ROUTE_ID || route.track) && (
+            <span className="row" style={{ gap: 8 }}>
+              {active && (
+                <span className="route-active">
+                  <i />
+                  Aktivní
+                </span>
+              )}
+              {route.id === DEMO_ROUTE_ID && <span className="tag">Ukázka</span>}
               {route.track && <span className="tag">GPX</span>}
-            </div>
-            <div className="t-sub muted mt-4 truncate">{meta}</div>
-          </div>
-        </div>
-
-        <div className="between mt-12" style={{ alignItems: 'flex-end', gap: 14 }}>
-          <div className="grow">
-            {best ? (
-              <>
-                <div className="t-cap faint">Nejlépe tento týden</div>
-                <div className="t-callout mt-4" style={{ fontWeight: 600 }}>
-                  {capital(dayLabel(best.start))}, {clock(best.start)}
-                </div>
-              </>
-            ) : loading ? (
-              <div className="skel" style={{ height: 30, width: '70%' }} />
-            ) : (
-              <div className="t-sub faint">Tento týden nevychází</div>
-            )}
-          </div>
-          {oneWay && <Sparkline points={oneWay} />}
-          {best && (
-            <span className="badge" data-tone={verdictOf(best.score)} style={{ height: 30, fontSize: 15, padding: '0 10px' }}>
-              {best.score}
             </span>
           )}
-        </div>
+          <span className="route-name">{route.name || 'Bez názvu'}</span>
+          {meta ? (
+            <span className="route-meta">
+              {meta.map((m) => (
+                <span key={m}>{m}</span>
+              ))}
+            </span>
+          ) : (
+            <span className="route-meta truncate">{route.waypoints.map((w) => w.name).join(' → ')}</span>
+          )}
+        </span>
+
+        <span className="between" style={{ alignItems: 'flex-end', marginTop: 18 }}>
+          <span className="stack grow" style={{ gap: 3 }}>
+            {best ? (
+              <>
+                <span className="label" style={{ fontSize: 10, letterSpacing: '0.08em', color: 'var(--ink-2)' }}>
+                  Nejlépe tento týden
+                </span>
+                <span className="route-best">
+                  {capital(dayLabel(best.start))}, {clock(best.start)}
+                </span>
+              </>
+            ) : loading ? (
+              <span className="skel" style={{ height: 34, width: '62%' }} />
+            ) : (
+              <span className="label" style={{ color: 'var(--ink-2)' }}>
+                Tento týden nevychází
+              </span>
+            )}
+          </span>
+          {best && (
+            <span className="score-tile" data-tone={verdictOf(best.score)}>
+              <b>{best.score}</b>
+              <span>{WORD[verdictOf(best.score)]}</span>
+            </span>
+          )}
+        </span>
       </button>
-      <button
-        className="icon-btn"
-        onClick={onMenu}
-        aria-label={`Možnosti trasy ${route.name}`}
-        style={{ position: 'absolute', top: 4, right: 4, color: 'var(--ink-3)' }}
-      >
-        <Icon name="more" size={22} />
+      <button className="icon-btn route-more" onClick={onMenu} aria-label={`Možnosti trasy ${route.name}`}>
+        <Icon name="more" size={20} />
       </button>
     </div>
   )
 }
 
-/** Výškový profil v malém — trasy se tak dají poznat i bez čtení názvu. */
-function Sparkline({ points }: { points: Array<{ elevation: number }> }) {
-  const W = 84
-  const H = 30
-  const step = Math.max(1, Math.floor(points.length / 60))
+/** Výškový profil přes spodek karty — trasy se tak dají poznat i bez čtení názvu. */
+function Profile({ points }: { points: Array<{ elevation: number }> }) {
+  const W = 132
+  const H = 44
+  const step = Math.max(1, Math.floor(points.length / 80))
   const pts = points.filter((_, i) => i % step === 0 || i === points.length - 1)
   const lo = Math.min(...pts.map((p) => p.elevation))
   const hi = Math.max(...pts.map((p) => p.elevation))
-  const y = (e: number) => H - 2 - ((e - lo) / Math.max(1, hi - lo)) * (H - 6)
+  const y = (e: number) => H - 4 - ((e - lo) / Math.max(1, hi - lo)) * (H - 8)
   const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${((i / (pts.length - 1)) * W).toFixed(1)} ${y(p.elevation).toFixed(1)}`).join('')
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true" style={{ flexShrink: 0 }}>
-      <path d={`${line}L${W} ${H}L0 ${H}Z`} fill="var(--terrain)" opacity="0.8" />
-      <path d={line} fill="none" stroke="var(--terrain-line)" strokeWidth="1.5" strokeLinejoin="round" />
+    <svg className="route-prof" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+      <path d={`${line}L${W} ${H}L0 ${H}Z`} fill="var(--sunk)" />
+      <path d={line} fill="none" stroke="var(--ink-2)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }

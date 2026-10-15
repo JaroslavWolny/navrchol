@@ -3,9 +3,22 @@ import { capital, daysFromToday, parseDay, weekday } from '../lib/format'
 import type { DayOutlook } from '../lib/plan'
 
 /**
+ * Barva políčka. Jdi je limetková se sytostí podle skóre — 66 a 95 jsou oba
+ * „jdi", ale nejsou stejné. Nejdi je šrafované, aby se nedalo poznat jen
+ * podle barvy; pod 25 body silněji.
+ */
+function cellBackground(s: number): string {
+  const tone = verdictOf(s)
+  if (tone === 'jdi') return `rgba(200, 241, 105, ${(0.32 + 0.68 * Math.min(1, (s - 60) / 36)).toFixed(2)})`
+  if (tone === 'zvaz') return 'var(--warn)'
+  return s < 25
+    ? 'repeating-linear-gradient(135deg, #ff6b4e 0 3px, #ff8c74 3px 6px)'
+    : 'repeating-linear-gradient(135deg, #ff9c88 0 3px, #ffc3b6 3px 6px)'
+}
+
+/**
  * Teplotní mapa startů: řádek = den, sloupec = hodina startu, barva = skóre
- * celé túry při startu v tu hodinu. Sytost roste s tím, jak jednoznačný verdikt
- * je — 66 a 95 jsou oba „jdi", ale nejsou stejné.
+ * celé túry při startu v tu hodinu.
  */
 export function Heatmap({
   week,
@@ -34,17 +47,10 @@ export function Heatmap({
     picked &&
     `${picked.getFullYear()}-${String(picked.getMonth() + 1).padStart(2, '0')}-${String(picked.getDate()).padStart(2, '0')}|${picked.getHours()}`
 
-  // Sytost říká, jak moc verdikt platí: nejsytější je nejlepší „jdi" a nejhorší „nejdi".
-  const intensity = (s: number) => {
-    if (s >= 65) return 0.45 + 0.55 * Math.min(1, (s - 65) / 30)
-    if (s < 35) return 0.45 + 0.55 * Math.min(1, (35 - s) / 30)
-    return 0.7
-  }
-
   return (
     <div
       className="heat"
-      style={{ gridTemplateColumns: `44px repeat(${cols.length}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `46px repeat(${cols.length}, minmax(0, 1fr))` }}
       role="grid"
       aria-label="Skóre podle dne a hodiny startu"
     >
@@ -75,7 +81,7 @@ export function Heatmap({
                 data-tone={verdictOf(s)}
                 data-best={best?.date === d.date && best.hour === h}
                 data-picked={pickedKey === `${d.date}|${h}`}
-                style={{ background: `color-mix(in srgb, var(--tone-fill) ${Math.round(intensity(s) * 100)}%, var(--card))` }}
+                style={{ background: cellBackground(s) }}
                 onClick={() => onPick(start)}
                 aria-label={`${capital(weekday(date))} ${date.getDate()}. v ${h}:00, ${s} bodů`}
               />

@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { capital, dayShort, deg } from '../lib/format'
+import { dayShort, deg } from '../lib/format'
 import type { DayInfo, HourPoint } from '../lib/types'
 
 /** Pixelů na hodinu: na telefon se vejdou zhruba tři dny, zbytek se odroluje. */
@@ -124,8 +124,7 @@ export function Meteogram({ hours, days, elevation }: { hours: HourPoint[]; days
                 y={DAY_Y + 8}
                 width={d.to - d.from}
                 height={TIME_Y - DAY_Y - 18}
-                fill="var(--sun-soft)"
-                opacity="0.55"
+                fill="var(--daylight)"
               />
             ))}
             {dayStarts.map((i) => (
@@ -143,8 +142,8 @@ export function Meteogram({ hours, days, elevation }: { hours: HourPoint[]; days
               return (
                 <g key={from}>
                   {to - from >= 10 && (
-                    <text x={mid} y={DAY_Y} textAnchor="middle" className="val">
-                      {capital(dayShort(date))}
+                    <text x={mid} y={DAY_Y} textAnchor="middle" className="val" style={{ textTransform: 'uppercase' }}>
+                      {dayShort(date).toUpperCase()}
                     </text>
                   )}
                   <text x={edge(hi)} y={ty(temps[hi]) - 5} textAnchor="middle" className="val-2">
@@ -160,7 +159,7 @@ export function Meteogram({ hours, days, elevation }: { hours: HourPoint[]; days
                     y={wy(gusts[g]) - 5}
                     textAnchor="middle"
                     className="val-2"
-                    style={gust >= 50 ? { fill: gust >= 70 ? 'var(--stop)' : 'var(--mid)', fontWeight: 700 } : undefined}
+                    style={gust >= 50 ? { fill: gust >= 70 ? 'var(--danger-icon)' : 'var(--warn-ink)' } : undefined}
                   >
                     {gust}
                   </text>
@@ -171,7 +170,7 @@ export function Meteogram({ hours, days, elevation }: { hours: HourPoint[]; days
             {tLo < 0 && tHi > 0 && (
               <line x1={0} x2={W} y1={ty(0)} y2={ty(0)} stroke="var(--cold)" strokeDasharray="3 3" opacity="0.7" />
             )}
-            <path d={line(temps.map(ty))} fill="none" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round" />
+            <path d={line(temps.map(ty))} fill="none" stroke="var(--ink)" strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" />
 
             {ALT_TICKS.map((m) => (
               <line key={m} x1={0} x2={W} y1={altY(m)} y2={altY(m)} className="grid" />
@@ -223,7 +222,10 @@ export function Meteogram({ hours, days, elevation }: { hours: HourPoint[]; days
                 Oblačnost po výškách se ukáže po obnovení předpovědi.
               </text>
             )}
-            <line x1={0} x2={W} y1={summitY} y2={summitY} stroke="var(--ink)" strokeWidth="1.2" strokeDasharray="4 3" />
+            <line x1={0} x2={W} y1={summitY} y2={summitY} stroke="var(--ink)" strokeWidth="1.25" strokeDasharray="4 4" />
+            <text x={4} y={summitY - 5} className="axis" style={{ fontSize: 9.5, letterSpacing: '0.04em' }}>
+              VÝŠKA VRCHOLU
+            </text>
 
             {rains.map((r, i) => {
               if (r < WET) return null
@@ -245,9 +247,9 @@ export function Meteogram({ hours, days, elevation }: { hours: HourPoint[]; days
 
             <path
               d={`${line(series.map((h) => wy(h.windSpeed)))}L${x(series.length - 1)} ${WIND_BOTTOM}L${x(0)} ${WIND_BOTTOM}Z`}
-              fill="var(--fill)"
+              fill="var(--sunk)"
             />
-            <path d={line(gusts.map(wy))} fill="none" stroke="var(--ink-2)" strokeWidth="1.5" strokeLinejoin="round" />
+            <path d={line(gusts.map(wy))} fill="none" stroke="var(--ink-3)" strokeWidth="1.5" strokeLinejoin="round" />
             <line x1={0} x2={W} y1={WIND_BOTTOM} y2={WIND_BOTTOM} className="grid" />
 
             {series.map((h, i) =>
@@ -276,18 +278,24 @@ export function Meteogram({ hours, days, elevation }: { hours: HourPoint[]; days
             })}
 
             {nowX > 0 && nowX < W && (
-              <line x1={nowX} x2={nowX} y1={DAY_Y + 8} y2={TIME_Y - 10} stroke="var(--ink)" strokeWidth="1" opacity="0.45" />
+              <g>
+                <line x1={nowX} x2={nowX} y1={DAY_Y + 8} y2={TIME_Y - 10} stroke="var(--ink)" strokeWidth="1" />
+                <rect x={Math.max(0, nowX - 14.5)} y={DAY_Y + 8} width="29" height="14" rx="4" fill="var(--ink)" />
+                <text x={Math.max(14.5, nowX)} y={DAY_Y + 18} textAnchor="middle" style={{ fill: 'var(--go)', fontSize: 9, fontWeight: 600 }}>
+                  TEĎ
+                </text>
+              </g>
             )}
           </svg>
         </div>
       </div>
-      <div className="legend mt-8">
+      <div className="legend">
         <span>
-          <i style={{ height: 2, borderRadius: 0, background: 'var(--ink)' }} />
+          <i className="line" style={{ background: 'var(--ink)' }} />
           teplota
         </span>
         <span>
-          <i style={{ background: 'var(--ink-3)' }} />
+          <i style={{ background: 'var(--ink-3)', opacity: 0.6 }} />
           oblačnost
         </span>
         <span>
@@ -295,8 +303,12 @@ export function Meteogram({ hours, days, elevation }: { hours: HourPoint[]; days
           srážky mm/h
         </span>
         <span>
-          <i style={{ height: 2, borderRadius: 0, background: 'var(--ink-2)' }} />
+          <i className="line" style={{ background: 'var(--ink-3)', height: 2 }} />
           nárazy km/h
+        </span>
+        <span>
+          <i style={{ background: 'var(--daylight)', boxShadow: 'inset 0 0 0 1px #f1d58e' }} />
+          světlo
         </span>
       </div>
     </div>

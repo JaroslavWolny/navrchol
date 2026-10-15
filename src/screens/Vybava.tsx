@@ -55,13 +55,13 @@ export function VybavaScreen({ route, data, assessment, state, onToggle, onReset
       title="Výbava"
       subtitle={`${route.name}${assessment ? ` · ${dayLabel(assessment.start)} ${clock(assessment.start)}` : ''}`}
       titleAside={
-        <span className="t-headline num" style={{ paddingBottom: 4 }}>
+        <span aria-live="polite" style={{ fontSize: 40, lineHeight: 0.9, fontWeight: 800, fontStretch: '70%', fontVariantNumeric: 'tabular-nums' }}>
           {done}
-          <span className="faint">/{names.length}</span>
+          <span style={{ color: '#9aa29c' }}>/{names.length}</span>
         </span>
       }
     >
-      <div className="page mt-12">
+      <div style={{ padding: '0 22px', marginTop: 18 }}>
         {/* Jeden dílek = jedna věc. Spojitý pruh by zatajil, kolik toho zbývá. */}
         <div className="progress" aria-hidden="true">
           {names.map((name) => (
@@ -163,7 +163,7 @@ function GearRow({
   onRemove?: () => void
 }) {
   return (
-    <div className="cell" style={{ ['--inset' as string]: '52px', paddingRight: onRemove ? 6 : 16 }}>
+    <div className="cell" style={{ minHeight: 56, paddingRight: onRemove ? 6 : 16 }}>
       <button
         onClick={onToggle}
         className="row grow"
@@ -172,10 +172,18 @@ function GearRow({
         aria-label={checked ? `${name}, sbaleno` : `${name}, nesbaleno`}
       >
         <span className="check" data-on={checked}>
-          <Icon name="check" size={14} stroke={3} />
+          <Icon name="check" size={16} stroke={3} />
         </span>
         <span className="grow">
-          <span className="cell-title" style={{ display: 'block', color: checked ? 'var(--ink-3)' : undefined }}>
+          <span
+            style={{
+              display: 'block',
+              fontSize: 16,
+              fontWeight: 500,
+              color: checked ? 'var(--ink-3)' : undefined,
+              textDecoration: checked ? 'line-through' : undefined,
+            }}
+          >
             {name}
           </span>
           {/* Důvod je u položky pořád — jinak se nedá zpochybnit, proč ji appka přidala. */}
@@ -183,7 +191,7 @@ function GearRow({
         </span>
       </button>
       {onRemove && (
-        <button className="icon-btn" onClick={onRemove} aria-label={`Smazat ${name}`} style={{ color: 'var(--stop)' }}>
+        <button className="icon-btn" onClick={onRemove} aria-label={`Smazat ${name}`} style={{ color: 'var(--danger-icon)' }}>
           <Icon name="trash" size={18} stroke={2} />
         </button>
       )}

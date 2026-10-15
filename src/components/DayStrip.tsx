@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react'
 import { verdictOf } from '../lib/score'
 import { capital, daysFromToday, parseDay, weekday } from '../lib/format'
 
@@ -9,7 +8,7 @@ export interface DayChip {
 }
 
 /**
- * Výběr dne jako v kalendáři: den v týdnu, datum a tečka v barvě nejlepšího
+ * Výběr dne jako v kalendáři: den v týdnu, datum a proužek v barvě nejlepšího
  * okna toho dne. Už z výběru je vidět, na který den se vyplatí dívat.
  */
 export function DayStrip({
@@ -21,16 +20,8 @@ export function DayStrip({
   selected: string
   onSelect: (date: string) => void
 }) {
-  const host = useRef<HTMLDivElement>(null)
-
-  // Vybraný den musí být vidět, i když je až na konci týdne.
-  useEffect(() => {
-    const el = host.current?.querySelector<HTMLElement>('[aria-pressed="true"]')
-    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-  }, [selected])
-
   return (
-    <div className="days" ref={host} role="group" aria-label="Den túry">
+    <div className="days" role="group" aria-label="Den túry">
       {days.map((d) => {
         const date = parseDay(d.date)
         const rel = daysFromToday(date)
@@ -46,7 +37,7 @@ export function DayStrip({
           >
             <span className="day-name">{name}</span>
             <span className="day-num">{date.getDate()}</span>
-            <span className="dot" data-tone={d.best === null ? 'none' : verdictOf(d.best)} />
+            <span className="day-bar" data-tone={d.best === null ? 'none' : verdictOf(d.best)} />
           </button>
         )
       })}

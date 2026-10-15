@@ -9,7 +9,7 @@ import { fetchTrack, trackFromPoints, withReturn, type Track } from '../lib/rout
 import { flatSpeed, planFromTrack } from '../lib/pace'
 import { walkedRoute } from '../lib/plan'
 import { isLoop } from '../lib/geo'
-import { duration, km, metres, num } from '../lib/format'
+import { durationShort, km, metres, num } from '../lib/format'
 import { newId } from '../state/store'
 import type { PaceKey, Route, Waypoint } from '../lib/types'
 
@@ -132,6 +132,8 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
       return { ...r, waypoints: next }
     })
 
+  const highestId = route.waypoints.length > 1 ? [...route.waypoints].sort((a, b) => b.elevation - a.elevation)[0].id : null
+
   const canSave = route.waypoints.length >= 2 && route.waypoints.every((w) => Number.isFinite(w.elevation))
 
   const save = () => {
@@ -160,11 +162,13 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
         track={track}
         onAdd={fromGpx ? undefined : (lat, lon) => void addFromMap(lat, lon)}
         onMove={fromGpx ? undefined : (id, lat, lon) => void moveOnMap(id, lat, lon)}
-        height={300}
+        height={384}
       />
 
+      <div className="editor">
+      <div className="sheet-grab" aria-hidden="true" style={{ margin: '0 auto 14px' }} />
       {!fromGpx && (
-        <div className="page mt-12">
+        <div className="page">
           <div className="search">
             <Icon name="search" size={17} stroke={2.2} />
             <input
@@ -189,7 +193,7 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
               sub={`${metres(p.elevation)} · ${p.context}`}
               onClick={() => addPlace(p)}
             >
-              <Icon name="plus" size={20} stroke={2.2} color="var(--accent)" />
+              <Icon name="plus" size={20} stroke={2.2} />
             </Cell>
           ))}
         </div>
@@ -197,7 +201,7 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
 
       {plan && preview && (
         <div className="page mt-12">
-          <div className="card card-pad between">
+          <div className="kv-dark">
             <div className="kv">
               <span>Délka</span>
               <b>{km(preview.lengthKm)}</b>
@@ -208,11 +212,11 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
             </div>
             <div className="kv">
               <span>Chůze</span>
-              <b>{duration(plan.walkingMinutes)}</b>
+              <b>{durationShort(plan.walkingMinutes)}</b>
             </div>
-            <div className="kv">
+            <div className="kv kv--hi">
               <span>Celkem</span>
-              <b>{duration(plan.minutes)}</b>
+              <b>{durationShort(plan.minutes)}</b>
             </div>
           </div>
           {track?.fallback && (
@@ -249,47 +253,49 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
       >
         {route.waypoints.length > 0 && (
           <div className="list">
-            {route.waypoints.map((w, i) => (
-              <div className="cell" key={w.id} style={{ gap: 8, paddingRight: 6 }}>
-                <span className="badge" style={{ background: 'var(--accent-soft)', color: 'var(--accent)', minWidth: 26, justifyContent: 'center' }}>
-                  {i + 1}
-                </span>
-                <input
-                  value={w.name}
-                  aria-label={`Název bodu ${i + 1}`}
-                  onChange={(e) =>
-                    setRoute((r) => ({
-                      ...r,
-                      waypoints: r.waypoints.map((x) => (x.id === w.id ? { ...x, name: e.target.value } : x)),
-                    }))
-                  }
-                  className="grow"
-                  style={{ border: 'none', background: 'none', padding: '6px 0', outline: 'none', minWidth: 0 }}
-                />
-                <span className="t-foot faint num nowrap">{w.elevation ? metres(w.elevation) : '…'}</span>
-                {!fromGpx && (
-                  <>
-                    <button
-                      className="icon-btn"
-                      style={{ width: 36, height: 36 }}
-                      onClick={() => move(i, -1)}
-                      disabled={i === 0}
-                      aria-label={`Posunout ${w.name} výš`}
-                    >
-                      <Icon name="arrowUp" size={17} stroke={2} color={i === 0 ? 'var(--ink-4)' : undefined} />
-                    </button>
-                    <button
-                      className="icon-btn"
-                      style={{ width: 36, height: 36, color: 'var(--stop)' }}
-                      onClick={() => removeWaypoint(w.id)}
-                      aria-label={`Smazat ${w.name}`}
-                    >
-                      <Icon name="trash" size={17} stroke={2} />
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
+            {route.waypoints.map((w, i) => {
+              const last = i === route.waypoints.length - 1 && i > 0
+              const role = i === 0 ? 'start' : w.id === highestId ? 'vrchol' : last ? 'cíl' : null
+              return (
+                <div className="cell" key={w.id} style={{ gap: 12, minHeight: 60, paddingRight: 6, paddingTop: 8, paddingBottom: 8 }}>
+                  <span className="wp-badge" data-kind={i === 0 ? 'start' : last ? 'end' : 'mid'}>
+                    {i + 1}
+                  </span>
+                  <span className="grow stack" style={{ gap: 2 }}>
+                    <input
+                      value={w.name}
+                      aria-label={`Název bodu ${i + 1}`}
+                      onChange={(e) =>
+                        setRoute((r) => ({
+                          ...r,
+                          waypoints: r.waypoints.map((x) => (x.id === w.id ? { ...x, name: e.target.value } : x)),
+                        }))
+                      }
+                      style={{ border: 'none', background: 'none', padding: 0, outline: 'none', minWidth: 0, fontSize: 15, fontWeight: 600 }}
+                    />
+                    <span className="mono faint nowrap" style={{ fontSize: 11 }}>
+                      {w.elevation ? metres(w.elevation) : '…'}
+                      {role ? ` · ${role}` : ''}
+                    </span>
+                  </span>
+                  {!fromGpx && (
+                    <>
+                      <button className="icon-btn" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Posunout ${w.name} výš`}>
+                        <Icon name="arrowUp" size={18} stroke={2} />
+                      </button>
+                      <button
+                        className="icon-btn"
+                        style={{ color: 'var(--danger-icon)' }}
+                        onClick={() => removeWaypoint(w.id)}
+                        aria-label={`Smazat ${w.name}`}
+                      >
+                        <Icon name="trash" size={18} stroke={1.9} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
         {!fromGpx && route.waypoints.length >= 2 && (
@@ -362,28 +368,29 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
               />
             </Cell>
           )}
-          <div className="cell" style={{ ['--inset' as string]: '58px', flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+          <div className="cell" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12, paddingTop: 14, paddingBottom: 14 }}>
             <div className="row" style={{ gap: 12 }}>
               <span className="cell-icon">
-                <Icon name="pause" size={18} stroke={2} />
+                <Icon name="pause" size={20} stroke={1.9} />
               </span>
               <span className="cell-title grow">Pauza nahoře</span>
-              <span className="t-foot faint">{route.breakMin ? `${route.breakMin} min` : 'bez pauzy'}</span>
+              <span className="mono t-foot muted">{route.breakMin ? `${route.breakMin} min` : 'bez pauzy'}</span>
             </div>
             <Segmented
+              mono
               label="Pauza nahoře v minutách"
               value={route.breakMin ?? 0}
               options={BREAKS.map((b) => ({ id: b, label: String(b) }))}
               onChange={(v) => patch({ breakMin: v })}
             />
           </div>
-          <div className="cell" style={{ ['--inset' as string]: '58px', flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+          <div className="cell" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 12, paddingTop: 14, paddingBottom: 14 }}>
             <div className="row" style={{ gap: 12 }}>
               <span className="cell-icon">
-                <Icon name="walk" size={18} stroke={2} />
+                <Icon name="walk" size={20} stroke={1.9} />
               </span>
               <span className="cell-title grow">Tempo</span>
-              <span className="t-foot faint">
+              <span className="mono t-foot muted">
                 po rovině {num(flatSpeed(route.pace, paceScale), 1)}&nbsp;km/h
               </span>
             </div>
@@ -393,13 +400,14 @@ export function EditorScreen({ route: initial, paceScale, isNew, onSave, onCance
       </Section>
 
       {onDelete && (
-        <div className="page mt-24">
-          <button className="btn btn--danger" onClick={() => (confirmDelete ? onDelete() : setConfirmDelete(true))}>
-            <Icon name="trash" size={18} stroke={2} />
+        <div className="page" style={{ marginTop: 26 }}>
+          <button className="btn btn--danger" style={{ minHeight: 54, borderRadius: 16 }} onClick={() => (confirmDelete ? onDelete() : setConfirmDelete(true))}>
+            <Icon name="trash" size={18} stroke={1.9} />
             {confirmDelete ? 'Opravdu smazat? Nedá se vrátit.' : 'Smazat trasu'}
           </button>
         </div>
       )}
+      </div>
     </Screen>
   )
 }

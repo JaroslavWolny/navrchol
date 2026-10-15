@@ -8,19 +8,22 @@ const MAX = 96
 const DAMPING = 0.45
 
 interface Props {
-  /** Titulek obrazovky: velký nahoře, malý v liště po odrolování. */
+  /** Titulek obrazovky: velký úzký nápis nahoře. */
   title: ReactNode
-  /** Krátká verze titulku do lišty. */
-  barTitle?: string
-  /** Tlačítka vpravo v liště. */
+  /** Tlačítka vpravo od titulku (u podřízené obrazovky v liště). */
   actions?: ReactNode
-  /** Tlačítko vlevo (Zpět, Zrušit). Podřízená obrazovka nemá velký titulek. */
+  /** Zpět nad titulkem, u podřízené obrazovky Zrušit v liště. */
   leading?: ReactNode
-  /** Podtitulek pod velkým titulkem. */
+  /** Popisek verzálkami pod titulkem. */
   subtitle?: ReactNode
+  /**
+   * Popisek verzálkami nad titulkem, v jednom řádku s tlačítky. Pak je titulek
+   * menší a je to tlačítko (Verdikt: výběr trasy).
+   */
+  eyebrow?: ReactNode
   /** Obsah vedle velkého titulku (vpravo). */
   titleAside?: ReactNode
-  /** Bez velkého titulku — titulek je rovnou v liště (podřízené obrazovky). */
+  /** Podřízená obrazovka: lišta Zrušit — titulek — Uložit, bez velkého titulku. */
   compact?: boolean
   onRefresh?: () => void
   refreshing?: boolean
@@ -28,8 +31,9 @@ interface Props {
 }
 
 /**
- * Obrazovka jako na iOS: velký titulek, který při rolování zajede do lišty,
- * a lišta, která dostane podklad až ve chvíli, kdy pod ní něco je.
+ * Obrazovka: velký úzký titulek, který odroluje s obsahem. Podřízená
+ * obrazovka (editor) má místo něj pevnou lištu, ať jsou Zrušit a Uložit
+ * pořád po ruce.
  *
  * Táhnutím dolů se stáhne nová předpověď. Posluchače si to věší ručně:
  * React dává touchmove pasivně a pasivní posluchač nesmí zrušit gumový
@@ -37,10 +41,10 @@ interface Props {
  */
 export function Screen({
   title,
-  barTitle,
   actions,
   leading,
   subtitle,
+  eyebrow,
   titleAside,
   compact = false,
   onRefresh,
@@ -114,15 +118,16 @@ export function Screen({
 
   const armed = pull >= TRIGGER
   const pullHeight = refreshing && !dragging ? 44 : pull
-  const plainTitle = barTitle ?? (typeof title === 'string' ? title : '')
 
   return (
     <div className="screen">
-      <header className="bar" data-scrolled={scrolled} data-static={compact}>
-        <div className="bar-side bar-side--start">{leading}</div>
-        <div className="bar-title">{plainTitle}</div>
-        <div className="bar-side bar-side--end">{actions}</div>
-      </header>
+      {compact && (
+        <header className="bar" data-scrolled={scrolled}>
+          <div className="bar-side bar-side--start">{leading}</div>
+          <div className="bar-title">{title}</div>
+          <div className="bar-side bar-side--end">{actions}</div>
+        </header>
+      )}
 
       <div className="scroll" ref={host}>
         {onRefresh && (
@@ -151,13 +156,31 @@ export function Screen({
         )}
 
         {!compact && (
-          <>
-            <div className="large-title">
-              <h1 className="t-large">{title}</h1>
-              {titleAside}
-            </div>
-            {subtitle && <div className="subtitle">{subtitle}</div>}
-          </>
+          <header className="hd">
+            {leading}
+            {eyebrow !== undefined ? (
+              <>
+                <div className="hd-meta">
+                  <div className="label truncate">{eyebrow}</div>
+                  {actions && <div className="hd-actions">{actions}</div>}
+                </div>
+                <h1>{title}</h1>
+              </>
+            ) : (
+              <>
+                <div className="hd-row">
+                  <h1 className="t-large">{title}</h1>
+                  {(titleAside || actions) && (
+                    <div className="hd-actions">
+                      {titleAside}
+                      {actions}
+                    </div>
+                  )}
+                </div>
+                {subtitle && <div className="label hd-sub">{subtitle}</div>}
+              </>
+            )}
+          </header>
         )}
         {children}
       </div>

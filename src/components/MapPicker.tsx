@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Icon } from './Icon'
-import { createMap, pinIcon, topoLayer, trailsLayer } from './maps'
+import { LINE, createMap, pinIcon, topoLayer, trailsLayer } from './maps'
 import type { Track } from '../lib/routing'
 import type { Waypoint } from '../lib/types'
 
@@ -52,19 +52,20 @@ export function MapPicker({ waypoints, track, onAdd, onMove, height }: Props) {
 
     if (track && track.points.length > 1) {
       const line = track.points.map((p) => [p.lat, p.lon] as [number, number])
-      L.polyline(line, { color: '#fff', weight: 8, opacity: 0.95, lineJoin: 'round' }).addTo(g)
+      L.polyline(line, { color: LINE.halo, weight: LINE.haloWeight, opacity: 0.95, lineJoin: 'round' }).addTo(g)
+      L.polyline(line, { color: LINE.ink, weight: LINE.inkWeight, lineJoin: 'round' }).addTo(g)
       L.polyline(line, {
-        color: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1f57c9',
-        weight: 4.5,
+        color: getComputedStyle(document.documentElement).getPropertyValue('--go').trim() || '#c8f169',
+        weight: LINE.coreWeight,
         lineJoin: 'round',
         dashArray: track.fallback ? '6 7' : undefined,
       }).addTo(g)
     }
 
-    const top = waypoints.reduce((best, w, i, arr) => (w.elevation > arr[best].elevation ? i : best), 0)
+    const last = waypoints.length - 1
     waypoints.forEach((w, i) => {
       const marker = L.marker([w.lat, w.lon], {
-        icon: pinIcon(String(i + 1), i === top && waypoints.length > 1 ? 'top' : 'num'),
+        icon: pinIcon(String(i + 1), i === 0 ? 'num' : i === last ? 'end' : 'mid'),
         keyboard: false,
         draggable: Boolean(handlers.current.onMove),
         autoPan: true,
@@ -111,8 +112,8 @@ export function MapPicker({ waypoints, track, onAdd, onMove, height }: Props) {
       {onAdd && waypoints.length < 2 && (
         <div className="map-hint">{waypoints.length === 0 ? 'Ťukni na start trasy' : 'Ťukni na další bod'}</div>
       )}
-      <button className="map-fab" style={{ right: 10, top: 10 }} onClick={locate} aria-label="Moje poloha">
-        <Icon name="locate" size={19} stroke={2} className={locating ? 'spin' : undefined} />
+      <button className="map-fab" style={{ right: 12, top: 12 }} onClick={locate} aria-label="Moje poloha">
+        <Icon name="locate" size={20} stroke={1.9} className={locating ? 'spin' : undefined} />
       </button>
     </div>
   )

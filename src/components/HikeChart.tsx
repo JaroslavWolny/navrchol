@@ -1,4 +1,3 @@
-import { useId } from 'react'
 import { Icon, weatherColor, weatherIcon } from './Icon'
 import { useWidth } from './useWidth'
 import { verdictOf } from '../lib/score'
@@ -6,16 +5,21 @@ import { clock, deg } from '../lib/format'
 import type { Assessment, Sample } from '../lib/plan'
 import type { Track } from '../lib/routing'
 
-const TONE = { jdi: 'var(--go)', zvaz: 'var(--mid-fill)', nejdi: 'var(--stop)' } as const
+/** Čára profilu: černá, kde je to v pořádku, tmavě jantarová a červená, kde to zlobí. */
+const TONE = { jdi: 'var(--ink)', zvaz: 'var(--warn-ink)', nejdi: 'var(--danger-icon)' } as const
 
 /** Výška řádků grafu. Řádek srážek se sbalí, když na celé túře neprší. */
 const ICON_Y = 0
-const TEMP_Y = 38
-const PROFILE_TOP = 50
+const TEMP_Y = 15
+const PROFILE_TOP = 40
 const PROFILE_BOTTOM = 150
 const RAIN_TOP = 158
 const RAIN_H = 22
-const MIN_COL = 34
+const MIN_COL = 76
+
+/** Kam vítr fouká, jako šipka: od jihozápadu → ↗. */
+const ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']
+const arrowOf = (from: number) => ARROWS[Math.round((((from + 180) % 360) + 360) % 360 / 45) % 8]
 /** Pod desetinu milimetru to není déšť, jen šum kvantilu. */
 const WET = 0.1
 
@@ -27,7 +31,6 @@ const WET = 0.1
  */
 export function HikeChart({ assessment, track }: { assessment: Assessment; track: Track }) {
   const [ref, width] = useWidth<HTMLDivElement>()
-  const gradient = useId()
   const { samples, start, end, plan } = assessment
   const total = end.getTime() - start.getTime()
   if (samples.length < 2 || total <= 0 || plan.elapsed.length !== track.points.length) {
@@ -72,11 +75,12 @@ export function HikeChart({ assessment, track }: { assessment: Assessment; track
 
   const columns = pickColumns(samples, x, W)
 
-  // Značky na profilu: body trasy a nejvyšší místo.
+  // Značky na profilu: start čtverec, nejvyšší bod trojúhelník, konec kolečko, mezi nimi tečky.
   const marks = assessment.passes.map((p, i) => {
     const idx = track.waypointIndices[i] ?? 0
-    return { x: x(p.at.getTime()), y: y(track.points[idx]?.elevation ?? lo), key: `${p.waypoint.id}-${i}` }
+    return { x: x(p.at.getTime()), y: y(track.points[idx]?.elevation ?? lo), elevation: track.points[idx]?.elevation ?? lo, key: `${p.waypoint.id}-${i}` }
   })
+  const topMark = marks.reduce((a, m) => (m.elevation > a.elevation ? m : a), marks[0])
 
   // Svislé značky: západ slunce, začátek bouřek, nejpozdější obrat.
   const vlines: Array<{ x: number; label: string; color: string }> = []
@@ -105,9 +109,9 @@ export function HikeChart({ assessment, track }: { assessment: Assessment; track
 
   const maxRain = Math.max(1, ...samples.map((s) => s.hour.precipitationRisk))
   const rainy = samples.some((s) => s.hour.precipitationRisk >= WET)
-  const GUST_Y = rainy ? 196 : 170
-  const TIME_Y = GUST_Y + 20
-  const HEIGHT = TIME_Y + 6
+  const TIME_Y = rainy ? 198 : 172
+  const GUST_Y = TIME_Y + 16
+  const HEIGHT = GUST_Y + 4
 
   return (
     <div ref={ref}>
@@ -119,12 +123,8 @@ export function HikeChart({ assessment, track }: { assessment: Assessment; track
         role="img"
         aria-label="Průběh túry: výškový profil v čase s počasím po hodinách"
       >
-        <defs>
-          <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--terrain)" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="var(--terrain)" stopOpacity="0.25" />
-          </linearGradient>
-        </defs>
+        <line x1={0} x2={W} y1={PROFILE_TOP + 20} y2={PROFILE_TOP + 20} stroke="var(--line)" strokeDasharray="2 4" />
+        <line x1={0} x2={W} y1={PROFILE_TOP + 60} y2={PROFILE_TOP + 60} stroke="var(--line)" strokeDasharray="2 4" />
 
         {hlines.map((l) => (
           <g key={l.label}>
@@ -135,14 +135,14 @@ export function HikeChart({ assessment, track }: { assessment: Assessment; track
           </g>
         ))}
 
-        <path d={area} fill={`url(#${gradient})`} />
+        <path d={area} fill="var(--go)" />
         {segments.map((s) => (
           <path
             key={s.key}
             d={s.d}
             fill="none"
             stroke={TONE[s.tone]}
-            strokeWidth="3"
+            strokeWidth="2.5"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
@@ -171,24 +171,35 @@ export function HikeChart({ assessment, track }: { assessment: Assessment; track
           </g>
         ))}
 
-        {marks.map((m) => (
-          <circle key={m.key} cx={m.x} cy={m.y} r="3.5" fill="var(--card)" stroke="var(--ink)" strokeWidth="1.8" />
-        ))}
+        {marks.map((m, i) =>
+          i === 0 ? (
+            <rect key={m.key} x={m.x - 5} y={m.y - 5} width="10" height="10" rx="3" fill="var(--ink)" />
+          ) : m === topMark ? (
+            <path key={m.key} d={`M${m.x} ${m.y - 15}l9 15h-18z`} fill="var(--ink)" />
+          ) : i === marks.length - 1 ? (
+            <circle key={m.key} cx={m.x} cy={m.y} r="5" fill="var(--ink)" />
+          ) : (
+            <circle key={m.key} cx={m.x} cy={m.y} r="3.5" fill="var(--surface)" stroke="var(--ink)" strokeWidth="1.8" />
+          ),
+        )}
 
         {columns.map(({ sample: s, x: cx, anchor }) => {
           const icon = weatherIcon(s.hour)
           const gust = Math.round(s.hour.windGustsRisk)
           const rain = s.hour.precipitationRisk
           const barH = rain < WET ? 0 : Math.max(3, (rain / maxRain) * RAIN_H)
-          const iconX = Math.min(W - 20, Math.max(0, cx - 10))
           const textX = anchor === 'start' ? 0 : anchor === 'end' ? W : cx
+          // Ikona a teplota vedle sebe; šířka textu je odhad, Archivo má číslice kolem 11 px.
+          const label = deg(s.hour.temperature)
+          const group = 24 + label.length * 11
+          const groupX = anchor === 'start' ? 0 : anchor === 'end' ? W - group : cx - group / 2
           return (
             <g key={s.at.getTime()}>
-              <g transform={`translate(${iconX} ${ICON_Y})`}>
-                <Icon name={icon} size={20} stroke={1.8} color={weatherColor(icon)} />
+              <g transform={`translate(${groupX} ${ICON_Y})`}>
+                <Icon name={icon} size={18} stroke={2} color={weatherColor(icon)} />
               </g>
-              <text x={textX} y={TEMP_Y} textAnchor={anchor} className="val">
-                {deg(s.hour.temperature)}
+              <text x={groupX + 24} y={TEMP_Y} className="big">
+                {label}
               </text>
               {barH > 0 && (
                 <rect
@@ -201,17 +212,17 @@ export function HikeChart({ assessment, track }: { assessment: Assessment; track
                   opacity={0.35 + 0.65 * Math.min(1, s.hour.precipitationProbability / 100)}
                 />
               )}
+              <text x={textX} y={TIME_Y} textAnchor={anchor} className="val" style={{ fontSize: 12 }}>
+                {clock(s.at)}
+              </text>
               <text
                 x={textX}
                 y={GUST_Y}
                 textAnchor={anchor}
-                className="val-2"
-                style={gust >= 50 ? { fill: gust >= 70 ? 'var(--stop)' : 'var(--mid)', fontWeight: 700 } : undefined}
+                className="axis"
+                style={{ fontSize: 11, ...(gust >= 50 ? { fill: gust >= 70 ? 'var(--danger-icon)' : 'var(--warn-ink)', fontWeight: 600 } : {}) }}
               >
-                {gust}
-              </text>
-              <text x={textX} y={TIME_Y} textAnchor={anchor} className="axis">
-                {clock(s.at)}
+                {arrowOf(s.hour.windDirection)} {gust} km/h
               </text>
             </g>
           )

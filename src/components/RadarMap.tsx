@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { Icon } from './Icon'
-import { canvasLayer, createMap, prefersDark } from './maps'
+import { LINE, canvasLayer, createMap } from './maps'
 import { fetchRadar, radarTemplate, type RadarFrame } from '../lib/radar'
 import { clock } from '../lib/format'
 import type { Track } from '../lib/routing'
@@ -40,7 +40,7 @@ export function RadarMap({ track, center }: Props) {
   useEffect(() => {
     if (!host.current || map.current) return
     const m = createMap(host.current).setView([center.lat, center.lon], 8)
-    canvasLayer(prefersDark()).addTo(m)
+    canvasLayer().addTo(m)
     map.current = m
     return () => {
       m.remove()
@@ -54,8 +54,8 @@ export function RadarMap({ track, center }: Props) {
     const m = map.current
     if (!m || !track || track.points.length < 2) return
     const line = track.points.map((p) => [p.lat, p.lon] as [number, number])
-    const casing = L.polyline(line, { color: prefersDark() ? '#000' : '#fff', weight: 6, opacity: 0.8 }).addTo(m)
-    const poly = L.polyline(line, { color: prefersDark() ? '#fff' : '#18191b', weight: 2.5, opacity: 1 }).addTo(m)
+    const casing = L.polyline(line, { color: '#fff', weight: 6, opacity: 0.8 }).addTo(m)
+    const poly = L.polyline(line, { color: LINE.ink, weight: 2.5, opacity: 1 }).addTo(m)
     return () => {
       casing.remove()
       poly.remove()
@@ -87,7 +87,7 @@ export function RadarMap({ track, center }: Props) {
   const frame = data?.frames[index]
 
   return (
-    <div className="card" style={{ overflow: 'hidden' }}>
+    <div style={{ overflow: 'hidden' }}>
       <div className="map" style={{ height: 210 }}>
         <div ref={host} style={{ width: '100%', height: '100%' }} />
         <div className="map-hint">{frame ? `Radar ${clock(frame.at)}` : 'Načítám radar…'}</div>
@@ -120,16 +120,16 @@ export function RadarMap({ track, center }: Props) {
               setIndex(Number(e.target.value))
             }}
             aria-label="Čas radarového snímku"
-            style={{ flexGrow: 1, accentColor: 'var(--accent)' }}
+            style={{ flexGrow: 1, accentColor: 'var(--ink)' }}
           />
-          <span className="t-foot num faint" style={{ width: 38, textAlign: 'right' }}>
+          <span className="mono t-foot faint" style={{ width: 40, textAlign: 'right' }}>
             {frame ? clock(frame.at) : ''}
           </span>
         </div>
       )}
-      <div className="t-cap faint row" style={{ padding: '0 14px 12px', gap: 6 }}>
+      <div className="label row" style={{ padding: '0 16px 14px', gap: 6 }}>
         <Icon name="radar" size={13} />
-        RainViewer, posledních 120 minut
+        RainViewer · posledních 120 minut
       </div>
     </div>
   )

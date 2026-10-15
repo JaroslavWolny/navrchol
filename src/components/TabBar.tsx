@@ -10,18 +10,22 @@ const TABS: Array<{ id: Tab; label: string; icon: IconName }> = [
   { id: 'vybava', label: 'Výbava', icon: 'vybava' },
 ]
 
+/** Plovoucí černá lišta; aktivní záložka má limetkový podklad. Obsah pod ní mizí do pozadí. */
 export function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   return (
-    <nav className="tabbar" aria-label="Hlavní navigace">
-      {TABS.map((t) => {
-        const on = active === t.id
-        return (
-          <button key={t.id} onClick={() => onChange(t.id)} aria-current={on ? 'page' : undefined}>
-            <Icon name={t.icon} size={25} stroke={1.7} filled={on} />
-            <span>{t.label}</span>
-          </button>
-        )
-      })}
-    </nav>
+    <>
+      <div className="tab-fade" aria-hidden="true" />
+      <nav className="tabbar" aria-label="Hlavní navigace">
+        {TABS.map((t) => {
+          const on = active === t.id
+          return (
+            <button key={t.id} onClick={() => onChange(t.id)} aria-current={on ? 'page' : undefined}>
+              <Icon name={t.icon} size={22} stroke={1.8} />
+              <span>{t.label}</span>
+            </button>
+          )
+        })}
+      </nav>
+    </>
   )
 }

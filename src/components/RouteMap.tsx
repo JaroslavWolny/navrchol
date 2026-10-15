@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import L from 'leaflet'
-import { createMap, pinIcon, toneColors, topoLayer } from './maps'
+import { LINE, createMap, pinIcon, toneColors, topoLayer } from './maps'
 import { verdictOf } from '../lib/score'
 import type { Sample } from '../lib/plan'
 import type { Track } from '../lib/routing'
@@ -62,15 +62,16 @@ export function RouteMap({ track, samples, height = 220 }: Props) {
     const colors = toneColors()
     const latlngs = pts.map((p) => [p.lat, p.lon] as [number, number])
 
-    // Kartografická kresba: světlé pouzdro, přes něj barevné jádro po úsecích.
-    L.polyline(latlngs, { color: '#fff', weight: 8, opacity: 0.95, lineJoin: 'round' }).addTo(g)
+    // Kartografická kresba: světlý lem, černá čára, přes ni barevné jádro po úsecích.
+    L.polyline(latlngs, { color: LINE.halo, weight: LINE.haloWeight, opacity: 0.95, lineJoin: 'round' }).addTo(g)
+    L.polyline(latlngs, { color: LINE.ink, weight: LINE.inkWeight, opacity: 1, lineJoin: 'round' }).addTo(g)
     let from = 0
     for (let i = 1; i <= end; i++) {
       const tone = verdictOf(scores[i])
       if (i === end || verdictOf(scores[i + 1]) !== tone) {
         L.polyline(latlngs.slice(from, i + 1), {
           color: colors[tone],
-          weight: 4.5,
+          weight: LINE.coreWeight,
           opacity: 1,
           lineJoin: 'round',
           dashArray: track.fallback ? '6 7' : undefined,

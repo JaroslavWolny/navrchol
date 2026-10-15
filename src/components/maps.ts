@@ -25,31 +25,45 @@ export function trailsLayer(): L.TileLayer {
 }
 
 /** Neutrální podklad pro radar — na topo mapě by se echo srážek ztratilo. */
-export function canvasLayer(dark: boolean): L.TileLayer {
-  const style = dark ? 'World_Dark_Gray_Base' : 'World_Light_Gray_Base'
-  return L.tileLayer(`https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/${style}/MapServer/tile/{z}/{y}/{x}`, {
+export function canvasLayer(): L.TileLayer {
+  return L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 15,
     attribution: 'Podklad © Esri',
   })
 }
-
-export const prefersDark = () =>
-  typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true
 
 /** Barvy verdiktu pro Leaflet, který CSS proměnné v SVG cestách nezná. */
 export function toneColors(): Record<'jdi' | 'zvaz' | 'nejdi', string> {
   const cs = getComputedStyle(document.documentElement)
   const v = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback
   return {
-    jdi: v('--go', '#1d9a4e'),
-    zvaz: v('--mid-fill', '#f2a100'),
-    nejdi: v('--stop', '#d33228'),
+    jdi: v('--go', '#c8f169'),
+    zvaz: v('--warn', '#ffc74a'),
+    nejdi: v('--stop', '#ff6b4e'),
   }
 }
 
-export function pinIcon(label: string, variant: 'num' | 'top' | 'dot' = 'num'): L.DivIcon {
-  const size = variant === 'dot' ? 14 : 26
-  const cls = variant === 'top' ? 'pin pin--top' : variant === 'dot' ? 'pin pin--small' : 'pin'
+/**
+ * Kresba trasy: světlý lem, černá čára a uvnitř barevné jádro. Jádro je
+ * limetkové, nebo po úsecích v barvě verdiktu.
+ */
+export const LINE = { halo: '#e3e7df', ink: '#0e1210', haloWeight: 10, inkWeight: 6, coreWeight: 2.5 } as const
+
+/**
+ * Značky: start černé kolečko, poslední bod limetkový čtverec, body mezi nimi
+ * světlé kolečko, vrchol černý trojúhelník, průchozí bod malá tečka.
+ */
+export function pinIcon(label: string, variant: 'num' | 'end' | 'mid' | 'top' | 'dot' = 'num'): L.DivIcon {
+  if (variant === 'top') {
+    return L.divIcon({
+      className: '',
+      html: '<svg class="pin pin--top" width="22" height="20" viewBox="0 0 22 20"><path d="M11 1.5 20.5 18.5h-19Z" fill="#0e1210" stroke="#e3e7df" stroke-width="2" stroke-linejoin="round"/></svg>',
+      iconSize: [22, 20],
+      iconAnchor: [11, 13],
+    })
+  }
+  const size = variant === 'dot' ? 14 : 32
+  const cls = variant === 'end' ? 'pin pin--end' : variant === 'mid' ? 'pin pin--mid' : variant === 'dot' ? 'pin pin--small' : 'pin'
   return L.divIcon({
     className: '',
     html: `<div class="${cls}">${variant === 'dot' ? '' : label}</div>`,

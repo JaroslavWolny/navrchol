@@ -180,23 +180,33 @@ a západ pro rovný obzor, takže zbytek si appka spočítá sama (`src/lib/sun.
 
 ## Jak to vypadá a proč
 
-Appka se má na telefonu chovat jako appka, ne jako web (`src/styles.css`):
+Vzhled je podle návrhu v `design/redesign-2026-10` (`DESIGN.md` a mockupy obrazovek).
+Tokeny a sdílené prvky jsou v `src/styles.css`.
 
-**Systémové písmo a systémové vzory.** SF Pro na iPhonu, velké titulky, které při
-rolování zajedou do průsvitné lišty, seskupené seznamy, přepínače a segmentové
-volby jako v Nastavení. Světlý i tmavý režim podle telefonu. Přechody mezi
-obrazovkami přes View Transitions (podřízená obrazovka přijede zprava).
+**Alpský monochrom a jedna barva.** Kamenně šedá plocha (`#E9EBE6`), skoro černý
+inkoust a jediná výrazná barva, limetková. Barva se objeví jen tam, kde nese význam:
+verdikt (limetková jdi, žlutá zvaž, korálová nejdi) a aktivní stav. Na limetkové
+a žluté je vždy tmavý text. Verdikt nikdy jen barvou — vždy i slovo nebo číslo,
+„nejdi" je v mapě startů navíc šrafované.
 
-**Barva nese data.** Zelená, oranžová a červená jsou jen verdikt a skóre, žlutá
-slunce, azurová déšť. Modrá je akce — tlačítka, odkazy, aktivní záložka.
+**Úzká tučná čísla, data v monospace.** Archivo s proměnnou šířkou (titulky, velká
+čísla) a Geist Mono (časy, jednotky, popisky verzálkami). Písma jsou v balíčku
+(`@fontsource-variable`), ne z Google Fonts: appka musí jet bez signálu a nemá
+komu hlásit, kdo si ji otevřel.
 
-**Vlastní je to, co ukazuje data.** Pás hodin ve verdiktu (každý díl je jedna hodina
-túry v barvě jejího skóre), průběh túry (výškový profil v čase: pauza je rovinka,
-nad každou hodinou počasí tam, kde v ní budeš), teplotní mapa startů na týden
-a trasa na mapě obarvená podle toho, kde to ten den zlobí.
+**Vlastní je to, co ukazuje data.** Karta verdiktu s časovou osou túry (hodina
+s horším verdiktem dostane jeho barvu), průběh túry (výškový profil v čase:
+pauza je rovinka, nad každou hodinou počasí tam, kde v ní budeš), teplotní mapa
+startů, meteogram vrcholu a trasa na mapě s jádrem v barvě verdiktu.
 
-**Ikona je turistická značka.** Značka KČT „odbočka k vrcholu" — barevný
-rovnostranný trojúhelník v bílém čtverci. Na vrchol, NaVrchol.
+**Plovoucí černá lišta.** Pět záložek, aktivní má limetkový podklad; obsah pod
+lištou plynule mizí do pozadí. Editor trasy je podřízená obrazovka bez lišty:
+Zrušit / Uložit nahoře, mapa přes celou šířku a pod ní panel, který ji o kus překrývá.
+
+**Logo je turistická značka.** Pruhy bílá–limetková–bílá na černém čtverci.
+Ikona na ploše zatím zůstává původní (trojúhelník KČT „k vrcholu").
+
+**Zatím jen světlý režim.** Tmavý je vypnutý, dokud nebude navržený.
 
 Texty jsou krátké a česky sázené: pevné mezery za jednopísmennými předložkami
 (`vlna()` ve `format.ts`), čas bez úvodní nuly, typografické minus.
@@ -206,7 +216,7 @@ v IndexedDB, takže bez signálu appka ukáže plán a řekne, jak je starý.
 
 ## Stack
 
-Vite + React + TypeScript, Leaflet nad OpenTopoMap, Vitest. Trasy jde naklikat, najít podle jména, nebo nahrát jako GPX (Mapy.cz, Komoot, hodinky). **Žádný backend** —
+Vite + React + TypeScript, Leaflet nad OpenTopoMap, Vitest, písma Archivo a Geist Mono z `@fontsource-variable`. Trasy jde naklikat, najít podle jména, nebo nahrát jako GPX (Mapy.cz, Komoot, hodinky). **Žádný backend** —
 Open-Meteo i BRouter mají CORS a nechtějí klíč, takže se volají rovnou z prohlížeče.
 
 ## Vývoj

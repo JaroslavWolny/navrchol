@@ -10,7 +10,7 @@ import { summitHours, type DayOutlook } from '../lib/plan'
 import type { RouteData } from '../state/useRouteData'
 import type { Route } from '../lib/types'
 
-const WORD = { jdi: 'Jdi', zvaz: 'Zvaž', nejdi: 'Nejdi' } as const
+const WORD = { jdi: 'jdi', zvaz: 'zvaž', nejdi: 'nejdi' } as const
 
 interface Props {
   route: Route | null
@@ -30,7 +30,7 @@ export function KdyJitScreen({ route, data, week, start, onPickStart }: Props) {
   }
 
   const shell = (children: React.ReactNode) => (
-    <Screen title="Kdy jít" subtitle={route.name} onRefresh={data.reload} refreshing={data.loading && Boolean(week)}>
+    <Screen title="Kdy jít" subtitle={`${route.name} · ${week?.length ?? 7} dní`} onRefresh={data.reload} refreshing={data.loading && Boolean(week)}>
       {children}
     </Screen>
   )
@@ -44,36 +44,33 @@ export function KdyJitScreen({ route, data, week, start, onPickStart }: Props) {
 
   return shell(
     <>
-      <div className="page mt-12">
+      <div className="page" style={{ marginTop: 20 }}>
         {best?.best ? (
-          <button
-            className="card verdict"
-            data-tone={verdictOf(best.best.score)}
-            style={{ display: 'block', width: '100%', textAlign: 'left' }}
-            onClick={() => onPickStart(best.best!.start)}
-          >
-            <div className="t-foot muted" style={{ fontWeight: 600 }}>
-              Nejlepší start v týdnu
-            </div>
-            <div className="verdict-top mt-4">
-              <div>
-                <div className="t-title">
+          <section className="best" aria-label="Nejlepší start">
+            <div className="between" style={{ alignItems: 'flex-start' }}>
+              <div className="stack" style={{ gap: 8 }}>
+                <span className="label" style={{ color: 'var(--go)' }}>
+                  Nejlepší start v týdnu
+                </span>
+                <span className="best-when">
                   {capital(dayLabel(best.best.start))}, {clock(best.best.start)}
-                </div>
-                <div className="t-sub muted mt-4">
+                </span>
+                <span className="mono" style={{ fontSize: 12, color: 'var(--on-ink-2)' }}>
                   Návrat {clock(best.best.endsAt)} · {duration((best.best.endsAt.getTime() - best.best.start.getTime()) / 60000)}
-                </div>
+                </span>
               </div>
-              <div className="score">
-                <b style={{ color: 'var(--tone)' }}>{best.best.score}</b>
+              <span className="score-tile score-tile--lg" data-tone={verdictOf(best.best.score)}>
+                <b>{best.best.score}</b>
                 <span>{WORD[verdictOf(best.best.score)]}</span>
-              </div>
+              </span>
             </div>
-            <div className="row mt-12 link t-sub" style={{ color: 'var(--accent)' }}>
+            <button className="best-go" onClick={() => onPickStart(best.best!.start)}>
               Naplánovat na tenhle čas
-              <Icon name="chevron" size={15} stroke={2.4} />
-            </div>
-          </button>
+              <span aria-hidden="true">
+                <Icon name="arrowRight" size={18} stroke={2.2} />
+              </span>
+            </button>
+          </section>
         ) : (
           <div className="card card-pad t-callout muted">
             Tenhle týden trasa nevychází. Buď se nevejde mezi východ a západ slunce, nebo je počasí mimo po celou dobu.
@@ -85,24 +82,28 @@ export function KdyJitScreen({ route, data, week, start, onPickStart }: Props) {
         title="Podle hodiny startu"
         footer="Každé políčko je celá túra při startu v danou hodinu, včetně cesty zpátky a pauzy. Prázdná políčka jsou starty, které by skončily po setmění nebo už proběhly. Vzdálenější dny jsou méně jisté."
       >
-        <div className="card card-pad" style={{ margin: '0 var(--g)' }}>
+        <div className="card" style={{ margin: '0 var(--g)', padding: '16px 14px' }}>
           <Heatmap week={week} picked={start} onPick={onPickStart} />
-          <div className="legend mt-12">
-            <span data-tone="jdi">
-              <i />
+          <div className="legend">
+            <span>
+              <i style={{ background: 'var(--go)' }} />
               jdi
             </span>
-            <span data-tone="zvaz">
-              <i />
+            <span>
+              <i style={{ background: 'var(--warn)' }} />
               zvaž
             </span>
-            <span data-tone="nejdi">
-              <i />
+            <span>
+              <i style={{ background: 'repeating-linear-gradient(135deg, var(--stop) 0 2px, var(--stop-soft) 2px 4px)' }} />
               nejdi
             </span>
             <span>
-              <i style={{ background: 'var(--fill-2)' }} />
+              <i style={{ background: 'var(--sunk)' }} />
               nevychází
+            </span>
+            <span className="end">
+              <i style={{ background: 'none', boxShadow: 'inset 0 0 0 2px var(--ink)' }} />
+              nejlepší
             </span>
           </div>
         </div>
@@ -113,7 +114,7 @@ export function KdyJitScreen({ route, data, week, start, onPickStart }: Props) {
           title="Na vrcholu"
           aside={<span className="aside">{metres(summit.site.elevation)}</span>}
           footer={vlna(
-            'Šedá je oblačnost v dané výšce, čím tmavší, tím hustší. Když přetne čárkovanou výšku vrcholu, budeš nahoře v mraku. Vítr je dorovnaný na hřeben, nárazy a srážky jsou z nepříznivé strany ansámblu jako ve verdiktu.',
+            'Šedá je oblačnost v dané výšce, čím tmavší, tím hustší. Až přetne čárkovanou výšku vrcholu, budeš nahoře v mraku. Vítr je dorovnaný na hřeben, nárazy a srážky jsou z nepříznivé strany ansámblu jako ve verdiktu.',
           )}
         >
           <div className="card card-pad" style={{ margin: '0 var(--g)' }}>
@@ -130,20 +131,19 @@ export function KdyJitScreen({ route, data, week, start, onPickStart }: Props) {
             return (
               <Cell
                 key={d.date}
-                title={capital(dayLabel(date))}
+                title={<span style={{ fontSize: 16 }}>{capital(dayLabel(date))}</span>}
                 sub={
-                  d.best
-                    ? `start ${clock(d.best.start)}, návrat ${clock(d.best.endsAt)}`
-                    : 'trasa se za světla nestihne'
+                  <span className="mono" style={{ fontSize: 11.5 }}>
+                    {d.best ? `start ${clock(d.best.start)} · návrat ${clock(d.best.endsAt)}` : 'trasa se za světla nestihne'}
+                  </span>
                 }
                 onClick={d.best ? () => onPickStart(d.best!.start) : undefined}
                 chevron={Boolean(d.best)}
+                style={{ minHeight: 64 }}
               >
-                {score !== null && (
-                  <span className="badge" data-tone={verdictOf(score)}>
-                    {score}
-                  </span>
-                )}
+                <span className="badge badge--md" data-tone={score === null ? 'none' : verdictOf(score)}>
+                  {score ?? '—'}
+                </span>
               </Cell>
             )
           })}

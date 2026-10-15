@@ -24,7 +24,7 @@ import {
   num,
   parseDay,
   plural,
-  temp,
+  signed,
   vlna,
 } from '../lib/format'
 import { dayKey, type Assessment, type DayOutlook, type Sample } from '../lib/plan'
@@ -96,9 +96,9 @@ export function VerdiktScreen(props: Props) {
   }
 
   const title = (
-    <button className="row" style={{ gap: 6, textAlign: 'left' }} onClick={() => setSwitching(true)}>
+    <button className="hd-route" onClick={() => setSwitching(true)}>
       <span>{route.name || 'Bez názvu'}</span>
-      {routes.length > 1 && <Icon name="chevronDown" size={20} stroke={2.4} color="var(--ink-3)" style={{ marginTop: 6 }} />}
+      {routes.length > 1 && <Icon name="chevronDown" size={22} stroke={2.2} />}
     </button>
   )
 
@@ -115,7 +115,7 @@ export function VerdiktScreen(props: Props) {
               setSwitching(false)
             }}
           >
-            {r.id === route.id && <Icon name="check" size={20} stroke={2.4} color="var(--accent)" />}
+            {r.id === route.id && <Icon name="check" size={20} stroke={2.4} />}
           </Cell>
         ))}
       </div>
@@ -137,12 +137,12 @@ export function VerdiktScreen(props: Props) {
   const actions = (
     <>
       {assessment && (
-        <button className="icon-btn" onClick={() => void share(route, assessment)} aria-label="Sdílet plán">
-          <Icon name="share" size={22} />
+        <button className="icon-btn icon-btn--card" onClick={() => void share(route, assessment)} aria-label="Sdílet plán">
+          <Icon name="share" size={20} />
         </button>
       )}
-      <button className="icon-btn" onClick={onEdit} aria-label="Upravit trasu">
-        <Icon name="edit" size={22} />
+      <button className="icon-btn icon-btn--card" onClick={onEdit} aria-label="Upravit trasu">
+        <Icon name="edit" size={20} />
       </button>
     </>
   )
@@ -159,9 +159,8 @@ export function VerdiktScreen(props: Props) {
   const shell = (children: ReactNode) => (
     <Screen
       title={title}
-      barTitle={route.name}
       actions={actions}
-      subtitle={subtitle}
+      eyebrow={subtitle}
       onRefresh={data.reload}
       refreshing={data.loading && Boolean(assessment)}
     >
@@ -236,15 +235,21 @@ export function VerdiktScreen(props: Props) {
       )}
 
       {days.length > 0 && (
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 18 }}>
           <DayStrip days={days} selected={selectedDay} onSelect={pickDay} />
         </div>
       )}
 
-      <div className="page mt-12">
-        <div className="card verdict" data-tone={verdict}>
+      <div className="page" style={{ marginTop: 16 }}>
+        <section className="verdict" data-tone={verdict} aria-label="Verdikt">
+          <div className="verdict-meta">
+            <span>Verdikt · {dayLabel(start)}</span>
+            {data.forecast && <span>{plural(data.forecast.sites.length, 'místo', 'místa', 'míst')} na trase</span>}
+          </div>
           <div className="verdict-top">
-            <div className="verdict-word">{WORD[verdict]}</div>
+            <div className="verdict-word" data-len={WORD[verdict].length}>
+              {WORD[verdict]}
+            </div>
             <div className="score">
               <b>{a.score.score}</b>
               <span>bodů ze 100</span>
@@ -253,8 +258,8 @@ export function VerdiktScreen(props: Props) {
           <p className="verdict-why">{vlna(summaryOf(a))}</p>
           <HourStrip assessment={a} roundTrip={route.roundTrip === true} />
           <div className="verdict-foot">
-            <label className="pill time-pick">
-              <Icon name="clock" size={16} stroke={2.2} />
+            <label className="pill pill--ink time-pick">
+              <Icon name="clock" size={18} stroke={2} />
               Start {clock(start)}
               <input
                 type="time"
@@ -269,12 +274,17 @@ export function VerdiktScreen(props: Props) {
                 }}
               />
             </label>
-            <span className="t-sub muted grow" style={{ textAlign: 'right' }}>
+            <span className="t-foot" style={{ textAlign: 'right', lineHeight: 1.3 }}>
               {duration(a.plan.minutes)}
-              {a.plan.breakMin > 0 ? ` vč. pauzy ${a.plan.breakMin} min` : ''}
+              {a.plan.breakMin > 0 && (
+                <>
+                  <br />
+                  vč. pauzy {a.plan.breakMin} min
+                </>
+              )}
             </span>
           </div>
-        </div>
+        </section>
       </div>
 
       {issues.length > 0 && (
@@ -293,7 +303,7 @@ export function VerdiktScreen(props: Props) {
               tone="zvaz"
               title="Otoč se nejpozději"
               sub={`${a.storm.summit}, sestup pod hranici lesa ${duration(a.storm.exitMin)}`}
-              value={<b style={{ color: 'var(--ink)' }}>{clock(a.storm.turnaround)}</b>}
+              value={clock(a.storm.turnaround)}
             />
             <Cell
               icon="walk"
@@ -304,7 +314,7 @@ export function VerdiktScreen(props: Props) {
                   ? `O ${duration((start.getTime() - a.storm.latestStart.getTime()) / 60000)} dřív, než máš v plánu.`
                   : 'Tvůj start se do okna vejde.'
               }
-              value={<b style={{ color: 'var(--ink)' }}>{clock(a.storm.latestStart)}</b>}
+              value={clock(a.storm.latestStart)}
             />
           </div>
         </Section>
@@ -316,37 +326,30 @@ export function VerdiktScreen(props: Props) {
         </div>
       </Section>
 
-      <Section title="Na trase">
+      <Section title="Na trase" aside={<span className="aside">Nepříznivý scénář</span>}>
         <div className="tiles">
           <Tile
             icon="thermo"
             label="Pocitově"
             tone={coldest.hour.apparentTemperatureRisk <= -8 ? 'nejdi' : coldest.hour.apparentTemperatureRisk <= 2 ? 'zvaz' : undefined}
-            value={temp(coldest.hour.apparentTemperatureRisk)}
+            value={signed(Math.round(coldest.hour.apparentTemperatureRisk))}
+            unit="°C"
             note={`nejchladněji v ${clock(coldest.at)}, ${coldest.where.name}`}
           />
           <Tile
             icon="wind"
             label="Nárazy větru"
             tone={gust >= 70 ? 'nejdi' : gust >= 50 ? 'zvaz' : undefined}
-            value={
-              <>
-                {gust}
-                <small>km/h</small>
-              </>
-            }
+            value={gust}
+            unit="km/h"
             note={windiest.hour.ridgeWind ? `na hřebeni kolem ${clock(windiest.at)}` : `nejvíc kolem ${clock(windiest.at)}`}
           />
           <Tile
             icon="drop"
             label="Srážky"
             tone={a.score.rainMm >= 8 ? 'nejdi' : a.score.rainMm >= 2 ? 'zvaz' : undefined}
-            value={
-              <>
-                {num(a.score.rainMm, 1)}
-                <small>mm</small>
-              </>
-            }
+            value={num(a.score.rainMm, 1)}
+            unit="mm"
             note={
               wettest.hour.precipitationProbability >= 10
                 ? `šance na déšť až ${Math.round(wettest.hour.precipitationProbability)} %`
@@ -357,7 +360,7 @@ export function VerdiktScreen(props: Props) {
             icon="eye"
             label="Viditelnost"
             tone={foggiest && (foggiest.hour.visibility ?? 1e9) < 1000 ? 'nejdi' : foggiest && (foggiest.hour.visibility ?? 1e9) < 3000 ? 'zvaz' : undefined}
-            value={visibilityValue(foggiest?.hour.visibility ?? null)}
+            {...visibilityValue(foggiest?.hour.visibility ?? null)}
             note={
               foggiest && (foggiest.hour.visibility ?? 1e9) < 3000
                 ? `mlha kolem ${clock(foggiest.at)}`
@@ -405,7 +408,7 @@ export function VerdiktScreen(props: Props) {
           )}
           {freezeLow !== null && (
             <Cell
-              icon="thermo"
+              icon="asterisk"
               tone={freezeLow < top ? 'zvaz' : undefined}
               title="Nulová izoterma"
               sub={freezeLow < top ? 'Nahoře může mrznout, pozor na námrazu.' : 'Nad celou trasou.'}
@@ -424,7 +427,7 @@ export function VerdiktScreen(props: Props) {
             </span>
           ) : undefined
         }
-        footer="Skóre je ze 60 % nejslabší hodina a ze 40 % průměr celé túry. Počítá se z nepříznivé čtvrtiny scénářů ansámblu, ne z nejpravděpodobnější hodnoty."
+        footer="Počítá se z nepříznivé čtvrtiny scénářů ansámblu, ne z nejpravděpodobnější hodnoty."
       >
         <div className="list">
           {breakdown.length === 0 ? (
@@ -432,14 +435,12 @@ export function VerdiktScreen(props: Props) {
           ) : (
             breakdown.map((p) => (
               <div className="cell" key={p.key} data-tone={p.points >= 20 ? 'nejdi' : p.points >= 8 ? 'zvaz' : 'none'}>
-                <div className="cell-main">
+                <div className="cell-main" style={{ gap: 8 }}>
                   <div className="between">
                     <span className="cell-title">{p.label}</span>
-                    <span className="num" style={{ color: 'var(--tone)', fontWeight: 600 }}>
-                      −{Math.round(p.points)}
-                    </span>
+                    <span className="cell-value">−{Math.round(p.points)}</span>
                   </div>
-                  <div className="meter mt-8">
+                  <div className="meter">
                     <i style={{ width: `${Math.min(100, Math.max(3, (p.points / penaltyScale) * 100))}%` }} />
                   </div>
                   <div className="cell-sub">{p.detail}</div>
@@ -447,40 +448,55 @@ export function VerdiktScreen(props: Props) {
               </div>
             ))
           )}
+          {/* Jak se skóre skládá: nejslabší hodina váží víc než průměr. */}
+          <div className="cell" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6, paddingTop: breakdown.length === 0 ? 2 : 14 }}>
+            <div className="row" style={{ gap: 3 }}>
+              <i style={{ flex: 60, height: 8, borderRadius: 4, background: 'var(--ink)' }} />
+              <i style={{ flex: 40, height: 8, borderRadius: 4, background: 'var(--line-2)' }} />
+            </div>
+            <div className="between label" style={{ fontSize: 10.5, letterSpacing: '0.04em' }}>
+              <span>60 % nejslabší hodina</span>
+              <span>40 % průměr túry</span>
+            </div>
+          </div>
         </div>
       </Section>
 
       <Section title="Jistota předpovědi" footer={certaintyFootnote(a, data)}>
-        <div className="list">
-          <Cell
-            icon="gauge"
-            tone={a.certainty === null ? 'none' : a.certainty >= 75 ? 'jdi' : a.certainty >= 50 ? 'zvaz' : 'nejdi'}
-            title={
-              a.certainty === null
-                ? 'Bez ansámblu'
-                : a.certainty >= 75
-                  ? 'Vysoká'
-                  : a.certainty >= 50
-                    ? 'Střední'
-                    : 'Nízká'
-            }
-            sub={
-              a.certainty === null
-                ? 'Ansámbl se nestáhl, skóre je z jednoho modelu bez rezervy na horší scénář.'
-                : `Mezi příznivým a nepříznivým scénářem se skóre liší o ${plural(Math.round((100 - a.certainty) / 1.4), 'bod', 'body', 'bodů')}.`
-            }
-            value={a.certainty === null ? '—' : `${a.certainty} %`}
-          />
+        <div className="card card-pad stack" style={{ margin: '0 var(--g)', gap: 14 }}>
+          <div className="between" style={{ alignItems: 'flex-end' }}>
+            <div className="stack" style={{ gap: 4 }}>
+              <span className="cell-title">
+                {a.certainty === null
+                  ? 'Bez ansámblu'
+                  : a.certainty >= 75
+                    ? 'Vysoká'
+                    : a.certainty >= 50
+                      ? 'Střední'
+                      : 'Nízká'}
+              </span>
+              <span className="cell-sub" style={{ maxWidth: 220 }}>
+                {vlna(
+                  a.certainty === null
+                    ? 'Ansámbl se nestáhl, skóre je z jednoho modelu bez rezervy na horší scénář.'
+                    : `Mezi příznivým a nepříznivým scénářem se skóre liší o ${plural(Math.round((100 - a.certainty) / 1.4), 'bod', 'body', 'bodů')}.`,
+                )}
+              </span>
+            </div>
+            <div className="tile-value" style={{ fontSize: 44 }}>
+              {a.certainty === null ? '—' : a.certainty}
+              {a.certainty !== null && <small>%</small>}
+            </div>
+          </div>
+          <div className="segs" aria-hidden="true">
+            {Array.from({ length: 10 }, (_, i) => (
+              <i key={i} data-on={a.certainty !== null && i < Math.round(a.certainty / 10)} />
+            ))}
+          </div>
         </div>
       </Section>
 
-      <Section title="Mapa">
-        <div className="card" style={{ margin: '0 var(--g)', overflow: 'hidden' }}>
-          <RouteMap track={data.track} samples={samples} />
-        </div>
-      </Section>
-
-      <RadarSection track={data.track} center={top > 0 ? highestPoint(data.track) : route.waypoints[0]} />
+      <MapSection track={data.track} samples={samples} center={top > 0 ? highestPoint(data.track) : route.waypoints[0]} />
 
       <p className="footer-note">
         {data.fetchedAt ? `Aktualizováno ${ago(data.fetchedAt)}` : ''}
@@ -515,40 +531,53 @@ function Tile({
   icon,
   label,
   value,
+  unit,
   note,
   tone,
 }: {
   icon: IconName
   label: string
   value: ReactNode
+  unit?: string
   note: string
   tone?: 'zvaz' | 'nejdi'
 }) {
   return (
     <div className="card tile" data-tone={tone}>
       <div className="tile-label">
-        <Icon name={icon} size={15} stroke={2.2} />
+        <Icon name={icon} size={16} stroke={1.9} />
         {label}
       </div>
-      <div className="tile-value">{value}</div>
-      <div className="tile-note truncate">{note}</div>
+      <div className="tile-value">
+        {value}
+        {unit && <small>{unit}</small>}
+      </div>
+      <div className="tile-note">{vlna(note)}</div>
     </div>
   )
 }
 
-function RadarSection({ track, center }: { track: RouteData['track']; center: { lat: number; lon: number } }) {
+/** Mapa trasy a pod ní radar v jedné kartě. Radar se stahuje až na požádání. */
+function MapSection({
+  track,
+  samples,
+  center,
+}: {
+  track: NonNullable<RouteData['track']>
+  samples: Sample[]
+  center: { lat: number; lon: number }
+}) {
   const [open, setOpen] = useState(false)
   return (
-    <Section title="Srážkový radar">
-      {open ? (
-        <div style={{ margin: '0 var(--g)' }}>
+    <Section title="Mapa" aside={<span className="aside">OpenTopoMap</span>}>
+      <div className="card" style={{ margin: '0 var(--g)', overflow: 'hidden' }}>
+        <RouteMap track={track} samples={samples} height={196} />
+        {open ? (
           <RadarMap track={track} center={center} />
-        </div>
-      ) : (
-        <div className="list">
-          <Cell icon="radar" title="Ukázat radar" sub="Poslední dvě hodiny, s trasou navrch." chevron onClick={() => setOpen(true)} />
-        </div>
-      )}
+        ) : (
+          <Cell icon="radar" tone="rain" title="Srážkový radar" sub="Poslední dvě hodiny, s trasou navrch." chevron onClick={() => setOpen(true)} />
+        )}
+      </div>
     </Section>
   )
 }
@@ -557,11 +586,11 @@ function highestPoint(track: NonNullable<RouteData['track']>) {
   return track.points.reduce((a, p) => (p.elevation > a.elevation ? p : a), track.points[0])
 }
 
-function visibilityValue(v: number | null) {
-  if (v === null) return '—'
-  if (v >= 10000) return <>10+<small>km</small></>
-  if (v >= 1000) return <>{num(v / 1000, v < 3000 ? 1 : 0)}<small>km</small></>
-  return <>{Math.round(v / 10) * 10}<small>m</small></>
+function visibilityValue(v: number | null): { value: string; unit?: string } {
+  if (v === null) return { value: '—' }
+  if (v >= 10000) return { value: '10+', unit: 'km' }
+  if (v >= 1000) return { value: num(v / 1000, v < 3000 ? 1 : 0), unit: 'km' }
+  return { value: String(Math.round(v / 10) * 10), unit: 'm' }
 }
 
 /** Co dělá spadlá voda s terénem. */
