@@ -1,4 +1,5 @@
 import { isLoop } from '../lib/geo'
+import { DEFAULT_PREFS, type Preferences } from '../lib/score'
 import type { Route } from '../lib/types'
 
 const KEY = 'navrchol.v1'
@@ -16,6 +17,8 @@ export interface Settings {
   paceScale: number
   /** Kdy a z jaké túry se tempo naposledy kalibrovalo. */
   calibratedFrom?: { routeName: string; at: number }
+  /** Co komu vadí — mění body za pohodlí a případně vypíná tvrdé zákazy. */
+  prefs: Preferences
 }
 
 export interface StoredState {
@@ -62,7 +65,7 @@ const EMPTY: StoredState = {
   baseGear: DEFAULT_BASE_GEAR,
   packed: {},
   seenIntro: false,
-  settings: { paceScale: 1 },
+  settings: { paceScale: 1, prefs: DEFAULT_PREFS },
 }
 
 /**
@@ -97,7 +100,15 @@ export function load(): StoredState {
       baseGear: parsed.baseGear ?? DEFAULT_BASE_GEAR,
       packed: parsed.packed ?? {},
       seenIntro: parsed.seenIntro ?? false,
-      settings: { paceScale: 1, ...parsed.settings },
+      settings: {
+        paceScale: 1,
+        ...parsed.settings,
+        // Jev, který přibude v nové verzi, má u starého nastavení zůstat „běžně".
+        prefs: {
+          comfort: { ...DEFAULT_PREFS.comfort, ...parsed.settings?.prefs?.comfort },
+          bansOff: parsed.settings?.prefs?.bansOff ?? [],
+        },
+      },
     }
   } catch {
     return EMPTY

@@ -137,7 +137,9 @@ export interface RouteOutlook {
 
 export function useAllOutlooks(routes: PlannedRoute[]): Record<string, RouteOutlook> {
   const [byRoute, setByRoute] = useState<Record<string, RouteOutlook>>({})
-  const key = routes.map((r) => `${r.id}:${signatureOf(r)}:${r.roundTrip}:${r.pace}:${r.breakMin}:${r.paceScale}`).join('|')
+  const key = routes
+    .map((r) => `${r.id}:${signatureOf(r)}:${r.roundTrip}:${r.pace}:${r.breakMin}:${r.paceScale}:${JSON.stringify(r.prefs)}`)
+    .join('|')
 
   useEffect(() => {
     let alive = true

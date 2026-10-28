@@ -18,7 +18,37 @@ export interface Issue {
   at?: string
   /** Síla jevu — při sloučení stejných problémů zůstane ten nejhorší. */
   magnitude: number
+  /** Tvrdý zákaz, který si člověk vypnul. Verdikt nepřebije, ale nesmí se ztratit mezi drobnostmi. */
+  bypassed?: boolean
 }
+
+/** Jak moc komu vadí jev, který bere body jen za pohodlí. */
+export type Tolerance = 'vadi' | 'bezne' | 'nevadi'
+
+/** Jevy, které si každý nastaví podle sebe. Bouřka, podchlazení a námraza mezi ně nepatří. */
+export type ComfortKey = 'dest' | 'vitr' | 'chlad' | 'horko' | 'snih' | 'vyhled'
+
+/** Tvrdé zákazy. Klíče jsou stejné jako u problémů, které je hlásí. */
+export type BanKey = 'vitr' | 'bourka' | 'mlha' | 'omrzliny' | 'podchlazeni'
+
+/** Co komu vadí. Každý má „jdi" a „nejdi" jinde. */
+export interface Preferences {
+  comfort: Record<ComfortKey, Tolerance>
+  /** Zákazy, které si člověk vypnul. Pak jen varují. */
+  bansOff: BanKey[]
+}
+
+export const DEFAULT_PREFS: Preferences = {
+  comfort: { dest: 'bezne', vitr: 'bezne', chlad: 'bezne', horko: 'bezne', snih: 'bezne', vyhled: 'bezne' },
+  bansOff: [],
+}
+
+/**
+ * Násobek bodů za pohodlí. „Nevadí" nebere body úplně: dva milimetry deště
+ * přehlédne, ale hodina průtrže mračen (15 mm/h) pořád stáhne verdikt na zvaž.
+ */
+const TOLERANCE_FACTOR: Record<Tolerance, number> = { vadi: 1.5, bezne: 1, nevadi: 0.35 }
+const TOLERANCE_NOTE: Record<Tolerance, string> = { vadi: ' · tobě vadí víc', bezne: '', nevadi: ' · tobě moc nevadí' }
 
 /** Jedna položka rozpadu skóre — kolik bodů který jev sebral a proč. */
 export interface Penalty {
@@ -140,10 +170,13 @@ export function scoreHour(
   hour: HourPoint,
   waypoint: Waypoint,
   context: HourContext = NO_CONTEXT,
+  prefs: Preferences = DEFAULT_PREFS,
 ): HourScore {
   const exposed = waypoint.elevation >= EXPOSED_ABOVE_M
   const issues: Issue[] = []
   const place = waypoint.name
+  const factor = (k: ComfortKey) => TOLERANCE_FACTOR[prefs.comfort[k]]
+  const note = (k: ComfortKey) => TOLERANCE_NOTE[prefs.comfort[k]]
 
   // Skóruje se z nepříznivého kvartilu ansámblu, ne z nejpravděpodobnější hodnoty.
   const rain = rainOf(hour)
@@ -152,34 +185,41 @@ export function scoreHour(
   const gusts = hour.windGustsRisk
   const apparent = hour.apparentTemperatureRisk
   const wet = rain >= 0.4 || context.soakedMm >= 1.5
+  const temp: ComfortKey = apparent < 5 ? 'chlad' : 'horko'
 
+  // Bouřka, podchlazení a námraza nejsou otázka pohodlí, ty se podle nastavení neškálují.
   const raw = {
-    teplota: tempPenalty(apparent),
-    vitr: gustPenalty(gusts) * (exposed ? 1.25 : 1),
-    srazky: rainPenalty(rain, rainProbability),
+    teplota: tempPenalty(apparent) * factor(temp),
+    vitr: gustPenalty(gusts) * (exposed ? 1.25 : 1) * factor('vitr'),
+    srazky: rainPenalty(rain, rainProbability) * factor('dest'),
     podchlazeni: hypothermiaPenalty(apparent, wet, gusts),
-    mokro: soakPenalty(context.soakedMm),
-    snih: snowPenalty(hour.snowfallRisk, hour.snowDepth),
+    mokro: soakPenalty(context.soakedMm) * factor('dest'),
+    snih: snowPenalty(hour.snowfallRisk, hour.snowDepth) * factor('snih'),
     bourka: stormPenalty(hour.capeRisk) * (exposed ? 1.4 : 1),
-    mlha: visibilityPenalty(hour.visibility),
+    mlha: visibilityPenalty(hour.visibility) * factor('vyhled'),
     namraza: icingPenalty(hour, waypoint.elevation),
   }
   const penalty = Object.values(raw).reduce((a, b) => a + b, 0)
   const g = Math.round(gusts)
 
   const penalties: Penalty[] = [
-    { key: 'teplota', label: apparent < 5 ? 'Chlad' : 'Horko', points: raw.teplota, detail: `pocitově ${deg(apparent)}` },
+    {
+      key: 'teplota',
+      label: apparent < 5 ? 'Chlad' : 'Horko',
+      points: raw.teplota,
+      detail: `pocitově ${deg(apparent)}${note(temp)}`,
+    },
     {
       key: 'vitr',
       label: 'Vítr',
       points: raw.vitr,
-      detail: `nárazy ${g} km/h${exposed ? ' na hřebeni' : ''}${hour.ridgeWind ? ', dopočteno z volné atmosféry' : ''}`,
+      detail: `nárazy ${g} km/h${exposed ? ' na hřebeni' : ''}${hour.ridgeWind ? ', dopočteno z volné atmosféry' : ''}${note('vitr')}`,
     },
     {
       key: 'srazky',
       label: 'Srážky',
       points: raw.srazky,
-      detail: `${dec(rain)} mm/h, prší v ${Math.round(rainProbability)} % scénářů`,
+      detail: `${dec(rain)} mm/h, prší v ${Math.round(rainProbability)} % scénářů${note('dest')}`,
     },
     {
       key: 'podchlazeni',
@@ -187,19 +227,24 @@ export function scoreHour(
       points: raw.podchlazeni,
       detail: `mokro, pocitově ${deg(apparent)}, nárazy ${g} km/h`,
     },
-    { key: 'mokro', label: 'Promočení', points: raw.mokro, detail: `${dec(context.soakedMm)} mm nasbíráno cestou` },
+    {
+      key: 'mokro',
+      label: 'Promočení',
+      points: raw.mokro,
+      detail: `${dec(context.soakedMm)} mm nasbíráno cestou${note('dest')}`,
+    },
     {
       key: 'snih',
       label: 'Sníh',
       points: raw.snih,
-      detail: `padá ${dec(hour.snowfallRisk)} cm/h, leží ${Math.round(hour.snowDepth * 100)} cm`,
+      detail: `padá ${dec(hour.snowfallRisk)} cm/h, leží ${Math.round(hour.snowDepth * 100)} cm${note('snih')}`,
     },
     { key: 'bourka', label: 'Bouřka', points: raw.bourka, detail: `CAPE ${Math.round(hour.capeRisk)} J/kg` },
     {
       key: 'mlha',
       label: 'Viditelnost',
       points: raw.mlha,
-      detail: hour.visibility === null ? 'model ji nehlásí' : `${Math.round(hour.visibility)} m`,
+      detail: `${hour.visibility === null ? 'model ji nehlásí' : `${Math.round(hour.visibility)} m`}${note('vyhled')}`,
     },
     { key: 'namraza', label: 'Námraza', points: raw.namraza, detail: 'nulová izoterma pod trasou a prší' },
   ]
@@ -207,48 +252,45 @@ export function scoreHour(
     .sort((a, b) => b.points - a.points)
 
   const add = (i: Omit<Issue, 'place' | 'at'>) => issues.push({ ...i, place, at: hour.time })
+  // Vypnutý zákaz verdikt nepřebije, ale ohlásí se dál — jako varování.
+  const ban = (key: BanKey, i: Pick<Issue, 'title' | 'detail' | 'magnitude'>) =>
+    add(
+      prefs.bansOff.includes(key)
+        ? { ...i, key, severity: 'varovani', detail: `${i.detail} Zákaz máš vypnutý.`, bypassed: true }
+        : { ...i, key, severity: 'blok' },
+    )
 
-  // Tvrdé zákazy. Ty přebijí skóre bez ohledu na to, jak hezky vyšlo.
+  // Tvrdé zákazy. Ty přebijí skóre bez ohledu na to, jak hezky vyšlo — pokud si je člověk nevypnul.
   if (gusts >= 75 && exposed) {
-    add({
-      key: 'vitr',
-      severity: 'blok',
+    ban('vitr', {
       title: `Nárazy až ${g} km/h`,
       detail: 'V takovém větru se na odkrytém hřebeni neudržíš na nohou.',
       magnitude: gusts,
     })
   }
   if (hour.capeRisk >= 1200 && hour.precipitationRisk > 0.2) {
-    add({
-      key: 'bourka',
-      severity: 'blok',
+    ban('bourka', {
       title: 'Bouřky na trase',
       detail: `CAPE ${Math.round(hour.capeRisk)} J/kg a srážky. Nad lesem se nemáš kam schovat.`,
       magnitude: hour.capeRisk,
     })
   }
   if (hour.visibility !== null && hour.visibility < 300) {
-    add({
-      key: 'mlha',
-      severity: 'blok',
+    ban('mlha', {
       title: `Viditelnost ${Math.round(hour.visibility)} m`,
       detail: 'Hustá mlha. Bez navigace se snadno ztratíš.',
       magnitude: 1000 - hour.visibility,
     })
   }
   if (apparent <= -15 && gusts >= 50) {
-    add({
-      key: 'omrzliny',
-      severity: 'blok',
+    ban('omrzliny', {
       title: `Pocitově ${deg(apparent)}`,
       detail: `Při nárazech ${g} km/h hrozí omrzliny na odkrytých místech.`,
       magnitude: -apparent,
     })
   }
   if (wet && apparent <= 6 && gusts >= 40) {
-    add({
-      key: 'podchlazeni',
-      severity: 'blok',
+    ban('podchlazeni', {
       title: 'Riziko podchlazení',
       detail: `Mokro, pocitově ${deg(apparent)} a nárazy ${g} km/h.`,
       magnitude: raw.podchlazeni,
@@ -341,6 +383,7 @@ export function certaintyOf(
   spread: Spread,
   waypoint: Waypoint,
   context: HourContext = NO_CONTEXT,
+  prefs: Preferences = DEFAULT_PREFS,
 ): number | null {
   if (spread.members === 0) return null
 
@@ -351,7 +394,7 @@ export function certaintyOf(
     windGustsRisk: Math.max(0, hour.windGustsRisk - spread.windGusts),
     windGustsHigh: Math.max(0, hour.windGustsHigh - spread.windGusts),
   }
-  const wobble = scoreHour(best, waypoint, context).score - scoreHour(hour, waypoint, context).score
+  const wobble = scoreHour(best, waypoint, context, prefs).score - scoreHour(hour, waypoint, context, prefs).score
   return Math.round(clamp(100 - wobble * 1.4, 0, 100))
 }
 
@@ -380,14 +423,17 @@ export interface RouteScore {
  *
  * Body musí jít v čase po sobě — promočení se mezi nimi kumuluje.
  */
-export function scoreRoute(points: Array<{ waypoint: Waypoint; hour: HourPoint }>): RouteScore {
+export function scoreRoute(
+  points: Array<{ waypoint: Waypoint; hour: HourPoint }>,
+  prefs: Preferences = DEFAULT_PREFS,
+): RouteScore {
   if (points.length === 0) {
     return { score: 0, verdict: 'nejdi', blockers: [], warnings: [], weakest: null, rainMm: 0, hourly: [] }
   }
 
   let soakedMm = 0
   const scored = points.map((p) => {
-    const result = scoreHour(p.hour, p.waypoint, { soakedMm })
+    const result = scoreHour(p.hour, p.waypoint, { soakedMm }, prefs)
     soakedMm += rainOf(p.hour)
     return { ...p, ...result }
   })
@@ -398,9 +444,10 @@ export function scoreRoute(points: Array<{ waypoint: Waypoint; hour: HourPoint }
 
   const all = scored.flatMap((s) => s.issues)
   const blockers = dedupe(all.filter((i) => i.severity === 'blok'))
-  const warnings = dedupe(all.filter((i) => i.severity === 'varovani')).filter(
-    (w) => !blockers.some((b) => b.key === w.key),
-  )
+  const warnings = dedupe(all.filter((i) => i.severity === 'varovani'))
+    .filter((w) => !blockers.some((b) => b.key === w.key))
+    // Vypnuté zákazy jdou první, ať je nepřekryje varování před deštěm.
+    .sort((a, b) => Number(b.bypassed ?? false) - Number(a.bypassed ?? false))
   const weakest = scored.find((s) => s.score === min) ?? null
 
   return {

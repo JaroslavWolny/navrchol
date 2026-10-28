@@ -10,7 +10,7 @@ import {
   snowProfileOf,
   toblerSpeed,
 } from '../pace'
-import { certaintyOf, scoreHour, scoreRoute, verdictOf } from '../score'
+import { certaintyOf, DEFAULT_PREFS, scoreHour, scoreRoute, verdictOf, type Preferences } from '../score'
 import { assess } from '../plan'
 import { DEMO_ROUTE_ID, load } from '../../state/store'
 import { scoreSky } from '../sky'
@@ -431,6 +431,72 @@ describe('sníh', () => {
     expect(profil(700)).toBe(0)
     expect(profil(1100)).toBeCloseTo(0.4, 2)
     expect(profil(2000)).toBe(0.8)
+  })
+})
+
+describe('co komu vadí', () => {
+  const prefs = (comfort: Partial<Preferences['comfort']>, bansOff: Preferences['bansOff'] = []): Preferences => ({
+    comfort: { ...DEFAULT_PREFS.comfort, ...comfort },
+    bansOff,
+  })
+  const vsechnoJedno = prefs({ dest: 'nevadi', vitr: 'nevadi', chlad: 'nevadi', horko: 'nevadi', snih: 'nevadi', vyhled: 'nevadi' })
+
+  it('komu déšť nevadí, tomu celodenní mrholení verdikt nezkazí', () => {
+    const mokro = Array.from({ length: 4 }, () => ({ waypoint: PEC, hour: hour({ precipitation: 2 }) }))
+    expect(scoreRoute(mokro).verdict).toBe('zvaz')
+    expect(scoreRoute(mokro, prefs({ dest: 'nevadi' })).verdict).toBe('jdi')
+  })
+
+  it('průtrž mračen se počítá i tomu, komu déšť nevadí', () => {
+    const lijak = hour({ precipitation: 15, precipitationProbability: 100 })
+    expect(verdictOf(scoreHour(lijak, PEC, undefined, prefs({ dest: 'nevadi' })).score)).toBe('zvaz')
+  })
+
+  it('komu to vadí, tomu to bere víc bodů', () => {
+    const h = hour({ apparentTemperature: 29 })
+    const bodu = (p: Preferences) => scoreHour(h, PEC, undefined, p).penalties.find((x) => x.key === 'teplota')!
+    expect(bodu(prefs({ horko: 'vadi' })).points).toBeGreaterThan(bodu(DEFAULT_PREFS).points)
+    expect(bodu(prefs({ horko: 'vadi' })).detail).toContain('vadí víc')
+    // Chlad a horko jsou dvě různé věci: kdo nesnáší horko, tomu se zima nepřitíží.
+    const zima = hour({ apparentTemperature: -2 })
+    expect(scoreHour(zima, PEC, undefined, prefs({ horko: 'vadi' })).score).toBe(scoreHour(zima, PEC).score)
+  })
+
+  it('bouřka a podchlazení se podle nastavení nemění', () => {
+    const h = hour({ cape: 900, precipitation: 2, apparentTemperature: 7, windGusts: 35 })
+    const body = (p?: Preferences) =>
+      Object.fromEntries(scoreHour(h, SNEZKA, undefined, p).penalties.map((x) => [x.key, x.points]))
+    expect(body(vsechnoJedno).bourka).toBe(body().bourka)
+    expect(body(vsechnoJedno).podchlazeni).toBe(body().podchlazeni)
+  })
+
+  it('nastavení pohodlí samo tvrdý zákaz nevypne', () => {
+    const r = scoreRoute([{ waypoint: SNEZKA, hour: hour({ windGusts: 90 }) }], vsechnoJedno)
+    expect(r.verdict).toBe('nejdi')
+    expect(r.blockers.map((b) => b.key)).toContain('vitr')
+  })
+
+  it('vypnutý zákaz verdikt nepřebije, ale varuje jako první', () => {
+    const body = [
+      { waypoint: SNEZKA, hour: hour({ windGusts: 90 }) },
+      { waypoint: SNEZKA, hour: hour({ time: '2026-09-20T10:00', precipitation: 1.5 }) },
+    ]
+    const r = scoreRoute(body, prefs({ vitr: 'nevadi', dest: 'nevadi' }, ['vitr']))
+    expect(r.blockers).toHaveLength(0)
+    expect(r.score).toBeGreaterThan(25)
+    expect(r.warnings[0]).toMatchObject({ key: 'vitr', bypassed: true })
+    expect(r.warnings[0].detail).toContain('vypnutý')
+  })
+
+  it('nastavení z dřívější verze se doplní o výchozí hodnoty', () => {
+    localStorage.setItem('navrchol.v1', JSON.stringify({ settings: { paceScale: 1.2 } }))
+    expect(load().settings).toEqual({ paceScale: 1.2, prefs: DEFAULT_PREFS })
+    localStorage.setItem(
+      'navrchol.v1',
+      JSON.stringify({ settings: { paceScale: 1, prefs: { comfort: { dest: 'nevadi' }, bansOff: ['mlha'] } } }),
+    )
+    expect(load().settings.prefs).toEqual(prefs({ dest: 'nevadi' }, ['mlha']))
+    localStorage.clear()
   })
 })
 

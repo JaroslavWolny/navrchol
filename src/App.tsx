@@ -64,8 +64,8 @@ export default function App() {
 
   const route = state.routes.find((r) => r.id === state.activeRouteId) ?? null
   const planned: PlannedRoute | null = useMemo(
-    () => (route ? { ...route, paceScale: state.settings.paceScale } : null),
-    [route, state.settings.paceScale],
+    () => (route ? { ...route, paceScale: state.settings.paceScale, prefs: state.settings.prefs } : null),
+    [route, state.settings.paceScale, state.settings.prefs],
   )
   const data = useRouteData(route)
 
@@ -154,7 +154,7 @@ export default function App() {
         <NastaveniScreen
           state={state}
           onBack={back}
-          onSettings={(settings) => setState((s) => ({ ...s, settings }))}
+          onSettings={(patch) => setState((s) => ({ ...s, settings: { ...s.settings, ...patch } }))}
           onShowIntro={() => setState((s) => ({ ...s, seenIntro: false }))}
         />
       </div>

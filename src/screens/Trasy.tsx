@@ -32,8 +32,8 @@ interface Props {
 
 export function TrasyScreen({ state, activeRoute, onPick, onNew, onImported, onEdit, onDelete, onSettings }: Props) {
   const planned: PlannedRoute[] = useMemo(
-    () => state.routes.map((r) => ({ ...r, paceScale: state.settings.paceScale })),
-    [state.routes, state.settings.paceScale],
+    () => state.routes.map((r) => ({ ...r, paceScale: state.settings.paceScale, prefs: state.settings.prefs })),
+    [state.routes, state.settings.paceScale, state.settings.prefs],
   )
   const outlooks = useAllOutlooks(planned)
   const [menuFor, setMenuFor] = useState<Route | null>(null)

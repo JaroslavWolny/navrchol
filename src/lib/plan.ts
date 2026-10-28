@@ -8,15 +8,15 @@ import {
   type RoutePlan,
   type SnowProfile,
 } from './pace'
-import { certaintyOf, scoreRoute, EXPOSED_ABOVE_M, type RouteScore } from './score'
+import { certaintyOf, scoreRoute, EXPOSED_ABOVE_M, type Preferences, type RouteScore } from './score'
 import { scoreSky, type SkyScore } from './sky'
 import { siteIndexByPoint } from './sites'
 import type { Track } from './routing'
 import type { Forecast } from './openMeteo'
 import type { ForecastSite, HourPoint, PointForecast, Route, Spread, Waypoint } from './types'
 
-/** Trasa, jak se s ní počítá: uložená trasa plus osobní kalibrace tempa. */
-export type PlannedRoute = Route & PaceLike
+/** Trasa, jak se s ní počítá: uložená trasa plus osobní kalibrace tempa a co komu vadí. */
+export type PlannedRoute = Route & PaceLike & { prefs?: Preferences }
 
 /** Index hodiny v předpovědi pro daný okamžik. Řady jsou souvisle po hodinách. */
 export function hourIndex(hours: HourPoint[], at: Date): number {
@@ -249,11 +249,11 @@ export function assess(route: PlannedRoute, track: Track, forecast: Forecast, st
     ]
   })
 
-  const score = scoreRoute(raw.map((s) => ({ waypoint: s.where, hour: s.hour })))
+  const score = scoreRoute(raw.map((s) => ({ waypoint: s.where, hour: s.hour })), route.prefs)
   const samples: Sample[] = raw.map((s, i) => ({ ...s, score: score.hourly[i]?.score ?? 0 }))
 
   const certainties = samples
-    .map((s) => certaintyOf(s.hour, s.spread, s.where))
+    .map((s) => certaintyOf(s.hour, s.spread, s.where, undefined, route.prefs))
     .filter((c): c is number => c !== null)
   const certainty = certainties.length
     ? Math.round(certainties.reduce((a, b) => a + b, 0) / certainties.length)

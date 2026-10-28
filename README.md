@@ -134,6 +134,17 @@ s CAPE nad 1 200, viditelnost pod 300 m, pocitově −15 °C ve větru nebo mokr
 s pocitovými 6 °C a nárazy nad 40 km/h znamenají NEJDI bez ohledu na to, jak hezky
 vyšel zbytek.
 
+**Co komu vadí, si každý nastaví.** Jednomu zkazí túru mrholení, druhý jde
+v dešti rád a nesnáší horko. V Nastavení → Co mi vadí má déšť, vítr, chlad, horko,
+sníh a výhled každý vlastní volbu: *Vadí* body násobí 1,5, *Nevadí* 0,35. Nevadí
+není nula schválně — čtyři hodiny deště po 2 mm/h zůstanou jdi (běžně zvaž), ale hodina průtrže mračen
+(15 mm/h) pořád stáhne verdikt na zvaž. Bouřka, podchlazení a námraza nejsou otázka
+pohodlí a berou body všem stejně. Tvrdé zákazy jdou vypnout jen jednotlivě vlastním
+přepínačem, ne přes „Nevadí", aby si nikdo nevypnul vichr na hřebeni tím, že mu
+vadí míň vítr. Vypnutý zákaz verdikt nepřebije, ale nebezpečí zůstane jako první
+varování v korálové barvě a body za něj se počítají dál. V rozpadu skóre je
+u každé upravené položky poznámka „tobě vadí víc" nebo „tobě moc nevadí".
+
 **Skóre jde rozporovat.** Verdikt neukáže jen číslo, ale i jeho rozpad: kolik bodů
 sebral chlad, vítr, srážky, podchlazení, promočení, sníh, bouřka, viditelnost
 a námraza — a v kterou hodinu a kde na trase.

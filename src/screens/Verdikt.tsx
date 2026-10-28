@@ -48,7 +48,7 @@ const ISSUE_ICON: Record<string, IconName> = {
 
 /** Jedna věta, která shrne, proč verdikt vypadá takhle. */
 function summaryOf(a: Assessment): string {
-  const [blocker] = a.score.blockers
+  const blocker = a.score.blockers[0] ?? a.score.warnings.find((w) => w.bypassed)
   if (blocker) return `${blocker.title}. ${blocker.detail}`
   if (a.certainty !== null && a.certainty < 55) {
     return 'Scénáře předpovědi se rozcházejí. Rozhodni se ráno podle radaru.'
@@ -509,7 +509,7 @@ export function VerdiktScreen(props: Props) {
 }
 
 function IssueRow({ issue }: { issue: Issue }) {
-  const tone = issue.severity === 'blok' ? 'nejdi' : 'zvaz'
+  const tone = issue.severity === 'blok' || issue.bypassed ? 'nejdi' : 'zvaz'
   return (
     <div className="issue" data-tone={tone}>
       <span className="cell-icon" data-tone={tone}>

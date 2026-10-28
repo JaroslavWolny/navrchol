@@ -1,14 +1,38 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Diagnostika } from '../components/Diagnostika'
-import { Icon } from '../components/Icon'
+import { Icon, type IconName } from '../components/Icon'
 import { Screen } from '../components/Screen'
-import { Cell, Logo, Section } from '../components/ui'
+import { Cell, Logo, Section, Segmented, Switch } from '../components/ui'
 import { calibrate, planFromTrack } from '../lib/pace'
 import { walkedRoute } from '../lib/plan'
 import { withReturn } from '../lib/routing'
 import { duration, num } from '../lib/format'
 import { readCached } from '../state/routeCache'
+import type { BanKey, ComfortKey, Preferences, Tolerance } from '../lib/score'
 import type { Settings, StoredState } from '../state/store'
+
+const COMFORT: Array<{ key: ComfortKey; label: string; icon: IconName }> = [
+  { key: 'dest', label: 'Déšť', icon: 'drop' },
+  { key: 'vitr', label: 'Vítr', icon: 'wind' },
+  { key: 'chlad', label: 'Chlad', icon: 'thermo' },
+  { key: 'horko', label: 'Horko', icon: 'sun' },
+  { key: 'snih', label: 'Sníh', icon: 'snowflake' },
+  { key: 'vyhled', label: 'Výhled', icon: 'eye' },
+]
+
+const TOLERANCES: Array<{ id: Tolerance; label: string }> = [
+  { id: 'vadi', label: 'Vadí' },
+  { id: 'bezne', label: 'Běžně' },
+  { id: 'nevadi', label: 'Nevadí' },
+]
+
+const BANS: Array<{ key: BanKey; label: string; sub: string; icon: IconName }> = [
+  { key: 'bourka', label: 'Bouřka', sub: 'CAPE nad 1\u00a0200\u00a0J/kg a srážky', icon: 'bolt' },
+  { key: 'vitr', label: 'Vichr na hřebeni', sub: 'Nárazy nad 75\u00a0km/h nad lesem', icon: 'wind' },
+  { key: 'podchlazeni', label: 'Podchlazení', sub: 'Mokro, pocitově do 6\u00a0°C a nárazy nad 40\u00a0km/h', icon: 'thermo' },
+  { key: 'omrzliny', label: 'Omrzliny', sub: 'Pocitově −15\u00a0°C a nárazy nad 50\u00a0km/h', icon: 'snowflake' },
+  { key: 'mlha', label: 'Hustá mlha', sub: 'Viditelnost pod 300\u00a0m', icon: 'eye' },
+]
 
 const HOW: Array<{ title: string; text: string }> = [
   {
@@ -25,7 +49,7 @@ const HOW: Array<{ title: string; text: string }> = [
   },
   {
     title: 'Skóre a verdikt',
-    text: 'Každá hodina túry dostane 0–100 bodů. Skóre trasy je ze 60 % nejslabší hodina a ze 40 % průměr. Nad 65 je verdikt jdi, 35–64 zvaž, pod 35 nejdi. Nárazy nad 75 km/h nad lesem, bouřky, mlha pod 300 m nebo mokro s chladem a větrem znamenají nejdi bez ohledu na zbytek.',
+    text: 'Každá hodina túry dostane 0–100 bodů. Skóre trasy je ze 60 % nejslabší hodina a ze 40 % průměr. Nad 65 je verdikt jdi, 35–64 zvaž, pod 35 nejdi. Body za déšť, vítr, chlad, horko, sníh a výhled se násobí podle toho, co ti vadí; bouřka, podchlazení a námraza berou vždy stejně. Nárazy nad 75 km/h nad lesem, bouřky, mlha pod 300 m nebo mokro s chladem a větrem znamenají nejdi bez ohledu na zbytek, dokud si zákaz sám nevypneš.',
   },
   {
     title: 'Jistota',
@@ -44,7 +68,7 @@ const HOW: Array<{ title: string; text: string }> = [
 interface Props {
   state: StoredState
   onBack: () => void
-  onSettings: (settings: Settings) => void
+  onSettings: (patch: Partial<Settings>) => void
   onShowIntro: () => void
 }
 
@@ -53,6 +77,8 @@ export function NastaveniScreen({ state, onBack, onSettings, onShowIntro }: Prop
   const standalone = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches
   const scale = state.settings.paceScale
   const pct = Math.round((scale - 1) * 100)
+  const prefs = state.settings.prefs
+  const setPrefs = (patch: Partial<Preferences>) => onSettings({ prefs: { ...prefs, ...patch } })
 
   return (
     <Screen
@@ -81,12 +107,52 @@ export function NastaveniScreen({ state, onBack, onSettings, onShowIntro }: Prop
             }
           >
             {pct !== 0 && (
-              <button className="link t-sub" onClick={() => onSettings({ paceScale: 1 })}>
+              <button className="link t-sub" onClick={() => onSettings({ paceScale: 1, calibratedFrom: undefined })}>
                 Zrušit
               </button>
             )}
           </Cell>
           <Calibration state={state} onSettings={onSettings} />
+        </div>
+      </Section>
+
+      <Section
+        title="Co mi vadí"
+        footer="Každý má „jdi“ jinde. Vadí bere víc bodů, Nevadí přehlédne drobnosti — extrém, třeba průtrž mračen, se počítá dál. Upozornění ve verdiktu zůstanou."
+      >
+        <div className="list">
+          {COMFORT.map((c) => (
+            <Cell key={c.key} icon={c.icon} title={c.label}>
+              <Segmented
+                label={c.label}
+                value={prefs.comfort[c.key]}
+                options={TOLERANCES}
+                onChange={(v) => setPrefs({ comfort: { ...prefs.comfort, [c.key]: v } })}
+              />
+            </Cell>
+          ))}
+        </div>
+      </Section>
+
+      <Section
+        title="Tvrdé zákazy"
+        footer="Zapnutý zákaz znamená nejdi, ať vyjde skóre jakkoli. Vypnutý už verdikt nepřebije, ale nebezpečí se dál ukáže nahoře mezi varováními."
+      >
+        <div className="list">
+          {BANS.map((b) => {
+            const on = !prefs.bansOff.includes(b.key)
+            return (
+              <Cell key={b.key} icon={b.icon} tone={on ? undefined : 'nejdi'} title={b.label} sub={b.sub}>
+                <Switch
+                  checked={on}
+                  label={b.label}
+                  onChange={(v) =>
+                    setPrefs({ bansOff: v ? prefs.bansOff.filter((k) => k !== b.key) : [...prefs.bansOff, b.key] })
+                  }
+                />
+              </Cell>
+            )
+          })}
         </div>
       </Section>
 
@@ -171,7 +237,7 @@ export function NastaveniScreen({ state, onBack, onSettings, onShowIntro }: Prop
 }
 
 /** Kalibrace tempa z trasy, kterou člověk opravdu ušel. */
-function Calibration({ state, onSettings }: { state: StoredState; onSettings: (s: Settings) => void }) {
+function Calibration({ state, onSettings }: { state: StoredState; onSettings: (s: Partial<Settings>) => void }) {
   const routes = state.routes.filter((r) => r.waypoints.length > 1)
   const [routeId, setRouteId] = useState(routes[0]?.id ?? '')
   const [hours, setHours] = useState('')
